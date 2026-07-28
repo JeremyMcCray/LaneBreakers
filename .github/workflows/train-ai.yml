@@ -1,0 +1,165 @@
+# =====================================================================
+#  Train the Lanebreaker AI on GitHub's computers instead of yours.
+#
+#  On a PUBLIC repository this is free and unmetered. Push this project
+#  to GitHub, then: Actions -> "Train Lanebreaker AI" -> Run workflow.
+#
+#  Each recipe you list gets its OWN runner, so five recipes train in
+#  parallel for the same wall-clock time as one.
+#
+#  Progress is cached between runs, so pressing "Run workflow" again
+#  continues from the last generation rather than starting over. The
+#  trained brains come back as a downloadable artifact, and a summary
+#  table appears on the run's page.
+# =====================================================================
+name: Train Lanebreaker AI
+
+on:
+  workflow_dispatch:
+    inputs:
+      recipes:
+        description: 'Recipes to train, comma separated'
+        default: 'balanced'
+        required: true
+      pop:
+        description: 'Population size'
+        default: '40'
+      trials:
+        description: 'Matches per bot per generation (higher = less luck)'
+        default: '12'
+      hours:
+        description: 'Hours to train (max 5.5 — GitHub kills a job at 6)'
+        default: '5.5'
+      commit_results:
+        description: 'Commit the trained brains back to the repo'
+        type: boolean
+        default: false
+
+  # Uncomment to train automatically every night at 03:00 UTC.
+  # schedule:
+  #   - cron: '0 3 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: train-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.split.outputs.matrix }}
+    steps:
+      - id: split
+        run: |
+          LIST='${{ github.event.inputs.recipes || 'balanced' }}'
+          JSON=$(printf '%s' "$LIST" | tr -d ' ' | tr ',' '\n' | grep -v '^$' \
+                 | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>
+                     console.log(JSON.stringify(s.trim().split("\n"))))')
+          echo "matrix=$JSON" >> "$GITHUB_OUTPUT"
+          echo "Training: $JSON"
+
+  train:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 350          # GitHub's hard limit is 360
+    strategy:
+      fail-fast: false
+      matrix:
+        recipe: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Show what we are working with
+        run: |
+          echo "cores:  $(nproc)"
+          echo "memory: $(free -m | awk '/Mem:/{print $2} ') MB"
+          cd ai && node panel.js --check
+
+      # Restore this recipe's population so the run continues rather than restarting
+      - name: Restore previous progress
+        uses: actions/cache/restore@v4
+        with:
+          path: ai/brains/${{ matrix.recipe }}
+          key: brains-${{ matrix.recipe }}-${{ github.run_number }}
+          restore-keys: |
+            brains-${{ matrix.recipe }}-
+
+      - name: Train
+        run: |
+          cd ai
+          SECS=$(node -p "Math.round(${{ github.event.inputs.hours || '5.5' }} * 3600)")
+          WORKERS=$(node -p "Math.max(1, require('os').cpus().length - 1)")
+          echo "Training '${{ matrix.recipe }}' for ${SECS}s on ${WORKERS} workers"
+          node supervise.js \
+            --recipe "${{ matrix.recipe }}" \
+            --pop "${{ github.event.inputs.pop || '40' }}" \
+            --trials "${{ github.event.inputs.trials || '12' }}" \
+            --workers "$WORKERS" \
+            --gens 100000 \
+            --maxseconds "$SECS"
+
+      - name: Summarise what it learned
+        if: always()
+        run: |
+          cd ai
+          node -e '
+            const fs=require("fs"), r=process.argv[1];
+            const f="brains/"+r+"/history.json";
+            if(!fs.existsSync(f)){ console.log("no history"); process.exit(0); }
+            const h=JSON.parse(fs.readFileSync(f,"utf8"));
+            const out=[];
+            out.push("## "+r+" — "+h.length+" generations\n");
+            out.push("| generations | best fitness | beats the hand-coded bot |");
+            out.push("|---|---|---|");
+            const n=Math.max(1,Math.ceil(h.length/6));
+            for(let i=0;i<h.length;i+=n){
+              const s=h.slice(i,i+n);
+              const wr=s.filter(x=>x.bestBotWR!=null);
+              out.push("| "+s[0].gen+"–"+s[s.length-1].gen+" | "+
+                Math.round(s.reduce((a,b)=>a+b.best,0)/s.length)+" | "+
+                (wr.length?Math.round(wr.reduce((a,b)=>a+b.bestBotWR,0)/wr.length*100)+"%":"—")+" |");
+            }
+            const last=h[h.length-1];
+            out.push("\nLatest: cs "+last.cs.toFixed(0)+", k/d "+last.kills.toFixed(1)+"/"+last.deaths.toFixed(1));
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join("\n")+"\n\n");
+            console.log(out.join("\n"));
+          ' "${{ matrix.recipe }}"
+
+      - name: Save progress for next time
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ai/brains/${{ matrix.recipe }}
+          key: brains-${{ matrix.recipe }}-${{ github.run_number }}
+
+      - name: Upload the trained brains
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brains-${{ matrix.recipe }}
+          path: ai/brains/${{ matrix.recipe }}
+          retention-days: 90
+
+      # Optional: keep the results in the repo so they never expire.
+      - name: Commit results
+        if: ${{ always() && github.event.inputs.commit_results == 'true' }}
+        run: |
+          git config user.name  "lanebreaker-trainer"
+          git config user.email "actions@github.com"
+          git add -f "ai/brains/${{ matrix.recipe }}"
+          git diff --cached --quiet && { echo "nothing changed"; exit 0; }
+          git commit -m "train: ${{ matrix.recipe }} (run ${{ github.run_number }})"
+          # several recipes may push at once, so rebase and retry
+          for i in 1 2 3 4 5; do
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" && \
+            git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep $((RANDOM % 10 + 3))
+          done
+          echo "could not push after 5 attempts"; exit 1

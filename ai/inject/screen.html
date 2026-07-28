@@ -1,0 +1,78 @@
+    <!-- ================= TRAIN THE AI ================= -->
+    <div id="scrTrain" class="hide">
+      <h2>Train the AI</h2>
+      <div class="note" style="margin:0 0 12px">
+        Bots play thousands of matches against each other. The ones that score best on your
+        chosen <b>recipe</b> survive and breed; the rest are discarded. Repeat, and the green
+        line climbs. Nothing here is scripted &mdash; the AI works out how to play on its own.
+        <br><span style="color:#4a5670">This runs in your browser on one core.
+        For serious training use <b>node ai/train.js</b>, which is many times faster.</span>
+      </div>
+
+      <div class="cols" style="grid-template-columns:1.55fr 1fr">
+        <div>
+          <div class="step" style="padding:10px 12px">
+            <canvas id="trainCanvas" style="width:100%;height:230px;display:block"></canvas>
+          </div>
+          <div class="scards" style="grid-template-columns:repeat(5,1fr)">
+            <div class="scard"><div class="sv" id="trainGen">0</div><div class="sl">Generation</div></div>
+            <div class="scard"><div class="sv" id="trainBest">&mdash;</div><div class="sl">Best fitness</div></div>
+            <div class="scard"><div class="sv" id="trainWR">&mdash;</div><div class="sl">Beats old bot</div></div>
+            <div class="scard"><div class="sv" id="trainCS">&mdash;</div><div class="sl">Last hits</div></div>
+            <div class="scard"><div class="sv" id="trainRate">&mdash;</div><div class="sl">Matches / sec</div></div>
+          </div>
+          <div style="height:5px;background:#0a0f1a;border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:8px">
+            <div id="trainProg" style="height:100%;width:0;background:var(--acc);transition:width .2s"></div>
+          </div>
+          <div class="note" id="trainStatus" style="margin-top:8px">Nothing trained yet.</div>
+          <div class="note" style="margin-top:2px">Current favourite behaviours: <b id="trainStyle">&mdash;</b>
+            &nbsp;·&nbsp; <span id="trainMatches">0</span> matches played</div>
+        </div>
+
+        <div>
+          <div class="step">
+            <div class="h">What to reward</div>
+            <select id="trainRecipe" class="modedd" onchange="lbTrainSetRecipe(this.value)"></select>
+            <div class="note" id="trainRecipeDesc" style="margin:0"></div>
+            <div class="note" style="margin-top:8px;color:#4a5670">
+              A recipe is a set of wages. The bot learns to do whatever you pay it for &mdash;
+              pay for last hits and it farms, pay for kills and it hunts you. Edit
+              <b>ai/recipes.json</b> to invent your own.
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="h">Controls</div>
+            <div class="row" style="margin:0">
+              <button class="pri" id="btnTrainStart" onclick="lbTrainToggle()">Start training</button>
+              <button onclick="lbTrainReset()">Reset</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button onclick="lbTrainPlay()">Play against the current best</button>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="h">Keep this brain</div>
+            <div class="namerow" style="margin-bottom:8px">
+              <input id="trainName" maxlength="24" placeholder="name it" autocomplete="off"
+                     style="flex:1;max-width:none">
+            </div>
+            <div class="row" style="margin:0">
+              <button class="pri" onclick="lbTrainSave()">Save</button>
+              <button onclick="lbTrainExport()">Export</button>
+              <button onclick="document.getElementById('brainFile').click()">Import</button>
+              <input type="file" id="brainFile" accept="application/json" class="hide"
+                     onchange="lbTrainImport(this)">
+            </div>
+            <div class="roster" id="trainList" style="margin-top:9px"></div>
+            <div class="note" style="margin-top:6px;color:#4a5670">
+              Saved brains appear in the opponent dropdown on the main screen.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row"><button class="pri" onclick="showScreen('scrHero')">Back</button></div>
+    </div>
+

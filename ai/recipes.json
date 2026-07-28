@@ -1,0 +1,109 @@
+{
+  "_README": [
+    "A RECIPE IS A SET OF WAGES. The bot learns to do whatever you pay it for,",
+    "and nothing else. Each number says 'how many fitness points is one of these",
+    "worth'. Negative numbers are fines. Everything is per match, per player.",
+    "",
+    "PREFER THE *Diff TERMS. 'I got 30 last hits' is a bad goal — in a long match",
+    "everyone gets 30. 'I got 12 MORE last hits than my opponent' is a real one.",
+    "Paying for the gap also takes match length out of the equation. An earlier",
+    "version of these recipes paid for totals, and evolution promptly discovered",
+    "that the safest way to win was to hide behind its own creeps and farm",
+    "quietly until the clock ran out. The differentials fixed that.",
+    "",
+    "  win/loss/draw  flat payout for the match result",
+    "  speed          bonus for winning FAST (and mercy for losing slowly)",
+    "",
+    "  csDiff         per last-hit MORE than the opponent      <- use these",
+    "  killDiff       per net kill                             <-",
+    "  goldDiff       per gold of net worth lead (~0.02)       <-",
+    "  lvlDiff        per level of lead                        <-",
+    "  dmgDiff        per point of hero-damage lead (~0.02)    <-",
+    "  denyDiff       per net deny                             <-",
+    "  towerDiff      per point of tower-damage lead           <-",
+    "",
+    "  cs deny gold level csRate kill assist death dmgHero towerDmg heal",
+    "                 the same things as absolute totals — use sparingly",
+    "  aggression     per unit of average lane position (0 = own tower, 1 = theirs)",
+    "  passivity      paid on the fraction of time spent farming/retreating —",
+    "                 make it NEGATIVE to discourage stalling",
+    "  variety        rewards a spread of behaviours instead of one on repeat",
+    "",
+    "Add your own by copying a block and renaming it, then:",
+    "  node train.js --recipe myrecipe",
+    "  node versus.js --a myrecipe --b balanced"
+  ],
+
+  "balanced": {
+    "desc": "A well-rounded laner. Start here.",
+    "weights": {
+      "win": 140, "loss": 0, "draw": 20, "speed": 30,
+      "csDiff": 2.5, "denyDiff": 3.0, "goldDiff": 0.02, "lvlDiff": 10,
+      "killDiff": 30, "dmgDiff": 0.02, "towerDiff": 0.03,
+      "death": -6,
+      "aggression": 10, "passivity": -45, "variety": 8
+    }
+  },
+
+  "farmer": {
+    "desc": "Greedy economist. Wins by out-levelling you, avoids fights it doesn't need.",
+    "weights": {
+      "win": 110, "loss": 0, "draw": 40, "speed": 0,
+      "csDiff": 8.0, "denyDiff": 9.0, "goldDiff": 0.05, "lvlDiff": 22,
+      "killDiff": 12, "dmgDiff": 0.004,
+      "death": -25,
+      "aggression": 0, "passivity": -10, "variety": 3
+    }
+  },
+
+  "brawler": {
+    "desc": "Wants your blood. Trades constantly, dives towers, ignores the wave.",
+    "weights": {
+      "win": 140, "loss": 0, "draw": 0, "speed": 60,
+      "csDiff": 0.4, "goldDiff": 0.006, "lvlDiff": 4,
+      "killDiff": 70, "dmgDiff": 0.07, "towerDiff": 0.01,
+      "death": -4,
+      "aggression": 30, "passivity": -70, "variety": 5
+    }
+  },
+
+  "sieger": {
+    "desc": "Doesn't care about you at all. Shoves the wave and takes the tower.",
+    "weights": {
+      "win": 170, "loss": 0, "draw": 0, "speed": 90,
+      "csDiff": 1.5, "goldDiff": 0.015, "lvlDiff": 6,
+      "killDiff": 15, "dmgDiff": 0.008, "towerDiff": 0.2, "towerDmg": 0.05,
+      "death": -10,
+      "aggression": 25, "passivity": -50, "variety": 4
+    }
+  },
+
+  "survivor": {
+    "desc": "Allergic to dying. Punishing to kill, slowly grinds you out.",
+    "weights": {
+      "win": 150, "loss": 0, "draw": 55, "speed": 0,
+      "csDiff": 4.0, "denyDiff": 5.0, "goldDiff": 0.025, "lvlDiff": 14,
+      "killDiff": 25, "dmgDiff": 0.015,
+      "death": -70,
+      "aggression": -4, "passivity": -15, "variety": 5
+    }
+  },
+
+  "purewin": {
+    "desc": "Paid for one thing only: winning. The purest signal, and by far the slowest to learn — a good experiment once the others work.",
+    "weights": {
+      "win": 100, "loss": 0, "draw": 20, "speed": 25
+    }
+  },
+  
+  "winplus": {
+    "desc": "Win.",
+    "weights": {
+      "win": 140, "loss": -50, "draw": -10, "speed": 2,
+      "death": 0,
+      "aggression": 1, 
+      "passivity": -1, 
+      "variety": 1
+    }
+  }
+}

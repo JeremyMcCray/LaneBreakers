@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lanebreaker AI — control panel</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#07090f; --panel:#111725; --panel2:#161e30; --line:#233049;
+    --txt:#dfe7f5; --dim:#8b9ab4; --gold:#ffcc55; --blue:#4aa8ff; --red:#ff5f5f;
+    --acc:#5ef0c8;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--txt);
+    font-family:"Segoe UI",Inter,system-ui,-apple-system,sans-serif;font-size:14px}
+  body{display:flex;flex-direction:column;overflow:hidden}
+  a{color:var(--acc)}
+  .hide{display:none !important}
+
+  header{display:flex;align-items:center;gap:16px;padding:12px 20px;
+    border-bottom:1px solid var(--line);background:var(--panel);flex:none}
+  header h1{font-size:16px;letter-spacing:5px;font-weight:800;
+    background:linear-gradient(90deg,var(--blue),var(--acc),var(--gold));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .pill{font-size:11px;padding:4px 11px;border-radius:20px;border:1px solid var(--line);
+    color:var(--dim);background:#0a0f1a;white-space:nowrap}
+  .pill.on{border-color:var(--acc);color:var(--acc)}
+  .pill.err{border-color:var(--red);color:var(--red)}
+  header .sp{flex:1}
+
+  nav{display:flex;gap:4px;padding:10px 20px 0;border-bottom:1px solid var(--line);
+    background:var(--panel);flex:none}
+  nav button{background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);
+    font:inherit;font-weight:600;padding:8px 14px;cursor:pointer;font-size:13px}
+  nav button:hover{color:var(--txt)}
+  nav button.on{color:var(--acc);border-bottom-color:var(--acc)}
+
+  main{flex:1;overflow-y:auto;padding:20px}
+  .wrap{max-width:1100px;margin:0 auto}
+  section{display:none}
+  section.on{display:block}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:18px 20px;margin-bottom:16px}
+  .card h2{font-size:12px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;
+    margin-bottom:4px}
+  .card .sub{color:var(--dim);font-size:12.5px;line-height:1.6;margin-bottom:14px}
+
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:820px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+  label.f{display:block}
+  label.f > span{display:block;font-size:10px;letter-spacing:1.5px;color:var(--dim);
+    text-transform:uppercase;margin-bottom:5px}
+  input[type=text],input[type=number],select,textarea{width:100%;background:#0a0f1a;color:var(--txt);
+    border:1px solid var(--line);border-radius:8px;padding:9px 11px;font:inherit;font-size:13px}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--acc)}
+  .hint{font-size:11px;color:#4a5670;margin-top:5px;line-height:1.5}
+
+  button.b{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:9px;padding:10px 18px;font:inherit;font-weight:600;cursor:pointer}
+  button.b:hover{background:#20293f;border-color:#3d5580}
+  button.b.pri{background:linear-gradient(180deg,#2f6fd0,#22508f);border-color:#4a8ede}
+  button.b.pri:hover{background:linear-gradient(180deg,#3a83ee,#2a61ac)}
+  button.b.danger{border-color:#7d2626;color:#ffb1b1}
+  button.b:disabled{opacity:.4;cursor:not-allowed}
+  button.b.sm{padding:5px 11px;font-size:12px;border-radius:7px}
+  .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-top:14px}
+
+  .cmd{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:#7fe3c4;
+    background:#0a0f1a;border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+    margin-top:12px;word-break:break-all;user-select:all}
+
+  /* recipe editor */
+  .wgroup{margin-bottom:6px}
+  .wgroup h3{font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;
+    margin:16px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+  .wrow{display:grid;grid-template-columns:120px 1fr 78px;gap:12px;align-items:center;
+    padding:5px 0}
+  .wrow .nm{font-size:12.5px;font-weight:600}
+  .wrow .nm small{display:block;font-weight:400;color:#4a5670;font-size:10.5px;
+    line-height:1.4;margin-top:2px}
+  .wrow input[type=range]{width:100%;accent-color:var(--acc);background:transparent}
+  .wrow input[type=number]{padding:6px 8px;font-size:12px;text-align:right}
+  .wrow.zero .nm{color:#4a5670}
+  .wrow.zero input[type=number]{color:#4a5670}
+
+  /* runs */
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;color:#4a5670;font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;
+    padding:6px 9px;border-bottom:1px solid var(--line);font-weight:600}
+  td{padding:8px 9px;border-bottom:1px solid #161e30;color:var(--dim);vertical-align:middle}
+  tr:hover td{background:#161e3055}
+  td b{color:var(--txt)}
+  .tag{font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;
+    border-radius:4px;border:1px solid var(--line);color:var(--dim)}
+  .tag.lab{border-color:#3d5580;color:var(--blue)}
+  .tag.arch{opacity:.6}
+  .tag.stale{border-color:#7d2626;color:var(--red)}
+  .spark{height:20px;display:block}
+  .wr{font-weight:700;color:var(--acc)}
+
+  /* console */
+  #dock{flex:none;border-top:1px solid var(--line);background:var(--panel);
+    display:flex;flex-direction:column;max-height:46vh}
+  #dockbar{display:flex;align-items:center;gap:12px;padding:8px 20px;cursor:pointer;
+    border-bottom:1px solid transparent}
+  #dockbar.open{border-bottom-color:var(--line)}
+  #dockbar .t{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);
+    font-weight:700}
+  #dockbar .sp{flex:1}
+  #prog{height:4px;background:#0a0f1a;border-radius:3px;overflow:hidden;width:180px;
+    border:1px solid var(--line)}
+  #progfill{height:100%;width:0;background:var(--acc);transition:width .4s}
+  #log{overflow-y:auto;padding:12px 20px 18px;font-family:ui-monospace,Consolas,monospace;
+    font-size:11.5px;line-height:1.65;white-space:pre-wrap;color:#a9bcdd;flex:1;min-height:0}
+  #log .g{color:var(--acc)}
+  #log .y{color:var(--gold)}
+  #log .r{color:var(--red)}
+  #log .d{color:#4a5670}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:60;
+    background:#0d1320f2;border:1px solid var(--line);border-left:3px solid var(--gold);
+    border-radius:8px;padding:10px 18px;font-size:13px;box-shadow:0 12px 40px #000a}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{border:1px solid var(--line);background:var(--panel2);border-radius:7px;
+    padding:7px 12px;font-size:12.5px;cursor:pointer;user-select:none;font-weight:600}
+  .chip.on{border-color:var(--acc);background:#1c2740;color:var(--acc)}
+  .est{font-size:12px;color:var(--dim);margin-top:10px}
+  .est b{color:var(--txt)}
+  pre.md{white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;
+    color:#a9bcdd;line-height:1.6}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>LANEBREAKER&nbsp;AI</h1>
+  <span class="pill" id="cores">—</span>
+  <span class="sp"></span>
+  <span class="pill" id="status">idle</span>
+  <button class="b sm danger hide" id="btnStop" onclick="stopJob()">Stop</button>
+</header>
+
+<nav>
+  <button class="on" data-tab="train">Train</button>
+  <button data-tab="lab">Experiments</button>
+  <button data-tab="recipes">Recipes</button>
+  <button data-tab="runs">Runs &amp; results</button>
+</nav>
+
+<main><div class="wrap">
+
+  <div class="card hide" id="banner" style="border-color:#7d2626;background:#1a1015">
+    <h2 style="color:var(--red)">Something isn't loading</h2>
+    <div class="sub" id="bannertext" style="margin:0"></div>
+    <div class="cmd" id="bannerpath" style="color:#8b9ab4"></div>
+  </div>
+
+
+  <!-- ================= TRAIN ================= -->
+  <section id="train" class="on">
+    <div class="card">
+      <h2>Train one recipe</h2>
+      <div class="sub">Bots play matches against each other and the hand-coded bot; the ones that
+        score best on the recipe survive and breed. Running the same recipe again continues
+        where it left off.</div>
+      <div class="grid g3">
+        <label class="f"><span>Recipe</span><select id="t_recipe"></select>
+          <div class="hint" id="t_recipe_desc"></div></label>
+        <label class="f"><span>Population</span><input type="number" id="t_pop" value="24" min="4" max="400">
+          <div class="hint">Bots per generation. Bigger explores more.</div></label>
+        <label class="f"><span>Trials</span><input type="number" id="t_trials" value="8" min="1" max="200">
+          <div class="hint">Matches each bot plays per generation. Low is fast but ranks on luck.</div></label>
+      </div>
+      <div class="grid g4" style="margin-top:14px">
+        <label class="f"><span>Stop after</span>
+          <select id="t_stopby"><option value="budget">a number of matches</option><option value="gens">a number of generations</option></select></label>
+        <label class="f"><span id="t_amount_lbl">Matches</span><input type="number" id="t_amount" value="20000" min="50"></label>
+        <label class="f"><span>Workers</span><input type="number" id="t_workers" value="3" min="1" max="64"></label>
+        <label class="f"><span>Mode</span><select id="t_mode"><option>1v1</option><option>2v2</option></select></label>
+      </div>
+      <div class="est" id="t_est"></div>
+      <div class="row">
+        <button class="b pri" onclick="run('train')">Start training</button>
+        <label style="font-size:12.5px;color:var(--dim);display:flex;align-items:center;gap:7px;cursor:pointer">
+          <input type="checkbox" id="t_fresh" style="width:auto"> start over (archives the old run)</label>
+      </div>
+      <div class="cmd" id="t_cmd"></div>
+    </div>
+  </section>
+
+  <!-- ================= LAB ================= -->
+  <section id="lab">
+    <div class="card">
+      <h2>Bakeoff — train several recipes, then make them fight</h2>
+      <div class="sub">Each recipe gets the same budget, then the champions play a round robin
+        against each other and your hand-coded bot. With more than one round the losers are
+        dropped and the survivors are <b>cross-bred</b> — everyone inherits everyone else's champion.</div>
+      <label class="f"><span>Recipes</span><div class="chips" id="b_recipes"></div></label>
+      <div class="grid g4" style="margin-top:14px">
+        <label class="f"><span>Matches each, per round</span><input type="number" id="b_budget" value="8000" min="50"></label>
+        <label class="f"><span>Rounds</span><input type="number" id="b_rounds" value="1" min="1" max="12"></label>
+        <label class="f"><span>Survivors per round</span><input type="number" id="b_keep" value="4" min="1" max="30"></label>
+        <label class="f"><span>Games per pairing</span><input type="number" id="b_games" value="24" min="2"></label>
+      </div>
+      <div class="est" id="b_est"></div>
+      <div class="row">
+        <button class="b pri" onclick="run('bakeoff')">Run bakeoff</button>
+        <label style="font-size:12.5px;color:var(--dim);display:flex;align-items:center;gap:7px;cursor:pointer">
+          <input type="checkbox" id="b_fresh" style="width:auto"> start over</label>
+      </div>
+      <div class="cmd" id="b_cmd"></div>
+    </div>
+
+    <div class="card">
+      <h2>Sweep — what does one number actually do?</h2>
+      <div class="sub">Takes one recipe, varies exactly one weight across the values you give,
+        trains each variant on the same budget and fights them. The clearest way to build
+        intuition. Your recipes file is never modified.</div>
+      <div class="grid g3">
+        <label class="f"><span>Base recipe</span><select id="s_recipe"></select></label>
+        <label class="f"><span>Weight to vary</span><select id="s_weight"></select>
+          <div class="hint" id="s_weight_desc"></div></label>
+        <label class="f"><span>Values to compare</span><input type="text" id="s_values" value="10,30,70,150">
+          <div class="hint">Comma separated, up to 8.</div></label>
+      </div>
+      <div class="grid g2" style="margin-top:14px">
+        <label class="f"><span>Matches per variant</span><input type="number" id="s_budget" value="8000" min="50"></label>
+        <label class="f"><span>Games per pairing</span><input type="number" id="s_games" value="24" min="2"></label>
+      </div>
+      <div class="est" id="s_est"></div>
+      <div class="row"><button class="b pri" onclick="run('sweep')">Run sweep</button></div>
+      <div class="cmd" id="s_cmd"></div>
+    </div>
+
+    <div class="card">
+      <h2>Ladder — measured strength across a run</h2>
+      <div class="sub">Takes checkpoints spread through a finished run and makes them all fight.
+        Fitness is a proxy that can drift; this is the honest learning curve.</div>
+      <div class="grid g3">
+        <label class="f"><span>Run</span><select id="l_recipe"></select></label>
+        <label class="f"><span>Checkpoints to compare</span><input type="number" id="l_rungs" value="6" min="2" max="12"></label>
+        <label class="f"><span>Games per pairing</span><input type="number" id="l_games" value="12" min="2"></label>
+      </div>
+      <div class="row"><button class="b pri" onclick="run('ladder')">Run ladder</button></div>
+      <div class="cmd" id="l_cmd"></div>
+    </div>
+  </section>
+
+  <!-- ================= RECIPES ================= -->
+  <section id="recipes">
+    <div class="card">
+      <h2>Recipe editor</h2>
+      <div class="sub">A recipe is a table of wages. <b>The bot learns to do whatever you pay it
+        for, and nothing else.</b> Weights left at zero are ignored. Prefer the differential
+        terms — paying for "more last hits than my opponent" is a real goal, paying for
+        "30 last hits" is not.</div>
+      <div class="grid g3">
+        <label class="f"><span>Recipe</span><select id="r_pick" onchange="loadRecipe(this.value)"></select></label>
+        <label class="f" style="grid-column:span 2"><span>Description</span>
+          <input type="text" id="r_desc" placeholder="what this breeds"></label>
+      </div>
+      <div id="r_weights" style="margin-top:6px"></div>
+      <div class="row">
+        <button class="b pri" onclick="saveRecipes()">Save changes</button>
+        <button class="b" onclick="duplicateRecipe()">Save as new…</button>
+        <button class="b" onclick="trainThis()">Train this recipe</button>
+        <span class="sp"></span>
+        <button class="b danger sm" onclick="deleteRecipe()">Delete</button>
+      </div>
+      <div class="hint" id="r_saved"></div>
+    </div>
+  </section>
+
+  <!-- ================= RUNS ================= -->
+  <section id="runs">
+    <div class="card">
+      <h2>Trained runs</h2>
+      <div class="sub">Everything found in <code>brains/</code> and <code>lab/</code>.
+        Pick any two and fight them, or bake the ladder into the game.</div>
+      <table id="runtable"><thead><tr>
+        <th>run</th><th>gens</th><th>fitness</th><th>beats old bot</th><th>progress</th><th></th>
+      </tr></thead><tbody id="runbody"></tbody></table>
+      <div class="row">
+        <button class="b" onclick="run('bake')">Bake best brains into the game</button>
+        <span class="hint" style="margin:0">Rebuilds lanebreaker-ai.html with the current champions and difficulty ladder.</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Head to head</h2>
+      <div class="grid g4">
+        <label class="f"><span>Contestant A</span><select id="v_a"></select></label>
+        <label class="f"><span>Contestant B</span><select id="v_b"></select></label>
+        <label class="f"><span>Games</span><input type="number" id="v_games" value="30" min="2"></label>
+        <label class="f"><span>&nbsp;</span><button class="b pri" style="width:100%" onclick="run('versus')">Fight</button></label>
+      </div>
+      <div class="cmd" id="v_cmd"></div>
+    </div>
+
+    <div class="card">
+      <h2>Experiment reports</h2>
+      <div class="sub">Written by the lab after each experiment.</div>
+      <div class="chips" id="reportlist"></div>
+      <pre class="md" id="reportbody" style="margin-top:14px"></pre>
+    </div>
+  </section>
+
+</div></main>
+
+<div id="dock">
+  <div id="dockbar" onclick="toggleDock()">
+    <span class="t">Console</span>
+    <span class="pill" id="joblabel">nothing running</span>
+    <span class="sp"></span>
+    <div id="prog" class="hide"><div id="progfill"></div></div>
+    <span class="pill" id="eta"></span>
+    <span class="t" id="dockchev">▾</span>
+  </div>
+  <div id="log"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let STATE = {recipes:{}, weightMeta:[], runs:[], reports:[]};
+let logSince = 0, dockOpen = true, editing = null, chosenRecipes = new Set();
+
+/* ---------------- tabs ---------------- */
+document.querySelectorAll('nav button').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+    document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===b.dataset.tab));
+  };
+});
+function toggleDock(){
+  dockOpen = !dockOpen;
+  $('log').style.display = dockOpen ? 'block' : 'none';
+  $('dockbar').classList.toggle('open', dockOpen);
+  $('dockchev').textContent = dockOpen ? '▾' : '▸';
+}
+
+/* ---------------- toast ---------------- */
+let toastT;
+function toast(msg, bad){
+  let el = document.querySelector('.toast');
+  if (!el){ el = document.createElement('div'); el.className='toast'; document.body.appendChild(el); }
+  el.textContent = msg;
+  el.style.borderLeftColor = bad ? 'var(--red)' : 'var(--gold)';
+  clearTimeout(toastT); toastT = setTimeout(()=>el.remove(), 3600);
+}
+
+/* ---------------- problems are shown, never swallowed ---------------- */
+function showProblem(msg, paths){
+  $('banner').classList.remove('hide');
+  $('bannertext').innerHTML = msg;
+  $('bannerpath').textContent = paths || '';
+}
+function clearProblem(){ $('banner').classList.add('hide'); }
+window.addEventListener('error', e => showProblem(
+  'A script error stopped the page from updating:<br><b>' + (e.message||e) + '</b>' +
+  (e.filename ? '<br><span style="color:#4a5670">' + e.filename + ' line ' + e.lineno + '</span>' : '')));
+window.addEventListener('unhandledrejection', e => showProblem(
+  'A request failed:<br><b>' + ((e.reason && e.reason.message) || e.reason) + '</b>'));
+
+/* ---------------- state ---------------- */
+async function refresh(){
+  let s;
+  try{
+    const res = await fetch('/api/state');
+    s = await res.json();
+    if (s.error) throw new Error(s.error);
+  }catch(err){
+    return showProblem('Could not reach the panel server, or it returned an error:<br><b>' +
+      err.message + '</b><br>Is the window running <code>node ai/panel.js</code> still open?');
+  }
+  const first = !STATE.cpus;
+  STATE = s;
+  $('cores').textContent = s.cpus + ' cores';
+
+  const names = Object.keys(s.recipes||{}).filter(k=>k[0]!=='_');
+  if ((s.problems && s.problems.length) || !names.length){
+    showProblem((s.problems && s.problems.length ? s.problems : ['No recipes were found.'])
+        .map(p=>'<b>'+p+'</b>').join('<br>') +
+      '<br><br>Fix the file and this will clear on its own — the panel re-reads it every second. ' +
+      'A missing comma or a trailing comma is the usual cause; paste the file into any ' +
+      'JSON validator if the message above is not obvious.',
+      (s.paths && s.paths.recipes) || '');
+  } else clearProblem();
+
+  if (first && names.length){
+    $('t_workers').value = Math.max(1, s.cpus - 1);
+    fillRecipeSelects();
+    fillWeightSelect();
+    loadRecipe(names[0]);
+  } else if (!first && names.length && !$('r_pick').innerHTML){
+    // recipes arrived late (the file was broken when the page loaded)
+    fillRecipeSelects();
+    fillWeightSelect();
+    loadRecipe(names[0]);
+  }
+  const r = s.running;
+  $('status').textContent = r ? (r.label + ' · ' + r.elapsed) : (s.lastExit===0?'finished':'idle');
+  $('status').className = 'pill' + (r ? ' on' : (s.lastExit && s.lastExit!==0 ? ' err':''));
+  $('btnStop').classList.toggle('hide', !r);
+  $('joblabel').textContent = r ? r.label : 'nothing running';
+  if (r && r.totalGens){
+    $('prog').classList.remove('hide');
+    $('progfill').style.width = Math.min(100, r.gen/r.totalGens*100) + '%';
+    $('eta').textContent = 'gen ' + r.gen + '/' + r.totalGens + (r.eta ? ' · ~'+r.eta+' left' : '');
+  } else { $('prog').classList.add('hide'); $('eta').textContent = r ? '' : ''; }
+  renderRuns(); renderReports(); updateEstimates();
+  document.querySelectorAll('button.b.pri').forEach(b=>{
+    if (b.textContent!=='Save changes') b.disabled = !!r;
+  });
+}
+async function pollLog(){
+  const j = await (await fetch('/api/log?since='+logSince)).json();
+  if (j.total < logSince){ logSince = 0; $('log').textContent=''; }
+  if (j.lines.length){
+    const box = $('log');
+    const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+    for (const line of j.lines){
+      const d = document.createElement('div');
+      let cls = '';
+      if (/✔|beats old bot 100%|CONTINUING/.test(line)) cls='g';
+      else if (/✖|error|Error|failed|Cannot/.test(line)) cls='r';
+      else if (/^\s*gen\s|STANDINGS|ROUND|winner:/.test(line)) cls='y';
+      else if (/^\s*[─═]|^\s*$/.test(line)) cls='d';
+      d.className = cls; d.textContent = line || ' ';
+      box.appendChild(d);
+    }
+    logSince = j.total;
+    if (atBottom) box.scrollTop = box.scrollHeight;
+  }
+}
+setInterval(refresh, 1200);
+setInterval(pollLog, 600);
+
+/* ---------------- selects ---------------- */
+function recipeNames(){ return Object.keys(STATE.recipes).filter(k=>k[0]!=='_'); }
+function fillRecipeSelects(){
+  const names = recipeNames();
+  for (const id of ['t_recipe','s_recipe','r_pick']){
+    const el = $(id), keep = el.value;
+    el.innerHTML = names.map(n=>'<option>'+n+'</option>').join('');
+    if (names.includes(keep)) el.value = keep;
+  }
+  $('t_recipe').onchange = ()=>{
+    $('t_recipe_desc').textContent = (STATE.recipes[$('t_recipe').value]||{}).desc||'';
+    updateEstimates();
+  };
+  $('t_recipe').onchange();
+  const box = $('b_recipes');
+  box.innerHTML = names.map(n=>'<div class="chip'+(chosenRecipes.has(n)?' on':'')+'" data-n="'+n+'">'+n+'</div>').join('');
+  box.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+    const n=c.dataset.n;
+    chosenRecipes.has(n)?chosenRecipes.delete(n):chosenRecipes.add(n);
+    c.classList.toggle('on'); updateEstimates();
+  });
+}
+function fillWeightSelect(){
+  const el = $('s_weight');
+  el.innerHTML = STATE.weightMeta.map(g=>
+    '<optgroup label="'+g.group+'">'+g.keys.map(k=>'<option value="'+k[0]+'">'+k[0]+'</option>').join('')+'</optgroup>'
+  ).join('');
+  el.onchange = ()=>{
+    for (const g of STATE.weightMeta) for (const k of g.keys)
+      if (k[0]===el.value) $('s_weight_desc').textContent = k[4];
+  };
+  el.value='killDiff'; el.onchange();
+}
+function fillRunSelects(){
+  const opts = ['bot', ...STATE.runs.filter(r=>!r.stale).map(r=>r.name)];
+  for (const [id,def] of [['v_a', opts[1]||'bot'],['v_b','bot']]){
+    const el=$(id), keep=el.value;
+    el.innerHTML = opts.map(o=>'<option>'+o+'</option>').join('');
+    el.value = opts.includes(keep) ? keep : def;
+  }
+  const lad = STATE.runs.filter(r=>r.kind==='run' && r.checkpoints>1).map(r=>r.name);
+  const el=$('l_recipe'), keep=el.value;
+  el.innerHTML = lad.map(o=>'<option>'+o+'</option>').join('') || '<option value="">no runs with checkpoints yet</option>';
+  if (lad.includes(keep)) el.value = keep;
+}
+
+/* ---------------- estimates ---------------- */
+function matchesFor(pop,trials,gens){ return pop*trials*gens; }
+function fmtN(n){ return n.toLocaleString(); }
+function updateEstimates(){
+  const pop=+$('t_pop').value, tr=+$('t_trials').value;
+  const byBudget = $('t_stopby').value==='budget';
+  $('t_amount_lbl').textContent = byBudget ? 'Matches' : 'Generations';
+  const amt=+$('t_amount').value||0;
+  const gens = byBudget ? Math.max(1,Math.round(amt/(pop*tr))) : amt;
+  const m = byBudget ? amt : matchesFor(pop,tr,gens);
+  $('t_est').innerHTML = '≈ <b>'+fmtN(m)+'</b> matches over <b>'+fmtN(gens)+'</b> generations'
+    + (tr<6 ? ' &nbsp;·&nbsp; <span style="color:var(--gold)">'+tr+' trials is low — bots will be ranked mostly on luck</span>' : '');
+  const bb=+$('b_budget').value||0, br=+$('b_rounds').value||1, n=chosenRecipes.size;
+  $('b_est').innerHTML = n ? ('≈ <b>'+fmtN(bb*n*br)+'</b> matches of training across <b>'+n+'</b> recipes'
+    + (br>1?' and <b>'+br+'</b> rounds':'')) : '<span style="color:var(--gold)">pick some recipes above</span>';
+  const sv=($('s_values').value||'').split(',').filter(x=>x.trim()!=='').length;
+  $('s_est').innerHTML = '≈ <b>'+fmtN((+$('s_budget').value||0)*sv)+'</b> matches across <b>'+sv+'</b> variants';
+  preview();
+}
+['t_pop','t_trials','t_amount','t_stopby','t_workers','t_mode','t_recipe','t_fresh',
+ 'b_budget','b_rounds','b_keep','b_games','b_fresh','s_recipe','s_weight','s_values','s_budget','s_games',
+ 'l_recipe','l_rungs','l_games','v_a','v_b','v_games'].forEach(id=>{
+  const el=$(id); if(el) el.addEventListener('input', updateEstimates);
+});
+
+/* ---------------- building commands ---------------- */
+function argsFor(cmd){
+  const common = {pop:+$('t_pop').value, trials:+$('t_trials').value,
+                  workers:+$('t_workers').value, mode:$('t_mode').value};
+  if (cmd==='train'){
+    const byBudget = $('t_stopby').value==='budget';
+    return Object.assign({}, common, {recipe:$('t_recipe').value, fresh:$('t_fresh').checked,
+      useBudget:byBudget, budget:+$('t_amount').value, gens:+$('t_amount').value});
+  }
+  if (cmd==='bakeoff') return Object.assign({}, common, {recipes:[...chosenRecipes],
+    budget:+$('b_budget').value, rounds:+$('b_rounds').value, keep:+$('b_keep').value,
+    games:+$('b_games').value, fresh:$('b_fresh').checked});
+  if (cmd==='sweep') return Object.assign({}, common, {recipe:$('s_recipe').value,
+    weight:$('s_weight').value, values:$('s_values').value,
+    budget:+$('s_budget').value, games:+$('s_games').value});
+  if (cmd==='ladder') return Object.assign({}, common, {recipe:$('l_recipe').value,
+    rungs:+$('l_rungs').value, games:+$('l_games').value});
+  if (cmd==='versus') return {a:$('v_a').value, b:$('v_b').value, games:+$('v_games').value,
+    mode:$('t_mode').value};
+  return {};
+}
+async function preview(){
+  for (const [cmd,box] of [['train','t_cmd'],['bakeoff','b_cmd'],['sweep','s_cmd'],
+                           ['ladder','l_cmd'],['versus','v_cmd']]){
+    try{
+      const r = await (await fetch('/api/preview',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({cmd,args:argsFor(cmd)})})).json();
+      $(box).textContent = r.command || ('— ' + (r.error||''));
+    }catch(e){ $(box).textContent = '—'; }
+  }
+}
+async function run(cmd){
+  const r = await (await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({cmd, args:argsFor(cmd)})})).json();
+  if (r.error) return toast(r.error, true);
+  logSince = 0; $('log').textContent='';
+  if (!dockOpen) toggleDock();
+  toast('started: ' + r.label);
+  refresh();
+}
+async function stopJob(){ await fetch('/api/stop',{method:'POST'}); toast('stopping…'); }
+
+/* ---------------- recipe editor ---------------- */
+function loadRecipe(name){
+  if (!name || !STATE.recipes[name]){
+    $('r_weights').innerHTML =
+      '<div class="hint" style="padding:20px 0;font-size:13px">No recipe loaded. ' +
+      'If the banner above is showing, fix <code>ai/recipes.json</code> first.</div>';
+    return;
+  }
+  editing = name;
+  $('r_pick').value = name;
+  $('r_desc').value = STATE.recipes[name].desc || '';
+  const w = STATE.recipes[name].weights || {};
+  const box = $('r_weights');
+  box.innerHTML = STATE.weightMeta.map(g=>
+    '<div class="wgroup"><h3>'+g.group+'</h3>' + g.keys.map(k=>{
+      const [key,lo,hi,step,hint] = k;
+      const v = w[key]!==undefined ? w[key] : 0;
+      return '<div class="wrow'+(v===0?' zero':'')+'" data-k="'+key+'">'+
+        '<div class="nm">'+key+'<small>'+hint+'</small></div>'+
+        '<input type="range" min="'+lo+'" max="'+hi+'" step="'+step+'" value="'+v+'">'+
+        '<input type="number" step="'+step+'" value="'+v+'">'+
+      '</div>';
+    }).join('') + '</div>').join('');
+  box.querySelectorAll('.wrow').forEach(row=>{
+    const [range,numi] = row.querySelectorAll('input');
+    const sync = src=>{
+      const v = Number(src.value);
+      range.value = v; numi.value = v;
+      row.classList.toggle('zero', v===0);
+      $('r_saved').textContent = 'unsaved changes';
+    };
+    range.oninput = ()=>sync(range);
+    numi.oninput = ()=>sync(numi);
+  });
+  $('r_saved').textContent = '';
+}
+function collectRecipe(){
+  const weights = {};
+  $('r_weights').querySelectorAll('.wrow').forEach(row=>{
+    const v = Number(row.querySelectorAll('input')[1].value);
+    if (v!==0) weights[row.dataset.k] = v;
+  });
+  return {desc:$('r_desc').value, weights};
+}
+async function saveRecipes(newName){
+  const recipes = {};
+  for (const n of recipeNames()) recipes[n] = STATE.recipes[n];
+  const target = newName || editing;
+  recipes[target] = collectRecipe();
+  const r = await (await fetch('/api/recipes',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({recipes})})).json();
+  if (r.error) return toast(r.error, true);
+  STATE.recipes = recipes;
+  fillRecipeSelects(); $('r_pick').value = target; editing = target;
+  $('r_saved').textContent = 'saved to recipes.json';
+  toast('saved "'+target+'"');
+}
+function duplicateRecipe(){
+  const n = prompt('Name for the new recipe:', editing + '2');
+  if (!n) return;
+  saveRecipes(n.replace(/[^\w-]/g,''));
+}
+async function deleteRecipe(){
+  if (recipeNames().length<2) return toast('keep at least one recipe', true);
+  if (!confirm('Delete recipe "'+editing+'"? Trained brains are not affected.')) return;
+  const recipes = {};
+  for (const n of recipeNames()) if (n!==editing) recipes[n] = STATE.recipes[n];
+  const r = await (await fetch('/api/recipes',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({recipes})})).json();
+  if (r.error) return toast(r.error, true);
+  STATE.recipes = recipes; fillRecipeSelects(); loadRecipe(recipeNames()[0]);
+  toast('deleted');
+}
+function trainThis(){
+  $('t_recipe').value = editing; $('t_recipe').onchange();
+  document.querySelector('nav button[data-tab=train]').click();
+  updateEstimates();
+}
+
+/* ---------------- runs ---------------- */
+function spark(curve){
+  if (!curve || curve.length<2) return '';
+  const w=90,h=20, lo=Math.min(...curve), hi=Math.max(...curve), r=(hi-lo)||1;
+  const pts = curve.map((v,i)=>[i/(curve.length-1)*w, h-((v-lo)/r)*(h-3)-1.5]);
+  return '<svg class="spark" width="'+w+'" height="'+h+'"><polyline fill="none" stroke="var(--acc)" '+
+    'stroke-width="1.5" points="'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'"/></svg>';
+}
+function renderRuns(){
+  const body = $('runbody');
+  const rows = STATE.runs.map(r=>{
+    const tag = r.stale ? '<span class="tag stale">stale</span>'
+      : r.kind==='lab' ? '<span class="tag lab">lab</span>'
+      : r.kind==='archive' ? '<span class="tag arch">archived</span>' : '';
+    return '<tr><td><b>'+r.name+'</b> '+tag+'</td>'+
+      '<td>'+(r.gens||'—')+'</td>'+
+      '<td>'+(r.best!=null?Math.round(r.best):'—')+'</td>'+
+      '<td>'+(r.botWR!=null?'<span class="wr">'+Math.round(r.botWR*100)+'%</span>':'—')+'</td>'+
+      '<td>'+spark(r.curve)+'</td>'+
+      '<td style="text-align:right">'+
+        (r.kind==='run' && !r.stale ? '<button class="b sm" onclick="continueRun(\''+r.name+'\')">Continue</button> ' : '')+
+        (!r.stale ? '<button class="b sm" onclick="fightRun(\''+r.name+'\')">Fight the bot</button>' : '')+
+      '</td></tr>';
+  });
+  body.innerHTML = rows.join('') || '<tr><td colspan="6" style="color:#4a5670">No runs yet — start one on the Train tab.</td></tr>';
+  fillRunSelects();
+}
+function continueRun(name){
+  $('t_recipe').value = name; $('t_recipe').onchange();
+  $('t_fresh').checked = false;
+  document.querySelector('nav button[data-tab=train]').click();
+  toast('set up to continue "'+name+'" — press Start training');
+}
+function fightRun(name){
+  $('v_a').value = name; $('v_b').value = 'bot';
+  run('versus');
+}
+
+/* ---------------- reports ---------------- */
+function renderReports(){
+  const box = $('reportlist');
+  const cur = box.dataset.cur;
+  box.innerHTML = STATE.reports.map(r=>'<div class="chip'+(r.name===cur?' on':'')+'" data-n="'+r.name+'">'+r.name+'</div>').join('')
+    || '<span style="color:#4a5670;font-size:12px">No experiment reports yet.</span>';
+  box.querySelectorAll('.chip').forEach(c=>c.onclick=async()=>{
+    box.dataset.cur = c.dataset.n;
+    const j = await (await fetch('/api/report?name='+encodeURIComponent(c.dataset.n))).json();
+    $('reportbody').textContent = j.md || j.error || '';
+    renderReports();
+  });
+}
+
+refresh(); pollLog();
+</script>
+</body>
+</html>
