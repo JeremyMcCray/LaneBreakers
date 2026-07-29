@@ -2,13 +2,21 @@
   "name": "lanebreakers",
   "private": true,
   "version": "0.1.0",
+  "description": "Lanebreakers — mid-lane MOBA",
+  "author": "Lanebreakers",
   "type": "module",
+  "main": "electron/main.mjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "build:pages": "tsc && vite build",
     "build:release": "tsc && vite build --mode singlefile",
     "preview": "vite preview",
+    "desktop": "electron .",
+    "desktop:dev": "node tools/desktop-dev.mjs",
+    "desktop:pack": "electron-builder --dir",
+    "desktop:dist": "npm run build && electron-builder",
+    "desktop:dist:win": "npm run build && electron-builder --win",
     "smoke": "npx vite-node tools/smoke-sim.mjs",
     "smoke:neural": "npx vite-node tools/smoke-neural.mjs",
     "smoke:parity": "npx vite-node tools/smoke-parity.mjs",
@@ -21,8 +29,78 @@
     "peerjs": "^1.5.4"
   },
   "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
     "typescript": "~5.9.3",
     "vite": "^7.1.7",
     "vite-plugin-singlefile": "^2.3.0"
+  },
+  "build": {
+    "appId": "com.lanebreakers.game",
+    "productName": "Lanebreakers",
+    "copyright": "Copyright © Lanebreakers",
+    "directories": {
+      "output": "dist-desktop",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "zip"
+      ],
+      "category": "Game",
+      "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.games",
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+    }
+  },
+  "allowScripts": {
+    "electron@37.10.3": true,
+    "electron-winstaller@5.4.0": true
   }
 }
