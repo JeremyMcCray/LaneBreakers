@@ -59,7 +59,7 @@ It also keeps going: when that target dies you roll onto the next one in range, 
 hold the wave without re-clicking. <span class="kbd">S</span> stops it.
 <span class="kbd">F2</span> switches to LEGACY, where it is a plain attack-move.
 Right-click is always just move — or a single attack, if you click directly on a unit.<br><br>
-  <b>GOAL</b> — reach the score first: <b>2</b> points in 1v1, <b>4</b> in 2v2. A hero kill is 1 point &mdash; so in 1v1 you die twice and it is over. Dropping the enemy tower wins outright at any score. Towers take only <b>15%</b> damage while none of your creeps are near them, so bring the wave.<br><br>
+  <b>GOAL</b> — reach the score first: <b>2</b> points in 1v1, <b>4</b> in 2v2. A hero kill is 1 point &mdash; and dropping the enemy tower wins outright. Towers take only <b>15%</b> damage while none of your creeps are near them, so bring the wave.<br><br>
   <b>LAST HITTING</b><br>
   The gold ring around your hero fills as your swing recharges — it flashes white when
   the attack is ready. Attacks land after a short wind-up &mdash; moving cancels the swing. Any creep in range shows its HP, and the pale slice on its bar is
@@ -97,7 +97,9 @@ Right-click is always just move — or a single attack, if you click directly on
         <button onclick="showScreen('scrHeroBook')">Heroes</button>
         <button onclick="showScreen('scrItems')">Items</button>
       </div>
-      <h2>Choose your hero</h2>
+      <h2>Choose your hero
+        <button onclick="randomHero()" style="float:right;padding:5px 14px;font-size:12px;margin-top:-8px">Random Hero</button>
+      </h2>
       <div class="heroes" id="heroList"></div>
       <h2>Match</h2>
       <div class="row" id="rowLocal">

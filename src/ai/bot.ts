@@ -19,7 +19,9 @@ export const BOT_BUILD = {
   thorne:['boots','vit','blade','plate','titan','quick'],
   krell:['boots','arc','orb','vit','blade','quick'],
   shiv: ['boots','quell','blade','quick','reaver','vit'],
-  svaar:['boots','vit','blade','cleaver','plate','quick']
+  svaar:['boots','vit','blade','cleaver','plate','quick'],
+  liora:['boots','arc','vit','orb','blade','quick'],
+  drex: ['boots','arc','orb','blade','vit','quick']
 };
 export const BOT_SKILL_DEFAULT = [0,1,2,0,0,3,0,1,1,3,1,2];
 export const BOT_SKILL = {};

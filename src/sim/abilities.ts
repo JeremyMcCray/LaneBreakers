@@ -149,7 +149,12 @@ export function castAbility(S,p,i,tx,ty){
       pierce:true, fall:.30, hits:[], col:'#c9f06a'});
     break; }
   case 'sable1': {
-    const tg = nearestFoe(S, e.team, tx, ty, 260);
+    let tg=null, bd=340;                     // heroes only — creeps cannot soak the mark
+    for (const o of S.ents){
+      if (o.dead || o.team===e.team || o.type!=='hero') continue;
+      const d = dist(o.x,o.y,tx,ty);
+      if (d<bd){ bd=d; tg=o; }
+    }
     if (tg){ tg.markT=6; tg.markP=V/100; fx(S,{t:'mark', x:tg.x, y:tg.y}); }
     break; }
   case 'sable2': {
@@ -248,8 +253,10 @@ export function castAbility(S,p,i,tx,ty){
     fx(S,{t:'buff', x:tx, y:ty, col:'#e0c477'});
     break;
   case 'orrin2': {
+    const thp = 320 + Math.round(e.maxHp*0.25);          // the turret is built from Orrin's stats
     const t2 = spawnPet(S, e.team, tx, ty, 14, {static:true, ranged:true, r:15,
-      hp:320, maxHp:320, dmg:V, armor:2, range:520, bat:1.1, ms:0, turret:true});
+      hp:thp, maxHp:thp, dmg:V + Math.round(e.dmg*0.4), armor:2 + Math.round(e.armor*0.5),
+      range:520, bat:1.1, ms:0, turret:true, oslot:p.slot});
     fx(S,{t:'blast', x:t2.x, y:t2.y, r:90, col:'#e0c477'});
     break; }
   case 'orrin3': {
@@ -359,6 +366,70 @@ export function castAbility(S,p,i,tx,ty){
     updateHeroStats(S,p);
     fx(S,{t:'blast', x:e.x, y:e.y, r:240, col:'#bcd4ff'});
     break;
+  /* ---- LIORA ---- */
+  case 'liora0': {
+    const a = Math.atan2(ty-e.y, tx-e.x);
+    S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
+      vx:Math.cos(a)*1150, vy:Math.sin(a)*1150, life:800/1150, dmg:V, src:e.id, r:16,
+      slow:{p:.25,t:1.5}, col:'#8affd4'});
+    break; }
+  case 'liora1': {
+    let tg=null, worst=1.01;                     // the most wounded ally near the cursor
+    for (const q of S.players){
+      if (q.team!==e.team || !q.hero || q.hero.dead) continue;
+      if (dist(q.hero.x,q.hero.y,tx,ty) > 340) continue;
+      const f2 = q.hero.hp/q.hero.maxHp;
+      if (f2 < worst){ worst=f2; tg=q.hero; }
+    }
+    if (!tg) tg = e;
+    heal(S, tg, V);
+    fx(S,{t:'heal', x:tg.x, y:tg.y});
+    fx(S,{t:'buff', x:tg.x, y:tg.y, col:'#8affd4'});
+    break; }
+  case 'liora2': {
+    let tg=null, bd=340;
+    for (const q of S.players){
+      if (q.team!==e.team || !q.hero || q.hero.dead) continue;
+      const d = dist(q.hero.x,q.hero.y,tx,ty);
+      if (d<bd){ bd=d; tg=q.hero; }
+    }
+    if (!tg) tg = e;
+    tg.shield=V; tg.shieldT=3; tg.shieldRef=0;
+    tg.msT=2; tg.msP=Math.max(tg.msP||0,.20);
+    fx(S,{t:'buff', x:tg.x, y:tg.y, col:'#bffff0'});
+    break; }
+  case 'liora3':
+    addZone(S,{kind:'sanct', team:e.team, x:tx, y:ty, r:300, t:5, hps:V, src:e.id, tickT:0});
+    fx(S,{t:'blast', x:tx, y:ty, r:300, col:'#8affd4'});
+    break;
+  /* ---- DREX ---- */
+  case 'drex0':
+    addZone(S,{kind:'bomb', team:e.team, x:tx, y:ty, r:200, t:.9, mt:.9, dmg:V, src:e.id});
+    fx(S,{t:'telegraph', x:tx, y:ty, r:200, t:.9, col:'#ff7a3c'});
+    break;
+  case 'drex1': {
+    const mines = S.zones.filter(z=>z.kind==='mine' && z.team===e.team);
+    if (mines.length>=3) S.zones.splice(S.zones.indexOf(mines[0]),1);   // oldest one goes
+    addZone(S,{kind:'mine', team:e.team, x:tx, y:ty, r:110, t:40, arm:1, dmg:V, src:e.id});
+    fx(S,{t:'buff', x:tx, y:ty, col:'#ff7a3c'});
+    break; }
+  case 'drex2': {
+    const ox=e.x, oy=e.y;
+    e.x=tx; e.y=ty; clampToLane(e);
+    fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:'#ff7a3c'});
+    fx(S,{t:'blast', x:ox, y:oy, r:180, col:'#ff7a3c'});
+    aoe(S, e.team, ox, oy, 180, V, e);
+    break; }
+  case 'drex3': {
+    const a = Math.atan2(ty-e.y, tx-e.x);
+    for (let n=0;n<4;n++){
+      const d2 = 220 + n*200;
+      const bx2 = e.x + Math.cos(a)*d2, by2 = e.y + Math.sin(a)*d2;
+      const fuse = .55 + n*.22;
+      addZone(S,{kind:'bomb', team:e.team, x:bx2, y:by2, r:170, t:fuse, mt:fuse, dmg:V, src:e.id});
+      fx(S,{t:'telegraph', x:bx2, y:by2, r:170, t:fuse, col:'#ff7a3c'});
+    }
+    break; }
   /* ---- THORNE ---- */
   case 'thorne0': {
     const mine = S.zones.filter(z=>z.kind==='trap' && z.team===e.team);

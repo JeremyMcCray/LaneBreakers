@@ -29,12 +29,11 @@ export function toggleHelpMenu(){
     '<b>RMB</b> move / attack &nbsp;·&nbsp; <b>A + LMB</b> attack-move &nbsp;·&nbsp; <b>S</b> stop &nbsp;·&nbsp; <b>H</b> hold<br>'+
     '<b>Q W E R</b> cast &nbsp;·&nbsp; <b>Shift+Q/W/E/R</b> (or click the <b>+</b>) level an ability<br>'+
     '<b>1–6</b> use item &nbsp;·&nbsp; <b>B</b> shop &nbsp;·&nbsp; <b>Space</b> recenter &nbsp;·&nbsp; <b>F1</b> controls panel<br><br>'+
-    'Score 2 points to win (4 in 2v2) — two deaths in 1v1 and you have lost. '+
-    'Destroying the enemy tower wins outright at any score. '+
+    'Score 2 points to win (4 in 2v2), or simply destroy the enemy tower. '+
     'Towers only take 15% damage unless your creeps are with you. '+
     'A creep pays full gold only to a killing blow — '+
     'half of it leaks to the enemy if it dies to anything else, and none at all if you deny it. '+
-    'and you can deny your own creeps under 50% HP to halve the XP your opponent gets.';
+    'You can deny your own creeps under 50% HP to halve the XP your opponent gets.';
 }
 export function buildHeroMenu(){
   const box=document.getElementById('heroList');
@@ -63,5 +62,12 @@ export function buildHeroMenu(){
     };
     box.appendChild(d);
   }
+}
+export function randomHero(){
+  let id = G.pick;
+  while (id===G.pick && HERO_IDS.length>1) id = HERO_IDS[Math.floor(Math.random()*HERO_IDS.length)];
+  const card = document.querySelector('#heroList .hero[data-id="'+id+'"]');
+  if (card) card.click(); else G.pick = id;
+  addToast('Random hero: '+HEROES[id].name);
 }
 

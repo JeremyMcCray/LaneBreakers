@@ -10,7 +10,7 @@ import { towerShielded } from './tower';
 export function damage(S, src, tgt, amount, opt){
   opt = opt || {};
   if (!tgt || tgt.dead || tgt.hp<=0 || S.over) return 0;
-  if (tgt.type==='hero' && S.players[tgt.team] && S.players[tgt.team].god) return 0;
+  if (tgt.type==='hero'){ const gp = playerOf(S, tgt); if (gp && gp.god) return 0; }
   if (opt.ability && warded(S, tgt)) return 0;              // counterspelled
   let dmg = amount;
   if (opt.ability && src && src.amp>0) dmg *= (1 + src.amp);
@@ -88,25 +88,28 @@ export function kill(S, src, tgt){
   else if (tgt.type==='creep'){
     const deny = src && src.team===tgt.team;
     const enemies = foesOf(S, tgt.team);
-    // XP goes to every enemy hero standing nearby, split between them
+    // XP goes in FULL to every enemy hero standing nearby — never split,
+    // so a 2v2 lane levels at the same pace as a 1v1 lane
     const xpAmt = tgt.kind==='ranged' ? 90 : 70;
     const share = nearbyHeroes(S, 1-tgt.team, tgt.x, tgt.y, XP_RADIUS);
-    for (const q of share) addXp(S, q, (deny ? xpAmt*.5 : xpAmt) / share.length);
+    for (const q of share) addXp(S, q, deny ? xpAmt*.5 : xpAmt);
     const base = tgt.kind==='ranged' ? 62 : 48;
-    // a killing blow from a hero OR from that hero's summon pays the full bounty
+    // a killing blow from a hero OR from that hero's summon pays the full bounty —
+    // credited to the player who actually landed it, not to a team index
     const claimer = src && (src.type==='hero' || (src.type==='creep' && src.pet)) ? src : null;
     if (claimer){
-      const p = S.players[claimer.team];
-      if (deny){ p.denies++; p.gold += 22; fx(S,{t:'deny', x:tgt.x, y:tgt.y-40}); }
-      else {
+      const p = claimer.type==='hero' ? playerOf(S, claimer)
+              : (claimer.oslot!==undefined ? S.players[claimer.oslot] : teamOf(S, claimer.team)[0]);
+      if (p && deny){ p.denies++; p.gold += 22; fx(S,{t:'deny', x:tgt.x, y:tgt.y-40}); }
+      else if (p){
         const g = base + Math.round(rnd(-6,6));
         p.cs++; p.gold += g;
         fx(S,{t:'gold', x:tgt.x, y:tgt.y-40, v:g, pet: src.type!=='hero' ? 1:0});
       }
     } else {
-      // nobody last hit it and nobody denied it — the lane still pays out, at half rate,
-      // split between everyone who could have taken it
-      const g = Math.round(base*0.5/enemies.length);
+      // nobody last hit it and nobody denied it — the lane still pays out at half
+      // rate, in FULL to everyone who could have taken it (no splitting)
+      const g = Math.round(base*0.5);
       for (const q of enemies) q.gold += g;
       fx(S,{t:'gold', x:tgt.x, y:tgt.y-40, v:g, passive:1});
     }
@@ -114,7 +117,7 @@ export function kill(S, src, tgt){
   else if (tgt.type==='tower'){
     for (const q of foesOf(S, tgt.team)) q.gold += 400;
     const kt = 1 - tgt.team;
-    const worth = S.big ? 3 : 2;              // it scores, and it also ends the match
+    const worth = S.big ? 4 : 2;              // it scores, and it also ends the match
     S.teamKills[kt] += worth;
     fx(S,{t:'towerdown', x:tgt.x, y:tgt.y, team:kt, v:worth});
     endGame(S, kt, 'tower');
@@ -135,8 +138,8 @@ export function kill(S, src, tgt){
       for (const q of teamOf(S, kt)){
         if (q===killer || !q.hero || q.hero.dead) continue;
         if (dist(q.hero.x, q.hero.y, tgt.x, tgt.y) > 950) continue;
-        q.assists++; q.gold += Math.round(bounty*0.5);
-        addXp(S, q, (150 + p.lvl*20)*0.6);
+        q.assists++; q.gold += bounty;              // full cut — 2v2 pays like 1v1
+        addXp(S, q, 150 + p.lvl*20);
       }
       fx(S,{t:'kill', x:tgt.x, y:tgt.y, team:kt});
       if (S.teamKills[kt] >= S.winKills) endGame(S, kt, 'kills');

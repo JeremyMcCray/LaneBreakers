@@ -54,6 +54,7 @@ export function buildSnapshot(S, forTeam){
       kd:q.kind, tm:q.team, r:q.r, c:q.col})),
     z:S.zones.map(q=>({kd:q.kind, x:Math.round(q.x), y:Math.round(q.y), r:q.r,
       t:Math.round(q.t*100)/100, tm:q.team,
+      mt:q.mt===undefined?0:Math.round(q.mt*100)/100,
       ox:q.ox===undefined?0:Math.round(q.ox), oy:q.oy===undefined?0:Math.round(q.oy),
       tx:q.tx===undefined?0:Math.round(q.tx), ty:q.ty===undefined?0:Math.round(q.ty)})),
     ps:ps, tk:S.teamKills.slice(), md:S.mode, wk:S.winKills,

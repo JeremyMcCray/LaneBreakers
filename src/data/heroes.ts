@@ -85,7 +85,7 @@ sable:{
      desc:'A bolt that pierces everything in its path for %d damage, losing 30% of its power with every target it passes through.',
      val:[90,150,210,270]},
     {key:'W', name:"Hunter's Mark", cast:'point', range:750, mana:[40,45,50,55], cd:[14,13,12,11],
-     desc:'Mark the enemy nearest the cursor for 6s — they take +%d% damage from everything.',
+     desc:'Mark the enemy HERO nearest the cursor for 6s — they take +%d% damage from everything.',
      val:[15,20,25,30]},
     {key:'E', name:'Sidestep', cast:'point', range:400, blink:true, mana:[45,45,45,45], cd:[13,11,9,7],
      desc:'Roll a short distance and gain +%d% attack speed for 3s.', val:[50,70,90,110]},
@@ -163,10 +163,10 @@ orrin:{
     {key:'Q', name:'Siege Bolt', cast:'point', range:800, mana:[50,55,60,65], cd:[7,6.3,5.6,4.9],
      desc:'A heavy bolt dealing %d damage — and 80% more to towers.', val:[95,150,205,260]},
     {key:'W', name:'War Banner', cast:'point', range:520, mana:[60,65,70,75], cd:[20,18,16,14],
-     desc:'Plant a banner for 10s. Allied creeps near it gain +%d damage, +4 armor and +40 move speed.',
+     desc:'Plant a banner for 10s. Allied creeps AND heroes near it gain +%d damage, +4 armor and +40 move speed.',
      val:[10,16,22,28]},
     {key:'E', name:'Deploy Turret', cast:'point', range:460, mana:[70,75,80,85], cd:[22,20,18,16],
-     desc:'Build an immobile turret for 14s that shoots enemies for %d damage.', val:[26,38,50,62]},
+     desc:'Build an immobile turret for 14s that shoots enemies for %d damage, plus 40% of his attack damage. Its health and armor scale with his.', val:[26,38,50,62]},
     {key:'R', name:'Warmarch', cast:'self', ult:true, mana:[150,175,200], cd:[80,70,60],
      desc:'For 15s every allied creep is healed to full and gains +%d damage, +6 armor and +60 move speed.',
      val:[24,40,56]}
@@ -266,6 +266,45 @@ svaar:{
      val:[15,23,31,40]},
     {key:'R', name:"God's Strength", cast:'self', ult:true, mana:[125,150,175], cd:[80,70,60],
      desc:'For 20s your attack damage is increased by %d%.', val:[60,90,120]}
+  ]
+},
+liora:{
+  id:'liora', name:'LIORA', title:'The Lifebinder', col:'#8affd4', col2:'#1f7a5a',
+  desc:'A radiant support who keeps her side standing through every trade. Deadliest with an ally to protect — every spell can also be turned on herself.',
+  hp:560, hpg:84, mp:400, mpg:56, dmg:42, dmgg:4.3, arm:2.5, armg:.34,
+  ms:322, range:560, bat:1.04, ranged:true, projSpeed:1150,
+  abilities:[
+    {key:'Q', name:'Searing Light', cast:'point', range:800, mana:[50,55,60,65], cd:[6,5.4,4.8,4.2],
+     desc:'A lance of light dealing %d damage and slowing by 25% for 1.5s.', val:[100,160,220,280]},
+    {key:'W', name:'Mending Wave', cast:'point', range:700, mana:[60,65,70,75], cd:[12,11,10,9],
+     desc:'Heal the most wounded allied hero near the cursor for %d. With no ally in reach it mends Liora instead.',
+     val:[120,190,260,330]},
+    {key:'E', name:'Guardian Sigil', cast:'point', range:700, mana:[55,55,55,55], cd:[15,13.5,12,10.5],
+     desc:'Shield the allied hero nearest the cursor (or yourself) for %d for 3s, granting 20% move speed.',
+     val:[110,180,250,320]},
+    {key:'R', name:'Sanctuary', cast:'point', range:600, ult:true, mana:[150,175,200], cd:[70,60,50],
+     desc:'Consecrate the ground for 5s: allied heroes inside heal %d per second and enemies inside are slowed 30%.',
+     val:[90,130,170]}
+  ]
+},
+drex:{
+  id:'drex', name:'DREX', title:'The Demolitionist', col:'#ff7a3c', col2:'#7a3312',
+  desc:'A ranged bomber who owns the ground he has already decided to blow up. Everything he does is telegraphed — and devastating.',
+  hp:580, hpg:86, mp:360, mpg:50, dmg:44, dmgg:4.5, arm:2.5, armg:.34,
+  ms:318, range:540, bat:1.06, ranged:true, projSpeed:1000,
+  abilities:[
+    {key:'Q', name:'Sticky Bomb', cast:'point', range:760, mana:[55,60,65,70], cd:[8,7.2,6.4,5.6],
+     desc:'Lob a bomb that detonates after 0.9s for %d damage, slowing everything hit by 30%.',
+     val:[110,175,240,305]},
+    {key:'W', name:'Cluster Mine', cast:'point', range:600, mana:[45,50,55,60], cd:[13,12,11,10],
+     desc:'Bury a mine for 40s. It arms in 1s and detonates on ANY enemy for %d damage and a 40% slow. Three can be armed at once.',
+     val:[90,150,210,270]},
+    {key:'E', name:'Blast Off', cast:'point', range:440, blink:true, mana:[50,50,50,50], cd:[14,12.5,11,9.5],
+     desc:'Rocket-jump to the cursor — the launch blast deals %d damage to everything left behind.',
+     val:[80,130,180,230]},
+    {key:'R', name:'Carpet Bombing', cast:'point', range:900, ult:true, mana:[160,185,210], cd:[80,70,60],
+     desc:'Call in four bombs that march from Drex toward the cursor, each detonating for %d damage.',
+     val:[180,270,360]}
   ]
 }};
 export const HERO_IDS = Object.keys(HEROES);

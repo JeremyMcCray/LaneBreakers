@@ -40,12 +40,17 @@ export function stepZones(S,dt){
       }
     } else if (z.kind==='banner'){
       for (const o of S.ents){
-        if (o.dead || o.team!==z.team || o.type!=='creep') continue;
+        if (o.dead || o.team!==z.team) continue;
         if (dist(o.x,o.y,z.x,z.y) > z.r) continue;
-        o.buffT = Math.max(o.buffT||0, .35);
-        o.buffDmg = Math.max(o.buffDmg||0, z.bd);
-        o.buffArm = Math.max(o.buffArm||0, z.ba);
-        o.buffMs  = Math.max(o.buffMs||0,  z.bm);
+        if (o.type==='creep'){
+          o.buffT = Math.max(o.buffT||0, .35);
+          o.buffDmg = Math.max(o.buffDmg||0, z.bd);
+          o.buffArm = Math.max(o.buffArm||0, z.ba);
+          o.buffMs  = Math.max(o.buffMs||0,  z.bm);
+        } else if (o.type==='hero'){                 // the banner rallies heroes too
+          o.banT = Math.max(o.banT||0, .35);
+          o.banDmg = z.bd; o.banArm = z.ba; o.banMs = z.bm;
+        }
       }
       z.tickT -= dt;
       if (z.tickT<=0){ z.tickT=.6; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r, col:'#e0c477'}); }
@@ -111,6 +116,33 @@ export function stepZones(S,dt){
       if (z.tickT<=0){ z.tickT=.5; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r,
         col: z.kind==='miasma' ? '#b78cff' : (z.kind==='fire' ? '#ff8a4a' :
              (z.kind==='light' ? '#ffe9a8' : (z.kind==='thicket' ? '#7fdc6a' : '#c8945a')))}); }
+    } else if (z.kind==='sanct'){
+      for (const q of S.players){                       // Liora's ground heals her side
+        if (q.team!==z.team || !q.hero || q.hero.dead) continue;
+        if (dist(q.hero.x,q.hero.y,z.x,z.y) < z.r) heal(S, q.hero, z.hps*dt);
+      }
+      for (const o of S.ents){
+        if (o.dead || o.team===z.team || o.type==='tower') continue;
+        if (dist(o.x,o.y,z.x,z.y) < z.r) applySlow(o, .30, .3);
+      }
+      z.tickT -= dt;
+      if (z.tickT<=0){ z.tickT=.5; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r, col:'#8affd4'}); }
+    } else if (z.kind==='mine'){
+      z.arm -= dt;
+      if (z.arm<=0){
+        for (const o of S.ents){
+          if (o.dead || o.team===z.team || o.type==='tower') continue;
+          if (dist(o.x,o.y,z.x,z.y) > z.r) continue;
+          fx(S,{t:'blast', x:z.x, y:z.y, r:150, col:'#ff7a3c'});
+          aoe(S, z.team, z.x, z.y, 150, z.dmg, ent(S,z.src), o2=> applySlow(o2,.40,2));
+          z.t = 0;                              // spent
+          break;
+        }
+      }
+    } else if (z.kind==='bomb' && z.t<=0){
+      const src = ent(S,z.src);
+      fx(S,{t:'blast', x:z.x, y:z.y, r:z.r, col:'#ff7a3c'});
+      aoe(S, z.team, z.x, z.y, z.r, z.dmg, src, o=> applySlow(o,.30,1.5));
     } else if ((z.kind==='azero' || z.kind==='meteor') && z.t<=0){
       const src = ent(S,z.src);
       fx(S,{t:'blast', x:z.x, y:z.y, r:z.r, col: z.kind==='meteor' ? '#ff8a4a' : '#bfe9ff'});

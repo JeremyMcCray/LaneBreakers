@@ -17,7 +17,7 @@ import {
 import { resize } from '../render/view';
 import {
   toggleShop, buildShopUI, showScreen, toggleHelpMenu, buildHeroMenu, copyBox, showEnd,
-  renderHeroBook, renderItemBook, dbg
+  renderHeroBook, renderItemBook, dbg, randomHero
 } from '../ui/panels';
 
 // Side-effect: register DOM input listeners from panels.ts
@@ -25,7 +25,7 @@ import '../ui/panels';
 
 export function bindGlobals() {
   Object.assign(window, {
-    startPractice, showScreen, toggleShop, toggleHelpMenu, dbg,
+    startPractice, showScreen, toggleShop, toggleHelpMenu, dbg, randomHero,
     returnToLobby, lobbyReady, quickHost, quickJoin, hostInit, hostAccept,
     joinGenerate, copyBox, copyCode, lbSetAiTier, startTournament,
     lobbySwitchTeam, lobbySetMode, tourClick, tourStartGame,

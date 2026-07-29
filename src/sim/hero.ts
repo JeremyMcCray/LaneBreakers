@@ -76,7 +76,7 @@ export function heroTimers(S,p,dt){
   const dec = k => { if (e[k]>0) e[k]=Math.max(0, e[k]-dt); };
   ['stun','slowT','shieldT','asT','lsT','msT','armT','regT','salveT','draughtT',
    'castLock','hitFlash','swing','drT','markT','rendT','hcT','shredT',
-   'rootT','silT','barbT','bleedT','gsT','csT'].forEach(dec);
+   'rootT','silT','barbT','bleedT','gsT','csT','banT'].forEach(dec);
   tickDot(S,e,dt);
   if (e.colT>0){ e.colT-=dt; if (e.colT<=0){ e.bonusHp=0; e.bonusDmg=0; } }
   if (e.bleedT<=0){ e.bleedV=0; e.bleedHeal=0; }

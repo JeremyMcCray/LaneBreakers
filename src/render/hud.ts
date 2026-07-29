@@ -30,6 +30,17 @@ export function drawHUD(v, own){
   const HD = HEROES[me.hid];
   ctx.textBaseline='middle';
 
+  /* ---------- low-health vignette: a subtle red tint creeping in from the edges ---------- */
+  if (own && !me.dead && own.mh>0 && own.h/own.mh < .22){
+    const k = clamp(1 - (own.h/own.mh)/.22, 0, 1);        // deeper red the lower you are
+    const pulse = .6 + .4*Math.sin(G.time*4.2);
+    const vg = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*.30, W/2, H/2, Math.max(W,H)*.62);
+    vg.addColorStop(0, 'rgba(255,40,40,0)');
+    vg.addColorStop(1, 'rgba(255,30,30,'+(0.14 + 0.22*k*pulse).toFixed(3)+')');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, W, H);
+  }
+
   /* ---------- top bar ---------- */
   ctx.fillStyle='#0b111ccc'; rr(W/2-152, 8, 304, 44, 10); ctx.fill();
   ctx.strokeStyle='#233049'; ctx.lineWidth=1; ctx.stroke();

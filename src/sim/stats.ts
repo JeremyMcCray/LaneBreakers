@@ -27,6 +27,7 @@ export function updateHeroStats(S,p,init){
     if (!A.passive || p.sk[i]<=0) continue;
     if (A.grants==='cleave' && !H.ranged) e.cleave = Math.max(e.cleave, A.val[p.sk[i]-1]/100);
   }
+  if (e.banT>0){ e.dmg += e.banDmg||0; e.armor += e.banArm||0; e.ms += e.banMs||0; }  // War Banner
   if (e.gsT>0) e.dmg *= (1 + e.gsP);            // God's Strength
   if (H.id==='shiv'){
     e.rageOn = true;

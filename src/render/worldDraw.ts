@@ -120,6 +120,17 @@ export function drawZones(v){
       }
       ctx.restore(); continue;
     }
+    else if (z.kd==='mine'){
+      ctx.fillStyle='#ff7a3c14'; ctx.strokeStyle='#ff7a3c66';
+      ctx.lineWidth=2; ctx.beginPath(); ctx.arc(z.x,z.y,z.r,0,7); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle='#ff7a3c'; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(z.x,z.y,10,0,7); ctx.stroke();
+      const blink = Math.floor(G.time*3)%2;
+      if (blink){ ctx.fillStyle='#ff7a3c'; ctx.beginPath(); ctx.arc(z.x,z.y,3.5,0,7); ctx.fill(); }
+      ctx.restore(); continue;
+    }
+    else if (z.kd==='sanct'){ ctx.fillStyle='#8affd41c'; ctx.strokeStyle='#8affd480'; }
+    else if (z.kd==='bomb'){ ctx.fillStyle='#ff7a3c26'; ctx.strokeStyle='#ff7a3caa'; }
     else if (z.kd==='light'){ ctx.fillStyle='#ffe9a81e'; ctx.strokeStyle='#ffe9a880'; }
     else if (z.kd==='meteor'){ ctx.fillStyle='#ff8a4a26'; ctx.strokeStyle='#ff8a4aaa'; }
     else { ctx.fillStyle='#bfe9ff26'; ctx.strokeStyle='#bfe9ffaa'; }
@@ -127,6 +138,10 @@ export function drawZones(v){
     ctx.beginPath(); ctx.arc(z.x,z.y,z.r,0,7); ctx.fill(); ctx.stroke();
     if (z.kd==='azero' || z.kd==='meteor'){
       ctx.beginPath(); ctx.arc(z.x,z.y,z.r*(1-z.t/0.65),0,7); ctx.strokeStyle='#ffffffcc'; ctx.stroke();
+    }
+    if (z.kd==='bomb'){                       // fuse ring shrinking toward the blast
+      const k2 = clamp(1 - z.t/(z.mt||0.9), 0, 1);
+      ctx.beginPath(); ctx.arc(z.x,z.y,z.r*k2,0,7); ctx.strokeStyle='#ffffffcc'; ctx.stroke();
     }
     ctx.restore();
   }
@@ -239,6 +254,10 @@ export function heroPath(hi, r){
   else if (hi==='vhal'){ for(let i=0;i<3;i++){const a=i/3*Math.PI*2;
                           const q=[Math.cos(a)*r*1.05, Math.sin(a)*r*1.05];
                           i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);} }
+  else if (hi==='liora'){ ctx.moveTo(r*1.1,0); ctx.lineTo(r*.2,r*.55); ctx.lineTo(-r*.4,r*.95);
+                          ctx.lineTo(-r*.75,0); ctx.lineTo(-r*.4,-r*.95); ctx.lineTo(r*.2,-r*.55); }
+  else if (hi==='drex'){ ctx.moveTo(r*1.05,0); ctx.lineTo(r*.45,r*.8); ctx.lineTo(-r*.7,r*.75);
+                         ctx.lineTo(-r*.95,0); ctx.lineTo(-r*.7,-r*.75); ctx.lineTo(r*.45,-r*.8); }
   else { for(let i=0;i<6;i++){const a=i/6*Math.PI*2; const q=[Math.cos(a)*r,Math.sin(a)*r];
           i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);} }
   ctx.closePath();
