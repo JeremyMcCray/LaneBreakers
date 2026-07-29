@@ -11,6 +11,9 @@
 #  continues from the last generation rather than starting over. The
 #  trained brains come back as a downloadable artifact, and a summary
 #  table appears on the run's page.
+#
+#  Requires the modular sim: this workflow runs `npm run build:sim` first
+#  so ai/engine.js can load dist-sim/index.cjs (no HTML scrape).
 # =====================================================================
 name: Train Lanebreaker AI
 
@@ -34,6 +37,10 @@ on:
         description: 'Commit the trained brains back to the repo'
         type: boolean
         default: false
+      bake_brains:
+        description: 'Also refresh src/ai/neural/brains/baked.json for the browser game'
+        type: boolean
+        default: false
 
   # Uncomment to train automatically every night at 03:00 UTC.
   # schedule:
@@ -45,6 +52,9 @@ permissions:
 concurrency:
   group: train-${{ github.ref }}
   cancel-in-progress: false
+
+env:
+  LB_SIM: ${{ github.workspace }}/dist-sim/index.cjs
 
 jobs:
   prepare:
@@ -75,11 +85,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
 
-      - name: Show what we are working with
+      - name: Install game dependencies
+        run: npm ci
+
+      - name: Build headless sim for the trainer
+        run: npm run build:sim
+
+      - name: Verify trainer + sim are wired
         run: |
+          test -f dist-sim/index.cjs
+          test -d ai
           echo "cores:  $(nproc)"
           echo "memory: $(free -m | awk '/Mem:/{print $2} ') MB"
+          echo "LB_SIM=$LB_SIM"
+          node -e "const e=require('./ai/engine.js'); const g=e.loadGame(); console.log('sim ok:', g.__source);"
           cd ai && node panel.js --check
 
       # Restore this recipe's population so the run continues rather than restarting
@@ -200,6 +221,10 @@ jobs:
           path: ai/brains/${{ matrix.recipe }}
           retention-days: 90
 
+      - name: Bake brains into the browser game
+        if: ${{ always() && github.event.inputs.bake_brains == 'true' }}
+        run: npm run bake:brains
+
       # Optional: keep the results in the repo so they never expire.
       - name: Commit results
         if: ${{ always() && github.event.inputs.commit_results == 'true' }}
@@ -207,6 +232,9 @@ jobs:
           git config user.name  "lanebreaker-trainer"
           git config user.email "actions@github.com"
           git add -f "ai/brains/${{ matrix.recipe }}"
+          if [ "${{ github.event.inputs.bake_brains }}" = "true" ]; then
+            git add -f "src/ai/neural/brains/baked.json" || true
+          fi
           git diff --cached --quiet && { echo "nothing changed"; exit 0; }
           git commit -m "train: ${{ matrix.recipe }} (run ${{ github.run_number }})"
           # several recipes may push at once, so rebase and retry

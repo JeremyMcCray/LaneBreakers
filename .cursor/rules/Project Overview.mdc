@@ -1,0 +1,161 @@
+---
+description: Lanebreakers project overview — architecture, stack, and how agents should work in this codebase
+alwaysApply: true
+---
+
+# Lanebreakers — Project Overview
+
+## What this is
+
+**Lanebreakers** is a browser mid-lane MOBA: short matches, creep waves, fountain bases, one tower per side, 14 heroes, item shop, classic bot + neural AI, practice / online / tournament / TRAIN.
+
+This repo is the **canonical game codebase** — Vite + TypeScript modules, not a single HTML file. Player-facing features, balance, and sim rules all live here.
+
+Human docs: `README.md` (day-to-day guide for humans and agents).
+
+## Stack
+
+- **Vite + TypeScript**, Canvas 2D, light DOM for menus/shop (no React/Angular)
+- Dual ship: `npm run build:pages` → `dist/` (GitHub Pages); `npm run build:release` → single HTML in `dist-release/`
+- Prefer plain modules; keep **`src/sim/` free of `document` / canvas** so browser and Node trainer share one ruleset
+
+## Layout (where to edit)
+
+```
+src/
+  data/     world constants, heroes, items
+  sim/      headless match rules (newSim, simStep, combat, abilities, …)
+  ai/       classic bot + neural/ (runtime, train UI, baked brains)
+  app/      match shell, netplay, lobby, tournament, persistence, boot
+  render/   canvas world / HUD / FX
+  ui/       DOM shop, menus, books, input, end card
+  styles/   CSS (game.css imports base / menus / shop / overlay)
+  headless.ts / node-sim.ts   Node trainer bundle entry
+```
+
+| Want to change… | Look in… |
+|-----------------|----------|
+| Stats, economy, win conditions | `src/data/` |
+| Combat, abilities, waves, shop timing | `src/sim/` |
+| Bots / TRAIN / brains | `src/ai/` |
+| Lobby, online, tournament, match start | `src/app/` |
+| Drawing / HUD | `src/render/` |
+| Menus / shop panel / CSS | `src/ui/`, `src/styles/` |
+
+Import sim via `src/sim` or `src/sim/engine`. Neural code talks to the sim through a small API object (cast, buy, armor, …) — same idea as the old `LB_API`.
+
+## How the match runs
+
+- Practice / host: run `simStep` locally; apply player/bot commands with `applyCmd`
+- Online clients: interpolate `buildSnapshot` packets (`SNAP_HZ`); host is authoritative
+- Client session state lives in `G` (`src/app/state.ts`) — mode, lobby, camera, FX buffers, etc.
+
+## Commands agents should know
+
+```bash
+npm install
+npm run dev              # local play / iterate
+npm run build            # typecheck + dist/ (Github Pages)
+npm run build:release    # single-file HTML
+npm run build:sim        # REQUIRED before Node training after sim/data changes
+npm run bake:brains      # refresh src/ai/neural/brains/baked.json from trainer output
+npm run smoke            # headless sim sanity
+npm run smoke:neural
+npm run smoke:parity
+```
+
+Never hand-edit `dist-sim/` — always regenerate with `npm run build:sim`.
+
+## AI trainer (`ai/` in this repo)
+
+Node training scripts live under **`ai/`**. They load **`dist-sim/index.cjs`** via `ai/engine.js` (modular only — no HTML scrape).
+
+After changing `src/sim/` or sim-facing `src/data/`:
+
+1. `npm run build:sim`
+2. Train from `ai/` (`train.js` / `versus.js` / `lab.js` / `panel.js`)
+3. `npm run bake:brains` (or enable bake in the Actions workflow)
+
+Override sim path with `LB_SIM` if needed. See `README.md` and `ai/README.md`.
+
+### GitHub Actions
+
+`.github/workflows/train-ai.yml` runs background training on GitHub:
+
+- `npm ci` → `npm run build:sim` → verify `loadGame()` → `ai/supervise.js`
+- Caches / artifacts `ai/brains/<recipe>`; optional commit + bake
+
+Do not remove the `build:sim` step — training will fail without `dist-sim`.
+
+## How to enable GitHub Pages
+
+The game is already Pages-ready. Agents wiring this up should:
+
+1. **Build:** `npm ci && npm run build:pages` (alias of `npm run build`).
+2. **Publish the `dist/` folder** (not repo root, not `dist-release/`).
+3. **Base path:** `vite.config.ts` sets `base: './'` so asset URLs work from a project site (`https://user.github.io/repo/`) or a custom domain.
+
+### Repo settings (manual)
+
+GitHub → Settings → Pages → Source: **GitHub Actions** (preferred) or Deploy from a branch/`docs` folder if they insist on a static branch.
+
+### Suggested workflow (agents may add `.github/workflows/pages.yml`)
+
+```yaml
+name: Deploy GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci
+      - run: npm run build:pages
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: dist }
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: ${{ steps.dep.outputs.page_url }} }
+    steps:
+      - id: dep
+        uses: actions/deploy-pages@v4
+```
+
+Do **not** confuse this with `build:release` (single self-contained HTML for Releases downloads) or `build:sim` (Node trainer bundle).
+
+## AI in this repo
+
+- **Classic** — `src/ai/bot.ts` (`botThink`)
+- **Neural** — `src/ai/neural/` (brains JSON `format: lanebreaker-brain-2`; bump format only when inputs change, then retrain)
+- **Train UI** — in-browser genetic trainer in `ai/neural/train.ts`
+- Tiers Rookie → Brutal (+ optional schools); Classic falls back to `botThink`
+
+## Design principles (go-forward)
+
+1. **One ruleset.** Game and trainer share `src/sim/` — never duplicate combat math for the bot or Node.
+2. **Headless sim.** `newSim` / `simStep` must run without a browser (`npm run smoke`, `dist-sim`).
+3. **Right layer.** Data in `data/`, rules in `sim/`, presentation in `render`/`ui`, modes/net in `app/`.
+4. **Ship both targets.** Keep Pages (`dist/`) and single-file (`dist-release/`) working.
+5. **Scoped changes.** No drive-by refactors; don't expand scope beyond the request.
+6. **Optional cleanup** (when asked): split `abilities.ts` per hero, drop `@ts-nocheck`, tighten types — not required for play.
+
+## Working agreements for agents
+
+- Follow `README.md` for workflows
+- After sim / AI / shared API changes, run `npm run smoke` (and `build` / `build:sim` when relevant)
+- Do not reintroduce HTML scraping or a second parallel ruleset for training
+- Keep new files modular; avoid collapsing the game back into one mega-file
+- Recipes live only in `ai/recipes.json` (browser TRAIN imports that file — do not recreate a duplicate under `src/`)

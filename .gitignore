@@ -1,0 +1,6 @@
+# Dependencies & build output
+node_modules/
+dist/
+dist-release/
+dist-sim/
+/.idea/*

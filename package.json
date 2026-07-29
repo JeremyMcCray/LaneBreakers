@@ -1,0 +1,28 @@
+{
+  "name": "lanebreakers",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:pages": "tsc && vite build",
+    "build:release": "tsc && vite build --mode singlefile",
+    "preview": "vite preview",
+    "smoke": "npx vite-node tools/smoke-sim.mjs",
+    "smoke:neural": "npx vite-node tools/smoke-neural.mjs",
+    "smoke:parity": "npx vite-node tools/smoke-parity.mjs",
+    "extract:neural": "node tools/extract-neural.mjs",
+    "build:sim": "node tools/build-sim-cjs.mjs",
+    "bake:brains": "node tools/bake-brains.mjs",
+    "fix:mojibake": "node tools/fix-mojibake.mjs"
+  },
+  "dependencies": {
+    "peerjs": "^1.5.4"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^7.1.7",
+    "vite-plugin-singlefile": "^2.3.0"
+  }
+}

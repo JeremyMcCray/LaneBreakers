@@ -1,0 +1,6 @@
+{
+  "name": "lanebreakers-ai",
+  "private": true,
+  "description": "Node trainer for Lanebreakers. CommonJS so train/supervise/engine keep working under a Vite (\"type\":\"module\") repo root.",
+  "type": "commonjs"
+}

@@ -33,14 +33,18 @@ against a known list or coerced to a number first.
 ### Or from a terminal
 
 ```bash
+# From the repo root (so dist-sim is available):
+npm run build:sim
+
 cd ai
 node train.js            # bots play thousands of matches; the winners breed
 node versus.js           # see whether the trained bot beats your old one
 node lab.js bakeoff      # train every recipe, then make them fight
-node bake.js             # put the trained brains into the game
+cd ..
+npm run bake:brains      # refresh the browser game's baked.json
 ```
 
-Then open `lanebreaker-ai.html`, pick an opponent from the dropdown next to
+Then run `npm run dev` at the repo root, pick an opponent from the dropdown next to
 **Practice 1v1**, and play against something that taught itself the game. There's
 also a **Train AI** button on the game's menu that runs a smaller version of the
 same evolution in the browser with a live graph, if you'd rather watch than read.
@@ -474,24 +478,29 @@ Every trained school also shows up in the dropdown by name, so `brawler` and
 | `lab.js` | **the playground** — bakeoffs, sweeps, ladders |
 | `supervise.js` | restarts `train.js` if it dies during a long run |
 | `arena.js` | plays one headless match and reports the statistics |
-| `engine.js` | loads the real game out of `lanebreaker.html` and runs it without a browser |
+| `engine.js` | loads the modular sim from `../dist-sim` (run `npm run build:sim` at repo root first) |
 | `compete.js` | fair fixtures and round robins, shared by `versus.js` and `lab.js` |
 | `versus.js` | puts two schools in a room and reports who wins |
-| `bake.js` | installs the AI into `lanebreaker.html` and bakes in trained brains |
-| `recipes.json` | the wage tables — **the knob to turn** |
-| `inject/` | the code `bake.js` copies into the game (runtime, trainer UI, TRAIN screen) |
+| `bake.js` | optional: patch an old HTML game file **and** write `src/ai/neural/brains/baked.json` |
+| `recipes.json` | the wage tables — **the knob to turn** (also used by the in-browser TRAIN UI) |
+| `inject/` | leftover HTML inject snippets for `bake.js` if you still have an HTML game file |
 | `brains/` | training output: `best.json`, checkpoints, and resumable state |
 
-### How `engine.js` avoids ever going stale
+### How `engine.js` stays in sync with the game
 
-It reads `lanebreaker.html` directly and pulls the game's `<script>` out of it,
-then runs that in a fake browser. There is exactly one copy of the game rules.
-Change a hero, retune an item, fix a bug — the trainer picks it up on the next
-run with nothing to keep in sync.
+It loads `dist-sim/index.cjs` — a CommonJS bundle of the same TypeScript sim the
+browser uses. There is exactly one ruleset.
 
-`bake.js` is safe to run as often as you like. Everything it writes into the HTML
-sits between marked comment fences and gets replaced wholesale each time, so your
-own edits elsewhere in the file are never touched.
+```bash
+npm run build:sim    # from the repo root, after any src/sim or data change
+```
+
+GitHub Actions run that step automatically before training. Locally you must run
+it yourself (or training will fail with a clear “build dist-sim” error).
+
+`npm run bake:brains` (repo root) refreshes the Vite game’s baked brains without
+touching HTML. `node ai/bake.js` is only needed if you still maintain a
+standalone `.html` build alongside this project.
 
 ---
 

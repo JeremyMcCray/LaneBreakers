@@ -1,25 +1,20 @@
 /* =====================================================================
-   engine.js — loads the ACTUAL game out of lanebreaker.html and runs it
-   headless in Node, with no rendering and no browser.
+   engine.js — loads the game rules headless for the Node trainer.
 
-   Why it reads the .html directly: there is exactly one copy of the game
-   rules. You can keep editing lanebreaker.html however you like and the
-   trainer automatically trains against the new rules. Nothing to keep in
-   sync, nothing to drift.
+   Uses the modular Vite/TS sim at ../dist-sim (repo root):
+     npm run build:sim
+
+   Overrides:
+     LB_SIM=/path/to/index.cjs   modular bundle path
+     LB_HTML=/path/to/game.html  HTML path for bake.js only (not for training)
    ===================================================================== */
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const vm = require('vm');
 
 /* ---------------------------------------------------------------------
-   Which copy of the game do we train against?
-
-   Override with the LB_HTML environment variable, or just let it look.
-   It checks the obvious filenames in the folder above `ai/`, then any
-   other .html there, and prefers a file that already has the AI installed
-   — so if you keep both the original and the AI build side by side, it
-   picks the AI build rather than silently training against the old one.
+   HTML path discovery — used by bake.js when an old HTML game file is
+   still present. Not used for simulation / training.
    --------------------------------------------------------------------- */
 function findGameHtml() {
   if (process.env.LB_HTML) return process.env.LB_HTML;
@@ -43,14 +38,26 @@ function findGameHtml() {
     }
   }
   if (!isGame.length) {
-    throw new Error('Could not find lanebreaker.html next to the ai/ folder. ' +
-      'Put ai/ beside your game file, or set LB_HTML=/path/to/your/game.html');
+    return null;
   }
   const withAi = isGame.find(g => g.installed);
   return (withAi || isGame[0]).p;
 }
 
 const HTML_PATH = findGameHtml();
+
+function findModularSim() {
+  if (process.env.LB_SIM) return process.env.LB_SIM;
+  const candidates = [
+    // Vite game at repo root, ai/ beside it (CI + local)
+    path.join(__dirname, '..', 'dist-sim', 'index.cjs'),
+  ];
+  for (const p of candidates) {
+    try { if (fs.statSync(p).isFile()) return p; } catch (e) { /* next */ }
+  }
+  return null;
+}
+const SIM_PATH = findModularSim();
 
 /* ---------------------------------------------------------------------
    A deterministic random number generator.
@@ -73,149 +80,35 @@ function makeRng(seed) {
   };
 }
 
-/* ---------------------------------------------------------------------
-   The fake browser. The game script touches document/window/canvas at
-   load time to wire up its UI. None of that matters for simulation, so
-   we hand it a stack of harmless dummies and let it wire itself up to
-   nothing.
-   --------------------------------------------------------------------- */
-function makeSandbox(rngRef) {
-  const noop = () => {};
-  /* A stub 2D canvas context. Deliberately a plain object rather than a
-     Proxy: heavy Proxy use inside a vm context has been observed to crash
-     V8's optimiser during long training runs, and nothing here needs to
-     be clever — no pixels are ever drawn headlessly. */
-  const fakeCtx = {
-    canvas: { width: 1600, height: 900 },
-    fillStyle: '#000', strokeStyle: '#000', lineWidth: 1, globalAlpha: 1,
-    font: '10px sans-serif', textAlign: 'left', textBaseline: 'alphabetic',
-    lineCap: 'butt', lineJoin: 'miter', globalCompositeOperation: 'source-over',
-    shadowBlur: 0, shadowColor: '#000', filter: 'none', miterLimit: 10,
-    lineDashOffset: 0, imageSmoothingEnabled: true
-  };
-  for (const m of ['save', 'restore', 'scale', 'rotate', 'translate', 'transform',
-    'setTransform', 'resetTransform', 'clearRect', 'fillRect', 'strokeRect',
-    'beginPath', 'closePath', 'moveTo', 'lineTo', 'bezierCurveTo', 'quadraticCurveTo',
-    'arc', 'arcTo', 'ellipse', 'rect', 'roundRect', 'fill', 'stroke', 'clip',
-    'isPointInPath', 'isPointInStroke', 'fillText', 'strokeText', 'drawImage',
-    'setLineDash', 'getLineDash', 'putImageData', 'drawFocusIfNeeded'])
-    fakeCtx[m] = noop;
-  fakeCtx.measureText = () => ({ width: 0, actualBoundingBoxAscent: 0, actualBoundingBoxDescent: 0 });
-  fakeCtx.createLinearGradient = fakeCtx.createRadialGradient = fakeCtx.createConicGradient =
-    () => ({ addColorStop: noop });
-  fakeCtx.createPattern = () => null;
-  fakeCtx.getImageData = () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 });
-  fakeCtx.createImageData = () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 });
-  const makeEl = () => {
-    const el = {
-      style: {}, dataset: {}, children: [], value: '', textContent: '',
-      innerHTML: '', width: 1600, height: 900, readyState: 'complete',
-      classList: { add: noop, remove: noop, toggle: noop, contains: () => false },
-      appendChild: noop, removeChild: noop, insertBefore: noop, remove: noop,
-      addEventListener: noop, removeEventListener: noop, setAttribute: noop,
-      getAttribute: () => null, focus: noop, blur: noop, click: noop,
-      getContext: () => fakeCtx, getBoundingClientRect: () => ({
-        left: 0, top: 0, right: 1600, bottom: 900, width: 1600, height: 900
-      }),
-      querySelector: () => makeEl(), querySelectorAll: () => [],
-      scrollIntoView: noop, select: noop
-    };
-    return el;
-  };
-
-  const document = {
-    getElementById: () => makeEl(),
-    querySelector: () => makeEl(),
-    querySelectorAll: () => [],
-    createElement: () => makeEl(),
-    createElementNS: () => makeEl(),
-    addEventListener: noop, removeEventListener: noop,
-    head: makeEl(), body: makeEl(), documentElement: makeEl(),
-    hidden: false, visibilityState: 'visible'
-  };
-
-  const localStorage = {
-    _d: {},
-    getItem(k) { return Object.prototype.hasOwnProperty.call(this._d, k) ? this._d[k] : null; },
-    setItem(k, v) { this._d[k] = String(v); },
-    removeItem(k) { delete this._d[k]; },
-    clear() { this._d = {}; }
-  };
-
-  const sandbox = {
-    console,
-    document,
-    localStorage,
-    navigator: { userAgent: 'node', maxTouchPoints: 0, clipboard: { writeText: async () => {} } },
-    performance: { now: () => Date.now() },
-    setTimeout, clearTimeout, setInterval, clearInterval,
-    requestAnimationFrame: () => 0,
-    cancelAnimationFrame: noop,
-    addEventListener: noop, removeEventListener: noop,
-    getComputedStyle: () => ({}),
-    devicePixelRatio: 1, innerWidth: 1600, innerHeight: 900,
-    location: { reload: noop, href: '', search: '' },
-    alert: noop, prompt: () => null, confirm: () => false,
-    Image: function () { return makeEl(); },
-    btoa: (s) => Buffer.from(s, 'binary').toString('base64'),
-    atob: (s) => Buffer.from(s, 'base64').toString('binary'),
-    RTCPeerConnection: function () {
-      return {
-        createDataChannel: () => ({}), addEventListener: noop,
-        createOffer: async () => ({}), setLocalDescription: async () => {},
-        setRemoteDescription: async () => {}, createAnswer: async () => ({}),
-        iceGatheringState: 'complete', connectionState: 'new', close: noop
-      };
-    },
-    module: { exports: {} },
-    // Math is replaced with a copy whose .random we control per match
-    Math: Object.create(Math)
-  };
-  sandbox.Math.random = () => rngRef.fn();
-  sandbox.window = sandbox;
-  sandbox.self = sandbox;
-  sandbox.globalThis = sandbox;
-  sandbox.exports = sandbox.module.exports;
-  return sandbox;
-}
-
-/* Pull the game's <script> block out of the HTML file. */
-function extractScript(html) {
-  const blocks = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
-    .map(m => m[1])
-    .filter(s => s.includes('function simStep'));
-  if (!blocks.length) {
-    throw new Error('Could not find the game script inside ' + HTML_PATH +
-      ' (looked for a <script> block containing "function simStep").');
-  }
-  return blocks[blocks.length - 1];
-}
-
-/* ---------------------------------------------------------------------
-   loadGame() -> a live, isolated copy of the game rules.
-   Each call gives a fresh world with its own module-level state, so
-   parallel workers can never tread on each other.
-   --------------------------------------------------------------------- */
-function loadGame() {
-  const html = fs.readFileSync(HTML_PATH, 'utf8');
-  const src = extractScript(html);
-  const rngRef = { fn: Math.random };
-  const sandbox = makeSandbox(rngRef);
-  vm.createContext(sandbox);
-  try {
-    vm.runInContext(src, sandbox, { filename: 'lanebreaker.game.js' });
-  } catch (err) {
-    throw new Error('The game script failed to load headlessly: ' + err.message +
-      '\n(If you added new browser API calls at the top level of the script, ' +
-      'engine.js may need another stub in makeSandbox.)');
-  }
-  const api = sandbox.module.exports;
+function loadGameModular(simPath) {
+  delete require.cache[require.resolve(simPath)];
+  const gamePath = path.join(path.dirname(simPath), 'game.cjs');
+  try { delete require.cache[require.resolve(gamePath)]; } catch (e) { /* ok */ }
+  const api = require(simPath);
   if (!api || !api.newSim) {
-    throw new Error('The game script loaded but did not export newSim. ' +
-      'Check the module.exports block at the bottom of lanebreaker.html.');
+    throw new Error('Modular sim at ' + simPath + ' did not export newSim. ' +
+      'Run npm run build:sim at the repo root.');
   }
-  api.__setSeed = (seed) => { rngRef.fn = makeRng(seed); };
+  if (typeof api.__setSeed !== 'function') {
+    api.__setSeed = (seed) => { Math.random = makeRng(seed); };
+  }
+  api.__source = 'modular:' + simPath;
   return api;
 }
 
-module.exports = { loadGame, makeRng, HTML_PATH };
+/* ---------------------------------------------------------------------
+   loadGame() -> a live copy of the game rules from the modular sim.
+   --------------------------------------------------------------------- */
+function loadGame() {
+  if (!SIM_PATH) {
+    throw new Error(
+      'No modular sim found (dist-sim/index.cjs).\n' +
+      'Build it from the repo root:\n' +
+      '  npm run build:sim\n' +
+      'Or set LB_SIM=/absolute/path/to/index.cjs'
+    );
+  }
+  return loadGameModular(SIM_PATH);
+}
+
+module.exports = { loadGame, makeRng, HTML_PATH, SIM_PATH, findGameHtml };

@@ -1,0 +1,11 @@
+*{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#07090f; --panel:#111725; --panel2:#161e30; --line:#233049;
+    --txt:#dfe7f5; --dim:#8b9ab4; --gold:#ffcc55; --blue:#4aa8ff; --red:#ff5f5f;
+    --acc:#5ef0c8;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--txt);
+    font-family:"Segoe UI",Inter,system-ui,-apple-system,sans-serif;overflow:hidden;
+    user-select:none;-webkit-user-select:none}
+  canvas{display:block;position:absolute;inset:0;cursor:crosshair}
+  .hide{display:none !important}
