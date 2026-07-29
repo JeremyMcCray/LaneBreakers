@@ -3,4 +3,11 @@ node_modules/
 dist/
 dist-release/
 dist-sim/
+dist-desktop/
 /.idea/*
+
+# Optional local icon binaries (keep build/README.md; add icon.png when ready)
+build/*.ico
+build/*.icns
+build/*.exe
+build/*.blockmap
