@@ -32,9 +32,14 @@ function arg(name, def) {
   return (!v || v.startsWith('--')) ? true : v;
 }
 const DRY = !!arg('dry', false);
-/* same auto-discovery the trainer uses, so `node bake.js` with no arguments
-   updates whichever copy of the game is sitting next to the ai/ folder */
-const SRC = arg('in', require('./engine.js').HTML_PATH);
+/* HTML discovery for baking brains into lanebreaker*.html (not used for training).
+   Training uses the modular sim via engine.js / LB_SIM. */
+const discoveredHtml = require('./engine.js').HTML_PATH;
+const SRC = arg('in', discoveredHtml);
+if (!SRC || SRC === true) {
+  console.error('No lanebreaker*.html found. Pass --in /path/to/game.html');
+  process.exit(1);
+}
 const OUT = arg('out', SRC);
 
 const F = {
@@ -308,6 +313,15 @@ const tiers = Object.keys(baked.brains);
 console.log('  opponents Classic' + (tiers.length ? ', Rookie, Steady, Sharp, Brutal' : ' only (train some brains!)'));
 if (DRY) { console.log('\n  --dry: nothing written\n'); process.exit(0); }
 fs.writeFileSync(OUT, html);
+
+/* Also refresh the Vite game's baked.json when that tree is present. */
+const modularBaked = path.join(__dirname, '..', 'src', 'ai', 'neural', 'brains', 'baked.json');
+if (fs.existsSync(path.dirname(modularBaked))) {
+  fs.mkdirSync(path.dirname(modularBaked), { recursive: true });
+  fs.writeFileSync(modularBaked, JSON.stringify(baked));
+  console.log('  modular   wrote ' + modularBaked);
+}
+
 console.log('  ' + '─'.repeat(62));
 console.log('  written. Open it and look for the opponent dropdown next to');
 console.log('  "Practice 1v1", and the "Train AI" button beside it.');

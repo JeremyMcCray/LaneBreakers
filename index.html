@@ -1,0 +1,327 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>LANEBREAKER</title>
+</head>
+<body>
+
+<canvas id="cv"></canvas>
+
+<div id="toast"></div>
+
+<!-- ================= SHOP ================= -->
+<div id="shop" class="hide">
+  <div class="hdr">
+    <div class="t">SHOP</div>
+    <div style="color:var(--gold);font-weight:700" id="shopGold">0g</div>
+    <button onclick="toggleShop(false)">Close <span class="kbd">B</span></button>
+  </div>
+  <div id="shopBoard"></div>
+  <div id="shopInfo"></div>
+  <div class="note">Courier takes <b>5s</b>. Upgrades automatically spend components you already hold —
+  you only pay the difference. <b>Click an item in your inventory to sell it</b>: full refund within 10s, 60% after.</div>
+</div>
+
+<!-- ================= DEBUG ================= -->
+<div id="debug" class="hide">
+  <div class="dh">DEBUG <span style="color:var(--dim);font-weight:400">F3</span></div>
+  <div class="dgrid">
+    <button onclick="dbg('gold')">+1000 gold</button>
+    <button onclick="dbg('gold5')">+5000 gold</button>
+    <button onclick="dbg('lvl')">Level up</button>
+    <button onclick="dbg('lvlmax')">Max level</button>
+    <button onclick="dbg('pts')">+1 skill point</button>
+    <button onclick="dbg('cd')">Reset cooldowns</button>
+    <button onclick="dbg('heal')">Full HP / mana</button>
+    <button onclick="dbg('god')">Toggle god mode</button>
+    <button onclick="dbg('wave')">Spawn wave now</button>
+    <button onclick="dbg('clear')">Clear all creeps</button>
+    <button onclick="dbg('fast')">Toggle fast gold</button>
+  </div>
+  <div class="note" style="margin-top:8px">Applies to your own hero. Works in practice and in a live match.</div>
+</div>
+
+<!-- ================= HELP ================= -->
+<div id="help" class="hide">
+  <b>CONTROLS</b><br>
+  <span class="kbd">RMB</span> move / attack target<br>
+  <span class="kbd">A</span>+<span class="kbd">LMB</span> auto-attack<br>
+  <span class="kbd">S</span> stop &nbsp; <span class="kbd">H</span> hold<br>
+  <span class="kbd">Q W E R</span> cast ability<br>
+  <span class="kbd">Shift</span>+<span class="kbd">Q/W/E/R</span> level ability<br>
+  <span class="kbd">1</span>–<span class="kbd">6</span> use item slot<br>
+  <span class="kbd">B</span> shop &nbsp; <span class="kbd">Space</span> recenter<br>
+  <span class="kbd">F1</span> this panel &nbsp; <span class="kbd">F2</span> attack click &nbsp; <span class="kbd">F3</span> debug<br><span style="color:#4a5670">Full hero and item reference on the menu screen.</span><br><br><b>ATTACK CLICK</b> — <span class="kbd">A</span>+<span class="kbd">LMB</span> in SMART mode
+attacks whatever sits nearest your <i>cursor</i>, so you never pixel-hunt a creep's centre.
+It also keeps going: when that target dies you roll onto the next one in range, so you can
+hold the wave without re-clicking. <span class="kbd">S</span> stops it.
+<span class="kbd">F2</span> switches to LEGACY, where it is a plain attack-move.
+Right-click is always just move — or a single attack, if you click directly on a unit.<br><br>
+  <b>GOAL</b> — reach the score first: <b>2</b> points in 1v1, <b>4</b> in 2v2. A hero kill is 1 point &mdash; so in 1v1 you die twice and it is over. Dropping the enemy tower wins outright at any score. Towers take only <b>15%</b> damage while none of your creeps are near them, so bring the wave.<br><br>
+  <b>LAST HITTING</b><br>
+  The gold ring around your hero fills as your swing recharges — it flashes white when
+  the attack is ready. Attacks land after a short wind-up &mdash; moving cancels the swing. Any creep in range shows its HP, and the pale slice on its bar is
+  what your next hit removes. When that hit would kill, the bar turns <b>gold</b> and a
+  chevron appears &mdash; it already accounts for your wind-up, your projectile's flight and every blow already on its way, so swing the moment you see gold. A hollow grey chevron means something else kills it first.<br><br>
+  <b>TIP</b> — gold only comes from the <b>killing blow</b>. Deny your own creeps below 50% HP to halve enemy XP.
+</div>
+
+<!-- ================= END CARD ================= -->
+<div id="endcard" class="hide">
+  <div class="card">
+    <div id="endTitle">VICTORY</div>
+    <div class="sub" id="endSub"></div>
+    <div id="endStats"></div>
+    <div class="row" style="justify-content:center">
+      <button class="pri" id="btnContinue" onclick="returnToLobby()">Continue</button>
+      <button id="btnHistory" onclick="showScreen('scrStats');returnToLobby()">History</button>
+      <button id="btnLeave" onclick="location.reload()">Leave</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MENU ================= -->
+<div id="overlay">
+  <div class="card">
+    <h1>LANEBREAKER</h1>
+    <div class="sub">1 v 1 MID · PEER TO PEER · NO SERVER</div>
+
+    <!-- hero select -->
+    <div id="scrHero">
+      <div class="namerow">
+        <label>Your name</label>
+        <input id="playerName" maxlength="18" placeholder="what your friends call you" autocomplete="off">
+        <button onclick="showScreen('scrStats')">Match History</button>
+        <button onclick="showScreen('scrHeroBook')">Heroes</button>
+        <button onclick="showScreen('scrItems')">Items</button>
+      </div>
+      <h2>Choose your hero</h2>
+      <div class="heroes" id="heroList"></div>
+      <h2>Match</h2>
+      <div class="row" id="rowLocal">
+        <button class="pri" onclick="showScreen('scrQuick')">Play Online</button>
+        <button onclick="startPractice('1v1')">Practice 1v1</button>
+        <button onclick="startPractice('2v2')">Practice 2v2</button>
+        <select id="aiTier" class="modedd" style="width:auto;margin:0;padding:9px 10px"
+                onchange="lbSetAiTier(this.value)" title="Which AI you practise against"></select>
+        <button onclick="showScreen('scrTrain')">Train AI</button>
+        <button onclick="showScreen('scrHost')">Manual Connect</button>
+        <button onclick="toggleHelpMenu()">Controls</button>
+      </div>
+      <div class="note" id="aiTierDesc" style="margin-top:6px"></div>
+      <div class="row hide" id="rowLobby">
+        <button class="pri" id="btnReady" onclick="lobbyReady()">Ready</button>
+        <button onclick="location.reload()">Leave Lobby</button>
+      </div>
+      <div class="note" id="lobbyStatus"></div>
+      <div class="note" id="menuHelp"></div>
+    </div>
+
+    <!-- hero reference -->
+    <div id="scrHeroBook" class="hide">
+      <h2>Heroes</h2>
+      <div class="bookcols">
+        <div id="heroBookList" class="bklist"></div>
+        <div id="heroBookBody" class="bkbody"></div>
+      </div>
+      <div class="row"><button class="pri" onclick="showScreen('scrHero')">Back</button></div>
+    </div>
+
+    <!-- item reference -->
+    <div id="scrItems" class="hide">
+      <h2>Items</h2>
+      <div id="itemBody"></div>
+      <div class="row"><button class="pri" onclick="showScreen('scrHero')">Back</button></div>
+      <div class="note">Buying an upgrade automatically spends any components you already hold —
+      you only pay the difference, and they are consumed when the courier arrives.</div>
+    </div>
+
+    <!-- tournament -->
+    <div id="scrDraft" class="hide">
+      <div id="tourHead"></div>
+      <div id="tourPools" class="tpools"></div>
+      <div id="tourPrompt" class="note"></div>
+      <div id="tourGrid" class="tgrid"></div>
+      <div id="tourSheet" class="sheetbox"></div>
+      <div class="row" id="tourRow"></div>
+    </div>
+
+    <!-- stats -->
+    <div id="scrStats" class="hide">
+      <h2>Match history</h2>
+      <div id="statsBody"></div>
+      <div class="row">
+        <button class="pri" onclick="showScreen('scrHero')">Back</button>
+        <button onclick="exportHistory()">Export JSON</button>
+        <button onclick="document.getElementById('histFile').click()">Import JSON</button>
+        <button onclick="clearHistory()">Clear history</button>
+        <input type="file" id="histFile" accept="application/json" class="hide" onchange="importHistory(this)">
+      </div>
+      <div class="note">History is stored in this browser. Export it to move it to another machine,
+      or to merge a friend's copy — matches carry a shared id, so importing never double-counts.</div>
+    </div>
+
+    <!-- ================= TRAIN THE AI ================= -->
+    <div id="scrTrain" class="hide">
+      <h2>Train the AI</h2>
+      <div class="note" style="margin:0 0 12px">
+        Bots play thousands of matches against each other. The ones that score best on your
+        chosen <b>recipe</b> survive and breed; the rest are discarded. Repeat, and the green
+        line climbs. Nothing here is scripted &mdash; the AI works out how to play on its own.
+        <br><span style="color:#4a5670">This runs in your browser on one core.
+        For serious training use <b>node ai/train.js</b>, which is many times faster.</span>
+      </div>
+
+      <div class="cols" style="grid-template-columns:1.55fr 1fr">
+        <div>
+          <div class="step" style="padding:10px 12px">
+            <canvas id="trainCanvas" style="width:100%;height:230px;display:block"></canvas>
+          </div>
+          <div class="scards" style="grid-template-columns:repeat(5,1fr)">
+            <div class="scard"><div class="sv" id="trainGen">0</div><div class="sl">Generation</div></div>
+            <div class="scard"><div class="sv" id="trainBest">&mdash;</div><div class="sl">Best fitness</div></div>
+            <div class="scard"><div class="sv" id="trainWR">&mdash;</div><div class="sl">Beats old bot</div></div>
+            <div class="scard"><div class="sv" id="trainCS">&mdash;</div><div class="sl">Last hits</div></div>
+            <div class="scard"><div class="sv" id="trainRate">&mdash;</div><div class="sl">Matches / sec</div></div>
+          </div>
+          <div style="height:5px;background:#0a0f1a;border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:8px">
+            <div id="trainProg" style="height:100%;width:0;background:var(--acc);transition:width .2s"></div>
+          </div>
+          <div class="note" id="trainStatus" style="margin-top:8px">Nothing trained yet.</div>
+          <div class="note" style="margin-top:2px">Current favourite behaviours: <b id="trainStyle">&mdash;</b>
+            &nbsp;·&nbsp; <span id="trainMatches">0</span> matches played</div>
+        </div>
+
+        <div>
+          <div class="step">
+            <div class="h">What to reward</div>
+            <select id="trainRecipe" class="modedd" onchange="lbTrainSetRecipe(this.value)"></select>
+            <div class="note" id="trainRecipeDesc" style="margin:0"></div>
+            <div class="note" style="margin-top:8px;color:#4a5670">
+              A recipe is a set of wages. The bot learns to do whatever you pay it for &mdash;
+              pay for last hits and it farms, pay for kills and it hunts you. Edit
+              <b>ai/recipes.json</b> to invent your own.
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="h">Controls</div>
+            <div class="row" style="margin:0">
+              <button class="pri" id="btnTrainStart" onclick="lbTrainToggle()">Start training</button>
+              <button onclick="lbTrainReset()">Reset</button>
+            </div>
+            <div class="row" style="margin-top:8px">
+              <button onclick="lbTrainPlay()">Play against the current best</button>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="h">Keep this brain</div>
+            <div class="namerow" style="margin-bottom:8px">
+              <input id="trainName" maxlength="24" placeholder="name it" autocomplete="off"
+                     style="flex:1;max-width:none">
+            </div>
+            <div class="row" style="margin:0">
+              <button class="pri" onclick="lbTrainSave()">Save</button>
+              <button onclick="lbTrainExport()">Export</button>
+              <button onclick="document.getElementById('brainFile').click()">Import</button>
+              <input type="file" id="brainFile" accept="application/json" class="hide"
+                     onchange="lbTrainImport(this)">
+            </div>
+            <div class="roster" id="trainList" style="margin-top:9px"></div>
+            <div class="note" style="margin-top:6px;color:#4a5670">
+              Saved brains appear in the opponent dropdown on the main screen.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row"><button class="pri" onclick="showScreen('scrHero')">Back</button></div>
+    </div>
+
+
+    <!-- quick play -->
+    <div id="scrQuick" class="hide">
+      <h2>Play online — one code</h2>
+      <div class="cols">
+        <div class="step">
+          <div class="h">Create a lobby</div>
+          <div class="note" style="margin:0 0 8px">Get a code, send it to your friends, they type it in.</div>
+          <select id="modeSel" class="modedd">
+            <option value="1v1">1v1 &mdash; 2 players</option>
+            <option value="2v2">2v2 &mdash; 4 players</option>
+          </select>
+          <div id="roomCode" class="code hide">-----</div>
+          <div class="row" style="margin-top:8px">
+            <button class="pri" id="btnCreate" onclick="quickHost()">Create Lobby</button>
+            <button id="btnCopyCode" class="hide" onclick="copyCode()">Copy code</button>
+          </div>
+        </div>
+        <div class="step">
+          <div class="h">Join a lobby</div>
+          <div class="note" style="margin:0 0 10px">Type the code your friend sent you.</div>
+          <input id="joinCode" class="codein" maxlength="5" placeholder="ABC12" autocomplete="off">
+          <div class="row" style="margin-top:8px">
+            <button class="pri" onclick="quickJoin()">Join Lobby</button>
+          </div>
+        </div>
+      </div>
+      <div id="quickStatus" class="note"></div>
+      <div class="row">
+        <button onclick="showScreen('scrHero')">Back</button>
+        <button onclick="showScreen('scrHost')">Manual connect instead</button>
+      </div>
+    </div>
+
+    <!-- host -->
+    <div id="scrHost" class="hide">
+      <h2>Host — you are the authority</h2>
+      <div class="step">
+        <div class="h">Step 1 · send this invite code to your friend</div>
+        <textarea id="hostOffer" readonly placeholder="generating…"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button onclick="copyBox('hostOffer')">Copy invite code</button>
+        </div>
+      </div>
+      <div class="step">
+        <div class="h">Step 2 · paste their reply code here</div>
+        <textarea id="hostAnswer" placeholder="paste the reply code your friend sends back"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="pri" onclick="hostAccept()">Connect &amp; Start</button>
+          <button onclick="showScreen('scrHero')">Back</button>
+        </div>
+      </div>
+      <div id="connStatus"></div>
+    </div>
+
+    <!-- join -->
+    <div id="scrJoin" class="hide">
+      <h2>Join</h2>
+      <div class="step">
+        <div class="h">Step 1 · paste the invite code you were sent</div>
+        <textarea id="joinOffer" placeholder="paste invite code"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="pri" onclick="joinGenerate()">Generate reply code</button>
+          <button onclick="showScreen('scrHero')">Back</button>
+        </div>
+      </div>
+      <div class="step">
+        <div class="h">Step 2 · send this reply code back to the host</div>
+        <textarea id="joinAnswer" readonly placeholder="appears after step 1"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button onclick="copyBox('joinAnswer')">Copy reply code</button>
+        </div>
+      </div>
+      <div id="connStatus2"></div>
+    </div>
+  </div>
+</div>
+
+
+
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
