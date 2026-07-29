@@ -405,7 +405,7 @@ export function castAbility(S,p,i,tx,ty){
   /* ---- DREX ---- */
   case 'drex0':
     addZone(S,{kind:'bomb', team:e.team, x:tx, y:ty, r:200, t:.9, mt:.9, dmg:V, src:e.id});
-    fx(S,{t:'telegraph', x:tx, y:ty, r:200, t:.9, col:'#ff7a3c'});
+    fx(S,{t:'telegraph', x:tx, y:ty, r:200, life:.9, col:'#ff7a3c'});
     break;
   case 'drex1': {
     const mines = S.zones.filter(z=>z.kind==='mine' && z.team===e.team);
@@ -427,7 +427,7 @@ export function castAbility(S,p,i,tx,ty){
       const bx2 = e.x + Math.cos(a)*d2, by2 = e.y + Math.sin(a)*d2;
       const fuse = .55 + n*.22;
       addZone(S,{kind:'bomb', team:e.team, x:bx2, y:by2, r:170, t:fuse, mt:fuse, dmg:V, src:e.id});
-      fx(S,{t:'telegraph', x:bx2, y:by2, r:170, t:fuse, col:'#ff7a3c'});
+      fx(S,{t:'telegraph', x:bx2, y:by2, r:170, life:fuse, col:'#ff7a3c'});
     }
     break; }
   /* ---- THORNE ---- */

@@ -16,8 +16,9 @@ Human docs: `README.md` (day-to-day guide for humans and agents).
 ## Stack
 
 - **Vite + TypeScript**, Canvas 2D, light DOM for menus/shop (no React/Angular)
-- Dual ship: `npm run build:pages` → `dist/` (GitHub Pages); `npm run build:release` → single HTML in `dist-release/`
+- Ship targets: `npm run build:pages` → `dist/` (GitHub Pages); `npm run build:release` → single HTML in `dist-release/`; `npm run desktop:dist` → Electron packages in `dist-desktop/` (itch / Steam — see `DESKTOP.md`)
 - Prefer plain modules; keep **`src/sim/` free of `document` / canvas** so browser and Node trainer share one ruleset
+- Electron is a **thin shell** (`electron/`) over the same Vite build — do not fork a second game for desktop stores
 
 ## Layout (where to edit)
 
@@ -148,7 +149,7 @@ Do **not** confuse this with `build:release` (single self-contained HTML for Rel
 1. **One ruleset.** Game and trainer share `src/sim/` — never duplicate combat math for the bot or Node.
 2. **Headless sim.** `newSim` / `simStep` must run without a browser (`npm run smoke`, `dist-sim`).
 3. **Right layer.** Data in `data/`, rules in `sim/`, presentation in `render`/`ui`, modes/net in `app/`.
-4. **Ship both targets.** Keep Pages (`dist/`) and single-file (`dist-release/`) working.
+4. **Ship all targets.** Keep Pages (`dist/`), single-file (`dist-release/`), and desktop (`dist-desktop/` via Electron) working. Steam later reuses the desktop pack — see `DESKTOP.md`.
 5. **Scoped changes.** No drive-by refactors; don't expand scope beyond the request.
 6. **Optional cleanup** (when asked): split `abilities.ts` per hero, drop `@ts-nocheck`, tighten types — not required for play.
 

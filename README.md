@@ -66,8 +66,11 @@ LaneBreakers/
   dist/                   Multi-file web build (GitHub Pages)
   dist-release/           One self-contained .html (GitHub Releases)
   dist-sim/               CommonJS sim for Node training  ← build with build:sim
+  dist-desktop/           Electron packages for itch / Steam  ← desktop:dist
+  electron/               Thin Electron main + preload (loads dist/)
+  DESKTOP.md              itch upload + Steam eventual plan
 
-  tools/                  Smoke tests + bake / sim bundlers
+  tools/                  Smoke tests + bake / sim / desktop-dev bundlers
   ai/                     Node trainer (train / versus / lab / panel) + brains
                           recipes.json is the single recipe source of truth
   .github/workflows/      Train Lanebreaker AI (GitHub Actions)
@@ -95,6 +98,8 @@ Host (or local practice) runs `simStep`. Online clients receive `buildSnapshot` 
 | `npm run dev` | Hot-reload dev server | Day-to-day playing / editing |
 | `npm run build` / `build:pages` | Typecheck + write `dist/` | Deploy to **GitHub Pages** (share a URL) |
 | `npm run build:release` | Typecheck + one HTML in `dist-release/` | **GitHub Release** — friends download and open in Chrome |
+| `npm run desktop:dev` | Vite + Electron window | Day-to-day desktop testing |
+| `npm run desktop:dist` | Vite build + electron-builder | **itch / Steam** Windows packages in `dist-desktop/` |
 | `npm run preview` | Serve the last `dist/` locally | Check the Pages build before uploading |
 | `npm run build:sim` | Bundle headless rules → `dist-sim/` | **Before any Node training** (see below) |
 | `npm run bake:brains` | Copy trained brains → `src/ai/neural/brains/baked.json` | After training, so the browser game gets new brains |
@@ -106,13 +111,16 @@ Host (or local practice) runs `simStep`. Online clients receive `buildSnapshot` 
 
 ## Shipping builds
 
-Two outputs, same codebase:
+Three outputs, same codebase:
 
 1. **GitHub Pages** — `npm run build:pages` → publish the **`dist/`** folder.  
    `base` is `./` so it works from a project subpath or root. To wire Actions later, see the “How to enable GitHub Pages” section in `.cursor/rules/Project Overview.mdc` (build command, artifact path, sample workflow).
 
 2. **Single-file Release** — `npm run build:release` → grab the HTML from `dist-release/`.  
    Same idea as the old double-clickable file: one download, open in the browser.
+
+3. **Desktop (itch / Steam)** — `npm run desktop:dist` → Windows portable/installer/zip under **`dist-desktop/`**.  
+   Dev: `npm run desktop:dev`. Full itch upload steps and the Steam roadmap: **[`DESKTOP.md`](./DESKTOP.md)**.
 
 ---
 
