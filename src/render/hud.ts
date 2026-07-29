@@ -172,6 +172,21 @@ export function drawHUD(v, own){
       ctx.fillStyle='#06231c'; ctx.font='900 15px Segoe UI'; ctx.fillText('+', x+aw-6, ay+7);
     }
   }
+  const hoverAb = G.hud.ab.find(b => G.mouse.x >= b.x && G.mouse.x <= b.x+b.w && G.mouse.y >= b.y && G.mouse.y <= b.y+b.h);
+  if (hoverAb && own){
+    const A = HD.abilities[hoverAb.i], lv = me.sk[hoverAb.i];
+    if (lv > 0 && A.cast === 'point' && A.range){
+      const [sx, sy] = w2s(own.x, own.y);
+      const ox = sx / G.dpr, oy = sy / G.dpr;
+      const or = A.range * camScale() / G.dpr;
+      ctx.save();
+      ctx.strokeStyle = '#5ef0c88'; ctx.lineWidth = 2; ctx.setLineDash([10,10]);
+      ctx.beginPath(); ctx.arc(ox, oy, or, 0, 7); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#5ef0c22'; ctx.beginPath(); ctx.arc(ox, oy, or, 0, 7); ctx.fill();
+      ctx.restore();
+    }
+  }
   // ability tooltip on hover
   for (const b of G.hud.ab){
     if (G.mouse.x>=b.x && G.mouse.x<=b.x+b.w && G.mouse.y>=b.y && G.mouse.y<=b.y+b.h){
@@ -215,9 +230,20 @@ export function drawHUD(v, own){
       ctx.font='800 15px Segoe UI'; ctx.fillText(D.name.slice(0,2).toUpperCase(), x+iw/2, iy+18);
       ctx.fillStyle='#8b9ab4'; ctx.font='600 8px Segoe UI';
       ctx.fillText(D.name.slice(0,9), x+iw/2, iy+34);
-      if (D.active){ ctx.fillStyle='#5ef0c8'; ctx.beginPath(); ctx.arc(x+7, iy+7, 3, 0, 7); ctx.fill(); }
-      if (it.cd>0){ ctx.fillStyle='#000000b0'; rr(x,iy,iw,iw,7); ctx.fill();
-        ctx.fillStyle='#fff'; ctx.font='800 15px Segoe UI'; ctx.fillText(Math.ceil(it.cd), x+iw/2, iy+iw/2); }
+      if (D.active){
+        ctx.fillStyle = it.cd>0 ? '#ff5f5f' : '#5ef0c8';
+        ctx.beginPath(); ctx.arc(x+7, iy+7, 3, 0, 7); ctx.fill();
+      }
+      if (it.cd>0){
+        ctx.fillStyle='#000000b0'; rr(x,iy,iw,iw,7); ctx.fill();
+        const cdFrac = D.cd > 0 ? clamp(it.cd / D.cd, 0, 1) : 1;
+        if (D.active && D.cd > 0){
+          ctx.strokeStyle='#ff5f5f'; ctx.lineWidth=3;
+          ctx.beginPath(); ctx.arc(x+iw/2, iy+iw/2, iw/2-5, -Math.PI/2, -Math.PI/2 + Math.PI*2*cdFrac);
+          ctx.stroke();
+        }
+        ctx.fillStyle='#fff'; ctx.font='800 15px Segoe UI'; ctx.fillText(Math.ceil(it.cd), x+iw/2, iy+iw/2);
+      }
       if (G.shopOpen){
         const fresh = (v.t - (it.b||0)) <= SELL_FULL;
         const refund = Math.round(ITEMS[it.id].cost * (fresh?1:0.6));
