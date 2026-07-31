@@ -17,7 +17,7 @@ export function heroThink(S,p,dt){
       e.rootT=0; e.silT=0; e.barbT=0; e.defer=0; e.rage=0;
       e.spinT=0; e.invT=0; e.csT=0; e.brT=0; e.vulT=0; e.bzT=0;
       e.rupT=0; e.rupV=0; e.rupBank=0; e.rupLx=undefined; e.rupLy=undefined;
-      e.fervN=0; e.fervTid=0; e.fervT=0; e.hiveT=0;
+      e.fervN=0; e.fervTid=0; e.fervT=0; e.hiveT=0; e.stanceR=false;
       clearEmber(e);
       updateHeroStats(S,p);
       e.hp=e.maxHp; e.mp=e.maxMp;

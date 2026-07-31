@@ -43,6 +43,16 @@ export function damage(S, src, tgt, amount, opt){
   if (tgt.type==='hero'){ const gp = playerOf(S, tgt); if (gp && gp.god) return 0; }
   if (tgt.invT>0) return 0;                                 // untouchable — Omnislash
   if (opt.ability && warded(S, tgt)) return 0;              // counterspelled
+  // Healing Ward: spells slide straight off it, and every right click takes exactly
+  // one of its two hit points — no armor, no amplifiers, no splash
+  if (tgt.ward){
+    // tower fire is a right click too, it just does not carry the attack flag
+    if (!opt.attack && !(src && src.type==='tower')) return 0;
+    tgt.hp -= 1; tgt.hitFlash = .16;
+    fx(S,{t:'dmg', x:tgt.x, y:tgt.y+2, r:tgt.r, v:1, c: src && src.type==='hero' ? 1 : 0});
+    if (tgt.hp<=0) kill(S, src, tgt);
+    return 1;
+  }
   let dmg = amount;
   if (opt.ability && src && src.amp>0) dmg *= (1 + src.amp);
   if (src && src.brT>0) dmg *= (1 + src.brP);               // Bloodrage — everything hits harder
@@ -107,8 +117,8 @@ export function damage(S, src, tgt, amount, opt){
     damage(S, tgt, src, tgt.barbV, {pure:true, silent:true, tag:'barbs'});
     applySlow(src, .25, 1.2);
   }
-  // lifesteal
-  if (opt.attack && src && src.ls>0 && !src.dead){
+  // lifesteal — buildings are not blood
+  if (opt.attack && tgt.type!=='tower' && src && src.ls>0 && !src.dead){
     heal(S, src, dmg*src.ls);
     fx(S,{t:'heal', x:src.x, y:src.y});
   }
@@ -120,6 +130,12 @@ export function damage(S, src, tgt, amount, opt){
     S.towerAggro[1-src.team] = {t:0.75, id:tgt.id};
   if (tgt.hp<=0) kill(S, src, tgt);
   return dmg;
+}
+
+/* What one Thirst payout is worth right now: the flat rank value plus a slice of the
+   hero's own pool, so a late-game health bar does not make the passive irrelevant. */
+export function thirstAmount(e){
+  return (e.thirst||0) + (e.maxHp||0) * (e.thirstPct||0);
 }
 
 export function kill(S, src, tgt){
@@ -152,9 +168,9 @@ export function kill(S, src, tgt){
         p.cs++; addGold(p, g);
         fx(S,{t:'gold', x:tgt.x, y:tgt.y-40, v:g, pet: src.type!=='hero' ? 1:0});
       }
-      // Thirst: the lane itself keeps him standing
+      // Thirst: the lane itself keeps him standing — flat, plus a slice of the pool
       if (claimer.type==='hero' && claimer.thirst>0 && !claimer.dead){
-        const got = heal(S, claimer, claimer.thirst);
+        const got = heal(S, claimer, thirstAmount(claimer));
         if (got>0) fx(S,{t:'thirst', x:claimer.x, y:claimer.y, v:Math.round(got)});
       }
     } else {
@@ -211,7 +227,7 @@ export function kill(S, src, tgt){
         addXp(S, q, 150 + p.lvl*20);
       }
       if (src.type==='hero' && src.thirst>0 && !src.dead){
-        const got = heal(S, src, src.thirst*5);
+        const got = heal(S, src, thirstAmount(src)*5);
         if (got>0) fx(S,{t:'thirst', x:src.x, y:src.y, v:Math.round(got)});
       }
       fx(S,{t:'kill', x:tgt.x, y:tgt.y, team:kt});

@@ -21,17 +21,29 @@ export function updateHeroStats(S,p,init){
   e.crit = it.crit; e.chill = it.chill; e.amp = it.amp;
   e.block = it.block; e.hcut = it.hcut; e.hcutM = it.hcutM; e.shredOn = it.shred;
   e.cleave = H.ranged ? 0 : it.cleave;          // splash is a melee-only affair
-  // passive abilities feed straight into the stat block
+  // passive abilities feed straight into the stat block — an ability with an active
+  // half (Fervor) still grants its passive, so this keys off `grants`, not `passive`
   e.fervAs = 0; e.fervMax = 0; e.fervStep = 1; e.thirst = 0;
+  e.thirstPct = 0; e.thirstMs = 0; e.rootChance = 0;
   for (let i=0;i<4;i++){
     const A = H.abilities[i];
-    if (!A.passive || p.sk[i]<=0) continue;
+    if (!A.grants || p.sk[i]<=0) continue;
     const PV = A.val[p.sk[i]-1];
     if (A.grants==='cleave' && !H.ranged) e.cleave = Math.max(e.cleave, PV/100);
     else if (A.grants==='crit')   e.crit = Math.min(.80, e.crit + PV/100);
-    else if (A.grants==='thirst') e.thirst = PV;
-    else if (A.grants==='fervor'){ e.fervAs = PV; e.fervMax = 4; }
+    else if (A.grants==='thirst'){
+      e.thirst = PV;                            // flat, and a slice of the pool so it scales
+      e.thirstPct = 0.02;
+      e.thirstMs = (A.val2 ? A.val2[p.sk[i]-1] : 0)/100;
+    }
+    else if (A.grants==='fervor'){
+      e.fervAs = PV; e.fervMax = 4;
+      // the melee grip trades the extra reach for a chance to pin what he is chewing on
+      if (!e.stanceR) e.rootChance = (A.val2 ? A.val2[p.sk[i]-1] : 0)/100;
+    }
   }
+  // Jarak's Fervor stance: the ranged grip gives up reach for range, and cannot cleave
+  if (e.stanceR){ e.ranged = true; e.range = 520; e.cleave = 0; }
   // Fervor: stacks earned on one target, doubled while Berserker's Rage is up
   if (e.fervMax>0){
     if (e.bzT>0){ e.fervMax = 8; e.fervStep = 2; }
@@ -72,6 +84,17 @@ export function updateHeroStats(S,p,init){
     }
     e.broodN = alive;
     if (V>0 && alive>0){ e.armor += 5; e.hpr = (e.hpr||0) + 10; }
+  }
+  // Thirst: the more beaten up the worst-off enemy hero is, the faster he closes on them.
+  // Ramps in from 85% of their health and maxes out at 25%.
+  if (e.thirstMs>0){
+    let worst = 1;
+    for (const q of S.players){
+      if (q.team===p.team || !q.hero || q.hero.dead) continue;
+      worst = Math.min(worst, q.hero.hp/(q.hero.maxHp||1));
+    }
+    const t = Math.max(0, Math.min(1, (0.85 - worst)/0.60));
+    if (t>0) e.ms += H.ms * e.thirstMs * t;
   }
   e.quell = it.quell * (H.ranged ? 0.5 : 1);
   if (e.slowT>0) e.ms *= (1 - e.slowP);

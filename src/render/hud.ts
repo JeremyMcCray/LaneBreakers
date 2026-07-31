@@ -272,7 +272,8 @@ export function drawHUD(v, own){
 
   if (hoverAb){
     const A = HD.abilities[hoverAb.i], lv = Math.max(1, me.sk[hoverAb.i]);
-    const txt = A.desc.replace('%d', A.val[lv-1]);
+    let txt = A.desc.replace('%d', A.val[lv-1]);
+    if (A.val2) txt = txt.replace('%p', A.val2[lv-1]);   // a second scaling number in the text
     const w2=330, h2=76;
     let x2 = clamp(hoverAb.x + 31 - w2/2, 8, W-w2-8);
     let y2 = hoverAb.y - h2 - 12;

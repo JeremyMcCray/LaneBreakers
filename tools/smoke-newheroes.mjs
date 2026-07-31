@@ -200,8 +200,9 @@ console.log("\n== RONIN — Omnislash strikes repeatedly and is untouchable ==")
   ok("the slash zone was queued", S.zones.some(z => z.kind === "omni"), "");
   step(S, 150);
   const total = ds.reduce((a, d, i) => a + (hp0[i] - d.hp), 0);
-  const per = HEROES.ronin.abilities[3].val[2];
-  ok("all six cuts landed", Math.abs(total - per * 6) < 1, `total=${total.toFixed(0)} want=${per * 6}`);
+  // every cut is the flat rank value PLUS a full right click
+  const per = HEROES.ronin.abilities[3].val[2] + h.dmg;
+  ok("all six cuts landed", Math.abs(total - per * 6) < 1, `total=${total.toFixed(0)} want=${(per * 6).toFixed(0)}`);
   ok("the cuts were spread across both bodies",
      ds.every((d, i) => hp0[i] - d.hp > 0), ds.map((d, i) => Math.round(hp0[i] - d.hp)).join("+"));
   ok("invulnerability and lock cleared afterwards", !(h.invT > 0.25) && !(h.castLock > 0.1),

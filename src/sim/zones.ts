@@ -137,7 +137,8 @@ export function stepZones(S,dt){
             fx(S,{t:'dash', x:z.px, y:z.py, x2:h.x, y2:h.y, col:'#ffd9e8'});
             fx(S,{t:'slash', x:h.x, y:h.y, a:h.facing, team:h.team, rng:h.range});
             z.px = h.x; z.py = h.y;
-            damage(S, h, tg, z.dmg, {ability:true});
+            // every cut is the flat rank value on top of a full right click
+            damage(S, h, tg, z.dmg + (h.dmg||0), {ability:true});
             z.n--;
             if (z.n<=0){ z.t = 0; h.castLock = 0; h.invT = Math.min(h.invT||0, .2); }
           }
@@ -155,7 +156,7 @@ export function stepZones(S,dt){
         }
         if (pool.length){
           const tg = pool[Math.floor(Math.random()*pool.length)];
-          fx(S,{t:'blast', x:tg.x, y:tg.y, r:80, col:'#c58aff'});
+          fx(S,{t:'blast', x:tg.x, y:tg.y, r:80, col:'#9b5cff'});
           damage(S, ent(S,z.src), tg, z.dmg, {ability:true});
         }
       }
@@ -249,6 +250,16 @@ export function stepZones(S,dt){
           z.t = 0;                              // spent
           break;
         }
+      }
+    } else if (z.kind==='blastoff' && z.t<=0){
+      // the fuse ran out: the launch blast lands where he was standing, then he goes
+      const q = S.players[z.slot], h = q && q.hero;
+      fx(S,{t:'blast', x:z.x, y:z.y, r:z.r, col:'#ff7a3c'});
+      aoe(S, z.team, z.x, z.y, z.r, z.dmg, h || ent(S,z.src));
+      if (h && !h.dead){
+        h.x = z.tx; h.y = z.ty; clampToLane(h);
+        fx(S,{t:'dash', x:z.x, y:z.y, x2:h.x, y2:h.y, col:'#ff7a3c'});
+        disjoint(S, h);
       }
     } else if (z.kind==='bomb' && z.t<=0){
       const src = ent(S,z.src);

@@ -168,11 +168,39 @@ export function drawZones(v){
       }
       ctx.restore(); continue;
     }
-    else if (z.kd==='edict'){ ctx.fillStyle='#c58aff12'; ctx.strokeStyle='#c58aff5a'; }
-    else if (z.kd==='nova'){ ctx.fillStyle='#c58aff1e'; ctx.strokeStyle='#c58affaa'; }
+    // Diabolic Edict — a quiet violet field of sparks that pick targets one at a time.
+    // Deliberately drawn NOTHING like Pulse Nova below it: dashed, dim, no beat.
+    else if (z.kd==='edict'){
+      ctx.fillStyle='#7a3ccf10'; ctx.strokeStyle='#9b5cff70';
+      ctx.lineWidth=2; ctx.setLineDash([5,9]); ctx.lineDashOffset=-G.time*16;
+      ctx.beginPath(); ctx.arc(z.x,z.y,z.r,0,7); ctx.fill(); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#c9a6ff';                     // loose sparks drifting outward
+      for (let k=0;k<10;k++){
+        const a = k/10*Math.PI*2 + G.time*0.5;
+        const rr2 = z.r*(0.30 + 0.68*(((k*0.37) + G.time*0.35)%1));
+        ctx.globalAlpha = 0.75;
+        ctx.beginPath(); ctx.arc(z.x+Math.cos(a)*rr2, z.y+Math.sin(a)*rr2, 2.4, 0, 7); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore(); continue;
+    }
+    // Pulse Nova — hot magenta, a hard rim and a shockwave on every beat.
+    else if (z.kd==='nova'){
+      const beat = (G.time % 0.8)/0.8;              // matches the 0.8s pulse interval
+      ctx.fillStyle='#ff7ae018'; ctx.strokeStyle='#ff7ae0';
+      ctx.lineWidth=4; ctx.beginPath(); ctx.arc(z.x,z.y,z.r,0,7); ctx.fill(); ctx.stroke();
+      ctx.globalAlpha = 1 - beat;                  // the wave racing out to the rim
+      ctx.strokeStyle='#ffd6f4'; ctx.lineWidth=5;
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.r*beat, 0, 7); ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle='#ff7ae0aa'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.r*0.5, 0, 7); ctx.stroke();
+      ctx.restore(); continue;
+    }
     else if (z.kd==='strike'){ ctx.fillStyle=(z.c||'#bfe9ff')+'22'; ctx.strokeStyle=(z.c||'#bfe9ff')+'cc'; }
     else if (z.kd==='sanct'){ ctx.fillStyle='#8affd41c'; ctx.strokeStyle='#8affd480'; }
-    else if (z.kd==='bomb'){ ctx.fillStyle='#ff7a3c26'; ctx.strokeStyle='#ff7a3caa'; }
+    else if (z.kd==='bomb' || z.kd==='blastoff'){ ctx.fillStyle='#ff7a3c26'; ctx.strokeStyle='#ff7a3caa'; }
     else if (z.kd==='light'){ ctx.fillStyle='#ffe9a81e'; ctx.strokeStyle='#ffe9a880'; }
     else { ctx.fillStyle='#bfe9ff26'; ctx.strokeStyle='#bfe9ffaa'; }
     ctx.lineWidth=3;
@@ -180,9 +208,14 @@ export function drawZones(v){
     if (z.kd==='azero'){
       ctx.beginPath(); ctx.arc(z.x,z.y,z.r*(1-z.t/0.65),0,7); ctx.strokeStyle='#ffffffcc'; ctx.stroke();
     }
-    if (z.kd==='bomb' || z.kd==='strike'){    // fuse ring shrinking toward the blast
+    if (z.kd==='bomb' || z.kd==='strike' || z.kd==='blastoff'){  // fuse ring shrinking toward the blast
       const k2 = clamp(1 - z.t/(z.mt||0.9), 0, 1);
       ctx.beginPath(); ctx.arc(z.x,z.y,z.r*k2,0,7); ctx.strokeStyle='#ffffffcc'; ctx.stroke();
+    }
+    if (z.kd==='blastoff'){                   // the arc he is about to fly along
+      ctx.strokeStyle='#ff7a3c88'; ctx.lineWidth=2; ctx.setLineDash([9,7]);
+      ctx.beginPath(); ctx.moveTo(z.x,z.y); ctx.lineTo(z.tx,z.ty); ctx.stroke();
+      ctx.setLineDash([]);
     }
     ctx.restore();
   }

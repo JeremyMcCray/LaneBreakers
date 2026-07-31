@@ -93,10 +93,17 @@ export function botThink(S,p,dt){
     return;
   }
 
+  // Jarak's grip: axes at range, blade up close — never flip it mid-swing at random
+  if (p.heroId==='jarak' && canCast(S,p,1)){
+    const wantRanged = foeD > 460;
+    if (!!e.stanceR !== wantRanged) castAbility(S,p,1,e.x,e.y);
+  }
+
   // abilities
   const aggressive = foe && !foe.dead && foeD < 700 && (hpPct>.62 || foeHp<.35);
   if (aggressive && Math.random()<.35){
     for (let i=3;i>=0;i--){
+      if (p.heroId==='jarak' && i===1) continue;   // handled above, it is a stance not a nuke
       if (!canCast(S,p,i)) continue;
       const A = HEROES[p.heroId].abilities[i];
       const need = A.cast==='self' ? 260 : (A.range||400);

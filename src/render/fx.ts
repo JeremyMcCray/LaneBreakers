@@ -115,7 +115,10 @@ export function spawnFx(f){
                      part(f.x,f.y,'#ff7a3c',8+(f.v||0)*2,220,.5,3.4);
                      G.shake=Math.max(G.shake,6); break;
     case 'raise': ring(f.x,f.y,54,'#b78cff',.5,3); part(f.x,f.y,'#c9a6ff',10,120,.5,3,45); break;
-    case 'nova': ring(f.x,f.y,f.r,'#c58aff',.5,5); part(f.x,f.y,'#c58aff',10,260,.4,3);
+    // Pulse Nova is hot magenta on purpose — Diabolic Edict stays violet, so the two
+    // never read as the same spell at a glance
+    case 'nova': ring(f.x,f.y,f.r,'#ff7ae0',.5,6); ring(f.x,f.y,f.r*.6,'#ffd6f4',.32,3);
+                 part(f.x,f.y,'#ff7ae0',12,300,.4,3);
                  G.shake=Math.max(G.shake,5); break;
     case 'rupture': ring(f.x,f.y,100,'#ff2f4f',.6,5); part(f.x,f.y,'#ff2f4f',16,180,.6,3.4);
                     G.shake=Math.max(G.shake,10); break;

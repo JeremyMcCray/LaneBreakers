@@ -3,7 +3,7 @@ import {
   AUTO_ACQ, CLEAVE_ARC, CLEAVE_R, armorMult, clamp, clampToLane, dist, effArmor, now
 } from '../data/world';
 import { HEROES } from '../data/heroes';
-import { applySlow, damage } from './combat';
+import { applyRoot, applySlow, damage } from './combat';
 import { ent, fx } from './create';
 
 export function moveToward(S,e,tx,ty,dt){
@@ -69,6 +69,9 @@ export function releaseAttack(S,e){
       cleaveHit(S, e, tgt, amt, e.cleave);
     if (e.rendT>0)  applySlow(tgt, .25, 1.5);
     if (e.chill>0)  applySlow(tgt, .20, 1.5);
+    // Fervor's melee grip: every so often the blade pins whatever it lands on
+    if (e.rootChance>0 && tgt.team!==e.team && !tgt.dead && Math.random() < e.rootChance)
+      applyRoot(S, tgt, 0.6);
   }
 }
 /* The next thing an auto-attacking hero should swing at: closest first,
@@ -105,6 +108,7 @@ export function cleaveHit(S, src, tgt, raw, pct){
 }
 /* per-hit damage a hero would deal right now — used for the last-hit preview */
 export function previewHit(e, tgt){
+  if (tgt.ward) return 1;                        // a ward takes one point per right click
   const bonus = e.rendT>0 ? e.rendV : 0;
   let raw = e.dmg + bonus + (e.quell>0 && tgt.type==='creep' ? e.quell : 0);
   if (e.brT>0)     raw *= (1 + e.brP);           // Bloodrage

@@ -227,7 +227,8 @@ export function castAbility(S,p,i,tx,ty){
       const n = o.embN||0;
       if (n>0){
         fx(S,{t:'detonate', x:o.x, y:o.y, v:n});
-        clearEmber(o);
+        // inside a Firestorm nothing can go out — the stack pays out and stays lit
+        if (!(o.embHold>0)) clearEmber(o);
         damage(S, e, o, V*n, {ability:true});
       } else {
         addEmber(S, o, 2, e);                  // nothing to blow out — light them instead
@@ -437,11 +438,11 @@ export function castAbility(S,p,i,tx,ty){
     fx(S,{t:'buff', x:tx, y:ty, col:'#ff7a3c'});
     break; }
   case 'drex2': {
-    const ox=e.x, oy=e.y;
-    e.x=tx; e.y=ty; clampToLane(e);
-    fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:'#ff7a3c'});
-    fx(S,{t:'blast', x:ox, y:oy, r:180, col:'#ff7a3c'});
-    aoe(S, e.team, ox, oy, 180, V, e);
+    // the fuse burns for 0.45s with the blast ring painted on the ground before he leaves
+    e.castLock = 0.45;
+    addZone(S,{kind:'blastoff', team:e.team, x:e.x, y:e.y, r:180, t:.45, mt:.45,
+      tx:tx, ty:ty, dmg:V, src:e.id, slot:p.slot});
+    fx(S,{t:'telegraph', x:e.x, y:e.y, r:180, life:.45, col:'#ff7a3c'});
     break; }
   case 'drex3': {
     const a = Math.atan2(ty-e.y, tx-e.x);
@@ -520,13 +521,14 @@ export function castAbility(S,p,i,tx,ty){
   case 'ronin0':
     e.spinT = 3;
     e.csT = Math.max(e.csT||0, 3);              // spinning through everything magical
-    addZone(S,{kind:'spin', team:e.team, follow:e.id, x:e.x, y:e.y, r:260, t:3,
+    addZone(S,{kind:'spin', team:e.team, follow:e.id, x:e.x, y:e.y, r:130, t:3,
       dps:V, slow:0, src:e.id, tickT:0});
     fx(S,{t:'buff', x:e.x, y:e.y, col:'#ff9ec4'});
     break;
   case 'ronin1': {
+    // 2 HP and spell-proof: damage() turns every right click on it into exactly 1
     const w = spawnPet(S, e.team, tx, ty, 9, {static:true, ward:true, r:11,
-      hp:70, maxHp:70, dmg:0, armor:0, range:0, bat:9, ms:0});
+      hp:2, maxHp:2, dmg:0, armor:0, range:0, bat:9, ms:0});
     addZone(S,{kind:'hward', team:e.team, follow:w.id, x:w.x, y:w.y, r:340, t:9,
       hps:V, tickT:0});
     fx(S,{t:'buff', x:w.x, y:w.y, col:'#8affd4'});
@@ -536,7 +538,7 @@ export function castAbility(S,p,i,tx,ty){
     const tg = nearestFoe(S, e.team, tx, ty, 340);
     if (tg){
       e.castLock = 2.1; e.invT = 2.2;
-      addZone(S,{kind:'omni', team:e.team, x:e.x, y:e.y, ax:tg.x, ay:tg.y, r:420,
+      addZone(S,{kind:'omni', team:e.team, x:e.x, y:e.y, ax:tg.x, ay:tg.y, r:300,
         t:2.2, n:6, iv:0.3, tickT:0, dmg:V, px:e.x, py:e.y, slot:p.slot});
       fx(S,{t:'blast', x:tg.x, y:tg.y, r:120, col:'#ffd9e8'});
     }
@@ -546,9 +548,9 @@ export function castAbility(S,p,i,tx,ty){
     chainLightning(S, e, tx, ty, V, 5, .22, 480, '#9fd8ff');
     break;
   case 'zaal1':
-    addZone(S,{kind:'strike', team:e.team, x:tx, y:ty, r:260, t:.5, mt:.5,
+    addZone(S,{kind:'strike', team:e.team, x:tx, y:ty, r:91, t:.5, mt:.5,
       dmg:V, stun:0.7, bolt:1, src:e.id, col:'#cfe9ff'});
-    fx(S,{t:'telegraph', x:tx, y:ty, r:260, life:.5, col:'#9fd8ff'});
+    fx(S,{t:'telegraph', x:tx, y:ty, r:91, life:.5, col:'#9fd8ff'});
     break;
   case 'zaal2': break;                         // Static Field is passive
   case 'zaal3': {
@@ -569,7 +571,14 @@ export function castAbility(S,p,i,tx,ty){
         slow:{p:.30,t:2}, col:'#7be0a4'});
     }
     break; }
-  case 'jarak1': break;                        // Fervor is passive
+  case 'jarak1': {
+    // Fervor is still the passive — the active only changes which grip he is holding
+    e.stanceR = !e.stanceR;
+    updateHeroStats(S,p);
+    cancelWind(e);                             // the swing in progress belongs to the old grip
+    fx(S,{t:'buff', x:e.x, y:e.y, col: e.stanceR ? '#bff3d4' : '#7be0a4'});
+    fx(S,{t:'blast', x:e.x, y:e.y, r: e.stanceR ? 120 : 90, col: e.stanceR ? '#bff3d4' : '#7be0a4'});
+    break; }
   case 'jarak2':
     e.armT=8; e.armB=V; e.msT=8; e.msP=.20; e.bzT=8;
     fx(S,{t:'buff', x:e.x, y:e.y, col:'#7be0a4'});
@@ -611,14 +620,14 @@ export function castAbility(S,p,i,tx,ty){
     break; }
   /* ---- VOSK ---- */
   case 'vosk0':
-    addZone(S,{kind:'strike', team:e.team, x:tx, y:ty, r:240, t:.55, mt:.55,
+    addZone(S,{kind:'strike', team:e.team, x:tx, y:ty, r:72, t:.55, mt:.55,
       dmg:V, stun:1.4, src:e.id, col:'#c58aff'});
-    fx(S,{t:'telegraph', x:tx, y:ty, r:240, life:.55, col:'#c58aff'});
+    fx(S,{t:'telegraph', x:tx, y:ty, r:72, life:.55, col:'#c58aff'});
     break;
   case 'vosk1':
     addZone(S,{kind:'edict', team:e.team, follow:e.id, x:e.x, y:e.y, r:340, t:8,
       iv:0.5, tickT:0.5, dmg:V, src:e.id});
-    fx(S,{t:'buff', x:e.x, y:e.y, col:'#c58aff'});
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#9b5cff'});
     break;
   case 'vosk2':
     chainLightning(S, e, tx, ty, V, 4, .18, 460, '#d8b0ff', o=> applySlow(o,.50,1));
@@ -626,7 +635,7 @@ export function castAbility(S,p,i,tx,ty){
   case 'vosk3':
     addZone(S,{kind:'nova', team:e.team, follow:e.id, x:e.x, y:e.y, r:340, t:12,
       iv:0.8, tickT:0.05, dmg:V, cost:22, slot:p.slot});
-    fx(S,{t:'blast', x:e.x, y:e.y, r:340, col:'#c58aff'});
+    fx(S,{t:'blast', x:e.x, y:e.y, r:340, col:'#ff7ae0'});
     break;
   }
   for (let n=projMark; n<S.projs.length; n++) if (!S.projs[n].tag) S.projs[n].tag = slotTag;
