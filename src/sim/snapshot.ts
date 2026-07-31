@@ -6,6 +6,17 @@ import { imminentHits, incomingDps, previewHit } from './attack';
 import { damage } from './combat';
 import { netWorth } from './stats';
 
+/* Evenly resample a per-player series down to a wire-friendly size. The
+   post-game charts only need the shape; first and last rows are always kept. */
+function thinSeries(rows){
+  const MAX = 120;
+  if (!rows || rows.length <= MAX) return rows;
+  const out = [];
+  const step = (rows.length - 1) / (MAX - 1);
+  for (let i = 0; i < MAX; i++) out.push(rows[Math.round(i * step)]);
+  return out;
+}
+
 export function buildSnapshot(S, forTeam){
   if (forTeam===undefined) forTeam = 0;
   const ents=[];
@@ -43,11 +54,13 @@ export function buildSnapshot(S, forTeam){
       rg:isHero?Math.round(e.rage||0):0});
   }
   // the post-game breakdown and graphs ride along on the final snapshot only —
-  // they are far too big to send twenty times a second
+  // they are far too big to send twenty times a second. Even then the series is
+  // thinned and the event log capped: a long 2v2 must never turn the final
+  // snapshot into a message big enough to choke a client's data channel.
   const ps = S.players.map(p=>Object.assign(S.over ? {
     dby:p.dmgBy, hby:p.dmgHeroBy, tby:p.takenBy,
     dtk:Math.round(p.dmgTaken), ge:Math.round(p.goldEarned),
-    sr:p.series, ev:p.events
+    sr:thinSeries(p.series), ev:p.events.slice(-150)
   } : {}, {
     sl:p.slot, tm:p.team, as:p.assists, nm:p.name,
     lvl:p.lvl, xp:Math.round(p.xp), gold:Math.round(p.gold), pts:p.points,

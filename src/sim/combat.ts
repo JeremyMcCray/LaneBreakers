@@ -2,6 +2,7 @@
 import {
   PULL_TIME, XP_RADIUS, armorMult, dist, effArmor, heal, now, rnd
 } from '../data/world';
+import { HEROES } from '../data/heroes';
 import { cancelWind } from './attack';
 import { ent, foesOf, fx, nearbyHeroes, playerOf, spawnBrood, teamOf } from './create';
 import { addGold, addXp, endGame, logEvent } from './stats';
@@ -91,6 +92,32 @@ export function damage(S, src, tgt, amount, opt){
     if (tgt.rageOn){ tgt.rage = Math.min(100, (tgt.rage||0) + dmg/18); tgt.rageT = 2.5; }
   }
   if (dmg<=0) return 0;
+  // Undying Light — once a minute, the blow that should kill Mara leaves her at 1 HP,
+  // burns off every debuff and detonates a free Judgement around her
+  if (tgt.type==='hero' && tgt.heroId==='mara' && tgt.aghs && !(tgt.undyCd>0) && dmg >= tgt.hp){
+    dmg = Math.max(0, tgt.hp - 1);
+    tgt.undyCd = 60;
+    tgt.stun=0; tgt.rootT=0; tgt.silT=0; tgt.slowT=0; tgt.slowP=0;
+    tgt.dotT=0; tgt.dotDps=0; tgt.rupT=0; tgt.rupV=0;
+    clearEmber(tgt);
+    fx(S,{t:'purge', x:tgt.x, y:tgt.y});
+    const mp2 = playerOf(S, tgt);
+    const RA = HEROES.mara.abilities[3];
+    const lv = mp2 && mp2.sk[3]>0 ? mp2.sk[3] : 1;
+    const prev = S.tag; S.tag = 'i:scepter';
+    let n = 0;
+    fx(S,{t:'blast', x:tgt.x, y:tgt.y, r:RA.aoe, col:'#ffe9a8'});
+    for (const o of S.ents){
+      if (o.dead || o.team===tgt.team || o.type==='tower') continue;
+      if (dist(o.x,o.y,tgt.x,tgt.y) > RA.aoe + o.r) continue;
+      damage(S, tgt, o, RA.val[lv-1], {ability:true});
+      if (!o.dead) applyStun(S, o, 1.1);
+      n++;
+    }
+    S.tag = prev;
+    if (n>0){ heal(S, tgt, 70*n); fx(S,{t:'heal', x:tgt.x, y:tgt.y}); }
+    if (dmg<=0) return 0;
+  }
   // book-keeping for the post-game screen — a summon's work counts for its owner
   {
     const tag = damageTag(S, src, opt);
@@ -107,6 +134,19 @@ export function damage(S, src, tgt, amount, opt){
   tgt.hp -= dmg;
   tgt.hitFlash = .16;
   tgt.salveT = 0;
+  // Deep Freeze — Ilva's ability damage stacks Frostbite; the fourth stack
+  // freezes the victim solid. A thawed target is immune for a few seconds.
+  if (opt.ability && !opt.fb && src && src.frostTouch && tgt.type!=='tower' &&
+      tgt.team!==src.team && !(tgt.fbCd>0) && tgt.hp>0){
+    tgt.fbN = (tgt.fbN||0) + 1; tgt.fbT = 4;
+    fx(S,{t:'disjoint', x:tgt.x, y:tgt.y});
+    if (tgt.fbN>=4){
+      tgt.fbN = 0; tgt.fbT = 0; tgt.fbCd = 3;
+      fx(S,{t:'blast', x:tgt.x, y:tgt.y, r:90, col:'#bfe9ff'});
+      applyStun(S, tgt, 1.1);
+      damage(S, src, tgt, 100 + (tgt.maxHp||0)*0.06, {ability:true, fb:1, tag:'i:scepter'});
+    }
+  }
   if (!opt.silent)
     fx(S,{t:'dmg', x:tgt.x, y:tgt.y+2, r:tgt.r, v:Math.round(dmg),
           c: src && src.type==='hero' ? 1 : 0, ab: !!opt.ability, cr: !!opt.crit});
@@ -143,8 +183,35 @@ export function kill(S, src, tgt){
   tgt.dead = true;
   fx(S,{t:'die', x:tgt.x, y:tgt.y, team:tgt.team, big: tgt.type!=='creep'});
   spreadEmber(S, tgt);            // Wildfire jumps off the corpse before anything else
+  // From the Ashes — a hero that dies still burning erupts into a free Firestorm
+  if (tgt.type==='hero' && tgt.embN>0){
+    const asrc = ent(S, tgt.embSrc);
+    if (asrc && !asrc.dead && asrc.aghs && asrc.heroId==='ash'){
+      const q = playerOf(S, asrc);
+      const lv = q && q.sk[3]>0 ? q.sk[3] : 1;
+      S.zones.push({id:S.nextId++, kind:'firestorm', team:asrc.team, x:tgt.x, y:tgt.y,
+        r:240, t:4, dps:HEROES.ash.abilities[3].val[lv-1], src:asrc.id,
+        tickT:0, embT:0, tag:'i:scepter'});
+      fx(S,{t:'blast', x:tgt.x, y:tgt.y, r:240, col:'#ff8a4a'});
+    }
+  }
 
   if (tgt.type==='creep' && tgt.pet){
+    // Virulent Brood — Vhal's spawnlings are packed with venom and burst on death
+    if (tgt.brood && tgt.oslot!==undefined){
+      const q = S.players[tgt.oslot], h = q && q.hero;
+      if (h && !h.dead && h.aghs){
+        const prev = S.tag; S.tag = 'i:scepter';
+        fx(S,{t:'blast', x:tgt.x, y:tgt.y, r:160, col:'#b78cff'});
+        for (const o of S.ents){
+          if (o.dead || o.team===tgt.team || o.type==='tower') continue;
+          if (dist(o.x,o.y,tgt.x,tgt.y) > 160 + o.r) continue;
+          damage(S, h, o, 40 + (h.maxHp||0)*0.05, {ability:true});
+          if (!o.dead) applySlow(o, .30, 1.5);
+        }
+        S.tag = prev;
+      }
+    }
     return;                       // summons are worth no gold and no XP to anyone
   }
   else if (tgt.type==='creep'){

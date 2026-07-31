@@ -6,6 +6,7 @@ import { addToast } from '../render/fx';
 import { s2w, w2s, camScale, ownHeroView, cv } from '../render/view';
 import { slotUnder } from './hitTest';
 import { toggleShop } from './shop';
+import { toggleSfxMute } from '../audio/sfx';
 
 export function entUnder(px,py){
   const v=G.view; if(!v) return null;
@@ -104,7 +105,10 @@ export function dbg(w){ cmd({a:'dbg', w:w}); addToast('debug: '+w); }
 
 addEventListener('keydown', e=>{
   if (!G.started){ return; }
-  if (e.target && (e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT')) return;
+  if (e.target && (e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'||
+                   e.target.tagName==='SELECT')) return;
+  // the dev sandbox owns its own keys — never cast a spell into it
+  if (e.target && e.target.closest && e.target.closest('#devpanel')) return;
   const k = e.key.toLowerCase();
   if (k==='p'){ e.preventDefault(); G.paused=!G.paused; addToast(G.paused?'Paused':'Resumed'); return; }
   if (G.paused) return;
@@ -121,6 +125,7 @@ addEventListener('keydown', e=>{
   if (k==='s'){ issue({a:'stop'}); G.aMode=false; return; }
   if (k==='h'){ issue({a:'hold'}); return; }
   if (k==='b'){ toggleShop(); return; }
+  if (k==='m'){ addToast(toggleSfxMute() ? 'Sound muted' : 'Sound on'); return; }
   if (k===' '){ e.preventDefault(); const o=ownHeroView(G.view); if(o) G.cam.x=o.x; return; }
   if (e.key==='F1'){ e.preventDefault(); document.getElementById('help').classList.toggle('hide'); return; }
   if (e.key==='F3'){ e.preventDefault();

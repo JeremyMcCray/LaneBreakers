@@ -20,6 +20,8 @@ export function stepProjectiles(S,dt){
         if (pr.kind==='atk' && !tg.dead){
           if (pr.rend)  applySlow(tg, .25, 1.5);
           if (pr.chill) applySlow(tg, .20, 1.5);
+          // Rip and Tear — the shot was thrown at full Fervor and lands twice
+          if (pr.twin) damage(S, src, tg, pr.dmg*pr.twin, {attack:true, blame:pr.ps});
         }
         fx(S,{t:'hit', x:tg.x, y:tg.y});
         S.projs.splice(i,1); continue;
@@ -49,15 +51,31 @@ export function stepProjectiles(S,dt){
         if (pr.pull && src && !src.dead && !hitE.dead){
           const a = Math.atan2(hitE.y-src.y, hitE.x-src.x);
           const ox=hitE.x, oy=hitE.y;
-          hitE.x = src.x + Math.cos(a)*(src.r + hitE.r + 14);
-          hitE.y = src.y + Math.sin(a)*(src.r + hitE.r + 14);
-          clampToLane(hitE);
-          fx(S,{t:'dash', x:ox, y:oy, x2:hitE.x, y2:hitE.y, col:'#ff9b6a'});
+          if (src.aghs && src.heroId==='brann' && hitE.type==='hero'){
+            // Over the Shoulder — dragged THROUGH Brann, slammed down behind him
+            hitE.x = src.x - Math.cos(a)*(src.r + hitE.r + 20);
+            hitE.y = src.y - Math.sin(a)*(src.r + hitE.r + 20);
+            clampToLane(hitE);
+            fx(S,{t:'dash', x:ox, y:oy, x2:hitE.x, y2:hitE.y, col:'#ff9b6a'});
+            fx(S,{t:'quake', x:hitE.x, y:hitE.y, r:120});
+            damage(S, src, hitE, pr.dmg, {ability:true});
+            if (!hitE.dead) applyStun(S, hitE, 1.0);
+          } else {
+            hitE.x = src.x + Math.cos(a)*(src.r + hitE.r + 14);
+            hitE.y = src.y + Math.sin(a)*(src.r + hitE.r + 14);
+            clampToLane(hitE);
+            fx(S,{t:'dash', x:ox, y:oy, x2:hitE.x, y2:hitE.y, col:'#ff9b6a'});
+          }
         }
         fx(S,{t:'blast', x:pr.x, y:pr.y, r:pr.r*2.2, col:pr.col});
         if (pr.pierce){
           pr.hits.push(hitE.id);
-          if (pr.fall){                       // each body it punches through saps the shot
+          // Killshot — a kill FEEDS the shot; only survivors sap it
+          if (pr.grow && hitE.dead){
+            pr.dmg *= 1.4;
+            pr.r = Math.min(34, pr.r*1.08);
+            fx(S,{t:'buff', x:pr.x, y:pr.y, col:'#eaffb0'});
+          } else if (pr.fall){                // each body it punches through saps the shot
             pr.dmg *= (1 - pr.fall);
             pr.r = Math.max(8, pr.r*0.93);
           }

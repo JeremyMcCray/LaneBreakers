@@ -32,6 +32,15 @@ export function heroSheet(id){
     ['Move', h.ms],
     ['Attack', (h.ranged?'ranged ':'melee ')+h.range+' · '+h.bat+'s']
   ].map(([k,v])=>'<div class="hstat"><span>'+k+'</span><b>'+v+'</b></div>').join('');
+  // the Ascendant Scepter upgrade — unique to every hero, read it before you buy it
+  const sc = h.scepter ? '<div class="abrow">'+
+    '<div class="abk" style="color:#ffcc55">⚜</div>'+
+    '<div class="abbody">'+
+      '<div class="abname" style="color:#ffcc55">'+h.scepter.name+
+        ' <span class="ult" style="background:#3a2f0e;color:#ffcc55">SCEPTER</span></div>'+
+      '<div class="abmeta">granted by the Ascendant Scepter ('+ITEMS.scepter.cost+'g)</div>'+
+      '<div class="abdesc">'+h.scepter.desc+'</div>'+
+    '</div></div>' : '';
   return '<div class="hsheet">'+
     '<div class="hshead">'+
       '<div class="hsname" style="color:'+h.col+'">'+h.name+'</div>'+
@@ -40,6 +49,7 @@ export function heroSheet(id){
     '</div>'+
     '<div class="hstats">'+st+'</div>'+
     h.abilities.map(abilityCard).join('')+
+    sc+
   '</div>';
 }
 export function renderItemBook(){

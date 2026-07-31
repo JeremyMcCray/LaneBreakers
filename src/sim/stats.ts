@@ -9,6 +9,8 @@ import { broodStats, fx, symbiosisRank, teamOf } from './create';
 
 export function updateHeroStats(S,p,init){
   const e = p.hero, H = HEROES[p.heroId], l = p.lvl, it = itemStats(p.items);
+  // the Ascendant Scepter: one flag the whole sim keys its per-hero upgrades off
+  e.aghs = p.items.some(x=>x.id==='scepter');
   e.maxHp = H.hp  + H.hpg *(l-1) + it.hp + e.bonusHp;
   e.maxMp = H.mp  + H.mpg *(l-1) + it.mp;
   e.dmg   = H.dmg + H.dmgg*(l-1) + it.dmg + e.bonusDmg;
@@ -56,12 +58,15 @@ export function updateHeroStats(S,p,init){
   if (H.id==='shiv'){
     e.rageOn = true;
     e.deferPct = p.sk[1]>0 ? H.abilities[1].val[p.sk[1]-1]/100 : 0;
+    e.bleedHeal = e.aghs ? .35 : 0;             // Bad Blood — his bleeds feed him
   }
+  // Deep Freeze: Ilva's ability damage stacks Frostbite (resolved in combat.ts)
+  e.frostTouch = (H.id==='ilva' && e.aghs);
   // Ash's EMBERS: Wildfire is what makes them stack deep, burn hard and spread
   if (H.id==='ash'){
     const lv = p.sk[1];
     e.embPow    = lv>0 ? H.abilities[1].val[lv-1] : 5;
-    e.embCap    = lv>0 ? 6 : 3;
+    e.embCap    = (lv>0 ? 6 : 3) + (e.aghs ? 2 : 0);   // From the Ashes — eight deep
     e.embSpread = lv>0;
   }
   // Symbiosis: the brood is rebuilt from Vhal every tick, so her items reach it
@@ -83,7 +88,11 @@ export function updateHeroStats(S,p,init){
       o.dmg  = o.bdmg + (o.buffT>0 ? (o.buffDmg||0) : 0);
     }
     e.broodN = alive;
-    if (V>0 && alive>0){ e.armor += 5; e.hpr = (e.hpr||0) + 10; }
+    // Virulent Brood: the flat Symbiosis bonus becomes per-spawnling
+    if (V>0 && alive>0){
+      if (e.aghs){ e.armor += alive; e.hpr = (e.hpr||0) + 2*alive; }
+      else       { e.armor += 5;     e.hpr = (e.hpr||0) + 10; }
+    }
   }
   // Thirst: the more beaten up the worst-off enemy hero is, the faster he closes on them.
   // Ramps in from 85% of their health and maxes out at 25%.

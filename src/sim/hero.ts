@@ -18,6 +18,7 @@ export function heroThink(S,p,dt){
       e.spinT=0; e.invT=0; e.csT=0; e.brT=0; e.vulT=0; e.bzT=0;
       e.rupT=0; e.rupV=0; e.rupBank=0; e.rupLx=undefined; e.rupLy=undefined;
       e.fervN=0; e.fervTid=0; e.fervT=0; e.hiveT=0; e.stanceR=false;
+      e.fbN=0; e.fbT=0; e.fbCd=0;
       clearEmber(e);
       updateHeroStats(S,p);
       e.hp=e.maxHp; e.mp=e.maxMp;
@@ -94,7 +95,9 @@ export function heroTimers(S,p,dt){
   ['stun','slowT','shieldT','asT','lsT','msT','armT','regT','salveT','draughtT',
    'castLock','hitFlash','swing','drT','markT','rendT','hcT','shredT',
    'rootT','silT','barbT','bleedT','gsT','csT','banT',
-   'spinT','invT','brT','vulT','bzT','fervT','wardFxT','hiveT'].forEach(dec);
+   'spinT','invT','brT','vulT','bzT','fervT','wardFxT','hiveT',
+   'undyCd','fbT','fbCd'].forEach(dec);
+  if (e.fbT<=0) e.fbN = 0;                       // Frostbite thaws if Ilva lets up
   tickDot(S,e,dt);
   tickEmber(S,e,dt);
   tickRupture(S,e,dt);

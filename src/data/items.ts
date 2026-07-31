@@ -58,6 +58,10 @@ export const ITEMS = {
            d:'+300 mana, +4 mana regen, -18% cooldowns, +22% ability damage'},
   wither: {name:'Withering Rod',  cat:'magic', from:['ember','hide'],    recipe:550,
            d:'+10% ability damage, +3 armor. Your ABILITIES cut enemy healing and regen by 65% for 6s'},
+  scepter:{name:'Ascendant Scepter', cat:'magic', from:['band','crystal','ember'], recipe:1400,
+           d:'+220 HP, +220 mana, +2 mana regen, +16 damage, +10% ability damage. '+
+             'UNIQUE: unlocks your hero’s SCEPTER upgrade — a different power for every hero. '+
+             'Open the hero book or hover this in a match to read yours.'},
 
   /* ---------- utility ---------- */
   boots:  {name:'Swiftboots',  cat:'util', from:['sandal','sandal'],  recipe:0,
@@ -126,6 +130,7 @@ export function itemStats(items){
       case 'bomb':    s.mp+=130; s.amp+=.14; break;
       case 'orb':     s.mp+=300; s.mpr+=4; s.cdr+=.18; s.amp+=.22; break;
       case 'wither':  s.amp+=.10; s.arm+=3; s.hcutM=1; break;
+      case 'scepter': s.hp+=220; s.mp+=220; s.mpr+=2; s.dmg+=16; s.amp+=.10; break;
       /* utility */
       case 'boots':   s.ms+=65; break;
       case 'horn':    s.ms+=30; s.as+=16; break;

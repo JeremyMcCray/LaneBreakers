@@ -19,7 +19,10 @@
     "desktop:dist:win": "npm run build && electron-builder --win",
     "smoke": "npx vite-node tools/smoke-sim.mjs",
     "smoke:heroes": "npx vite-node tools/smoke-newheroes.mjs",
+    "smoke:scepter": "npx vite-node tools/smoke-scepter.mjs",
+    "smoke:netclient": "npx vite-node tools/smoke-netclient.mjs",
     "smoke:endstats": "npx vite-node tools/smoke-endstats.mjs",
+    "smoke:sandbox": "npx vite-node tools/smoke-sandbox.mjs",
     "smoke:neural": "npx vite-node tools/smoke-neural.mjs",
     "smoke:parity": "npx vite-node tools/smoke-parity.mjs",
     "extract:neural": "node tools/extract-neural.mjs",
@@ -33,6 +36,7 @@
   "devDependencies": {
     "electron": "^37.2.0",
     "electron-builder": "^26.0.12",
+    "playwright-core": "^1.62.1",
     "typescript": "~5.9.3",
     "vite": "^7.1.7",
     "vite-plugin-singlefile": "^2.3.0"

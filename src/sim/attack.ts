@@ -3,7 +3,7 @@ import {
   AUTO_ACQ, CLEAVE_ARC, CLEAVE_R, armorMult, clamp, clampToLane, dist, effArmor, now
 } from '../data/world';
 import { HEROES } from '../data/heroes';
-import { applyRoot, applySlow, damage } from './combat';
+import { applyDot, applyRoot, applySlow, damage } from './combat';
 import { ent, fx } from './create';
 
 export function moveToward(S,e,tx,ty,dt){
@@ -59,19 +59,42 @@ export function releaseAttack(S,e){
     S.projs.push({id:S.nextId++, kind:'atk', team:e.team, x:e.x, y:e.y-10,
       tid:tgt.id, dmg:amt, src:e.id, speed:sp, r:7,
       ps: e.type==='hero' ? e.slot : (e.oslot!==undefined ? e.oslot : -1),
-      rend:e.rendT>0, chill:e.chill>0, crit:crit});
+      rend:e.rendT>0, chill:e.chill>0, crit:crit,
+      // Rip and Tear rides the shot out — resolved when it lands
+      twin: (e.aghs && e.heroId==='jarak' && e.fervMax>0 && e.fervN>=e.fervMax) ? .5 : 0});
   } else {
     fx(S,{t:'slash', x:e.x, y:e.y, a:e.facing, team:e.team, rng:e.range});
     S.tag = 'atk';
     damage(S, e, tgt, amt, {attack:true, melee:true, crit:crit});
     S.tag = null;
     if (e.cleave>0 && tgt.team!==e.team)                   // melee only, and never on a deny
-      cleaveHit(S, e, tgt, amt, e.cleave);
+      cleaveHit(S, e, tgt, amt, e.cleave,
+        e.aghs && e.heroId==='svaar' && e.gsT>0);          // Worldbreaker
     if (e.rendT>0)  applySlow(tgt, .25, 1.5);
     if (e.chill>0)  applySlow(tgt, .20, 1.5);
     // Fervor's melee grip: every so often the blade pins whatever it lands on
     if (e.rootChance>0 && tgt.team!==e.team && !tgt.dead && Math.random() < e.rootChance)
       applyRoot(S, tgt, 0.6);
+    // scepter on-hit riders
+    if (e.aghs && e.type==='hero' && tgt.team!==e.team && !tgt.dead){
+      // Rip and Tear — at maximum Fervor every attack lands twice
+      if (e.heroId==='jarak' && e.fervMax>0 && e.fervN>=e.fervMax){
+        S.tag = 'atk';
+        damage(S, e, tgt, amt*0.5, {attack:true, melee:true});
+        S.tag = null;
+      }
+      // Bad Blood — at FULL RAGE every attack opens a serrated wound
+      if (e.heroId==='shiv' && e.rageOn && e.rage>=100){
+        const prev = S.tag; S.tag = 'i:scepter';
+        applyDot(S, tgt, e.dmg*0.15, 5, e.id, true);
+        S.tag = prev;
+      }
+      // Open Wounds — every blow on a Ruptured target counts as 50 units run
+      if (e.heroId==='stryg' && tgt.rupT>0){
+        damage(S, ent(S,tgt.rupSrc)||e, tgt, 0.5*(tgt.rupV||0), {pure:true, tag:'a3'});
+        fx(S,{t:'bleed', x:tgt.x, y:tgt.y});
+      }
+    }
   }
 }
 /* The next thing an auto-attacking hero should swing at: closest first,
@@ -90,17 +113,20 @@ export function autoNext(S, e){
   return best;
 }
 /* A cleaving swing splashes into everything in a cone past the target.
-   It never touches buildings and never feeds lifesteal a second time. */
-export function cleaveHit(S, src, tgt, raw, pct){
+   It never touches buildings and never feeds lifesteal a second time.
+   `wb` is Svaar's Worldbreaker: the cone opens into a full circle and slows. */
+export function cleaveHit(S, src, tgt, raw, pct, wb){
   const swing = Math.atan2(tgt.y-src.y, tgt.x-src.x);
+  const arc = wb ? Math.PI : CLEAVE_ARC;
   let hit = 0;
   for (const o of S.ents){
     if (o.dead || o===tgt || o.team===src.team || o.type==='tower') continue;
     if (dist(tgt.x,tgt.y,o.x,o.y) > CLEAVE_R + o.r) continue;
     const a = Math.atan2(o.y-src.y, o.x-src.x);
     let da = Math.abs(((a - swing + Math.PI*3) % (Math.PI*2)) - Math.PI);
-    if (da > CLEAVE_ARC) continue;
+    if (da > arc) continue;
     damage(S, src, o, raw*pct, {cleave:true, tag:'cleave'});
+    if (wb && !o.dead) applySlow(o, .20, 1);
     hit++;
   }
   if (hit) fx(S,{t:'cleave', x:tgt.x, y:tgt.y, a:swing, team:src.team});

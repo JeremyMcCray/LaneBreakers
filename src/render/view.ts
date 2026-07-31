@@ -9,6 +9,7 @@ export {
   rr, fmtTime
 } from './worldDraw';
 export { drawHUD, wrapText } from './hud';
+export { drawDevOverlay, drawDevBadge } from './devOverlay';
 
 import { G } from '../app/state';
 import { BASE_X, LANE_Y, WORLD_W, clamp, rnd, lerp } from '../data/world';
@@ -21,6 +22,7 @@ import {
   drawTowerAim, drawTargetReticle, drawOrderMarker
 } from './worldDraw';
 import { drawHUD } from './hud';
+import { drawDevOverlay, drawDevBadge } from './devOverlay';
 
 export function render(dt){
   const v = G.view; if (!v) return;
@@ -60,6 +62,8 @@ export function render(dt){
   drawProjectiles(v);
   drawFxWorld(dt);
   if (own) drawOrderMarker();
+  drawDevOverlay(v, own);
   ctx.restore();
   drawHUD(v, own);
+  drawDevBadge();
 }

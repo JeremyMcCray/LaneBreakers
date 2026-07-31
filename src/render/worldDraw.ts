@@ -370,6 +370,68 @@ export function emberPips(e){
   }
   ctx.restore();
 }
+/* Debuff badges — same philosophy as the ember pips: what is WRONG with a unit
+   must be readable from across the lane. One bold icon per debuff, in a row
+   above everything else the unit is showing. The old tints and rings stay as
+   reinforcement; these are the part you can actually read mid-fight. */
+export function debuffBadges(e){
+  const list = [];
+  if (e.st&1)                list.push('stun');
+  if (e.st&4096)             list.push('sil');
+  if ((e.st&2) && !(e.st&1)) list.push('slow');   // a stunned unit is not "slowed"
+  if (e.st&2048)             list.push('root');
+  if (e.st&8388608)          list.push('rup');
+  if (!list.length) return;
+  const y = e.y - e.r - (e.ty===0 ? 76 : 44);
+  const w = 21, x0 = e.x - ((list.length-1)*w)/2;
+  const RING = {stun:'#ffe066', sil:'#6ce0e8', slow:'#9fdcff', root:'#7fdc6a', rup:'#ff2f4f'};
+  ctx.save();
+  ctx.lineCap = 'round';
+  list.forEach((k, i)=>{
+    const cx = x0 + i*w;
+    const pulse = 1 + 0.10*Math.sin(G.time*8 + i*1.7);
+    ctx.fillStyle = '#07090fd8';
+    ctx.strokeStyle = RING[k]; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, y, 9.5*pulse, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.lineWidth = 2.2;
+    if (k==='stun'){                              // a spinning four-point star
+      ctx.fillStyle = '#ffe066';
+      ctx.beginPath();
+      for (let p=0;p<8;p++){
+        const a = G.time*4 + p*Math.PI/4, r2 = p%2 ? 2.6 : 6.2;
+        const px = cx + Math.cos(a)*r2, py = y + Math.sin(a)*r2;
+        p ? ctx.lineTo(px,py) : ctx.moveTo(px,py);
+      }
+      ctx.closePath(); ctx.fill();
+    } else if (k==='sil'){                        // a struck-through mouth
+      ctx.strokeStyle = '#6ce0e8';
+      ctx.beginPath(); ctx.arc(cx, y, 4.6, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-6.5, y+6.5); ctx.lineTo(cx+6.5, y-6.5); ctx.stroke();
+    } else if (k==='slow'){                       // a snowflake
+      ctx.strokeStyle = '#9fdcff';
+      for (let s=0;s<3;s++){
+        const a = s*Math.PI/3 + Math.PI/6;
+        ctx.beginPath();
+        ctx.moveTo(cx-Math.cos(a)*6, y-Math.sin(a)*6);
+        ctx.lineTo(cx+Math.cos(a)*6, y+Math.sin(a)*6);
+        ctx.stroke();
+      }
+    } else if (k==='root'){                       // a sprouting root
+      ctx.strokeStyle = '#7fdc6a';
+      ctx.beginPath(); ctx.moveTo(cx, y+6); ctx.lineTo(cx, y-4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, y+1); ctx.lineTo(cx-4.5, y-4.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, y+1); ctx.lineTo(cx+4.5, y-4.5); ctx.stroke();
+    } else if (k==='rup'){                        // a blood drop
+      ctx.fillStyle = '#ff2f4f';
+      ctx.beginPath();
+      ctx.moveTo(cx, y-6);
+      ctx.quadraticCurveTo(cx+4.6, y+1.5, cx, y+5.6);
+      ctx.quadraticCurveTo(cx-4.6, y+1.5, cx, y-6);
+      ctx.fill();
+    }
+  });
+  ctx.restore();
+}
 export function drawEntity(e, v, own){
   const mine = e.tm===G.myTeam;
   const col = TEAM_COL[e.tm], dk = TEAM_COL_DK[e.tm];
@@ -457,6 +519,8 @@ export function drawEntity(e, v, own){
       ctx.beginPath(); ctx.arc(e.x,e.y,e.r+9,0,7); ctx.stroke(); }
     hpBar(e, Math.max(46, e.r*2.9), 8, 15, {preview:prev, hpText:prev>0});
     emberPips(e);
+    // no debuff badges on creeps — a whole slowed wave wearing icons is noise;
+    // the subtle tints above are enough. Badges are for heroes only.
     return;
   }
   // hero
@@ -631,12 +695,22 @@ export function drawEntity(e, v, own){
       part(e.x+rnd(-e.r*.8,e.r*.8), e.y+rnd(-6,e.r*.5), '#ff5f7a', 1, 40, .5, 2.4, 40);
   }
   if (e.st&8388608){                               // ruptured — it only bites while they run
-    ctx.strokeStyle= (e.st&16) ? '#ff2f4f' : '#ff2f4f77'; ctx.lineWidth=3;
+    const running = (e.st&16)!==0;
+    const rr2 = e.r + 25 + (running ? Math.sin(G.time*10)*3 : 0);
+    ctx.strokeStyle = running ? '#ff2f4f' : '#ff2f4f88';
+    ctx.lineWidth = running ? 5 : 3.5;
     for (let k=0;k<3;k++){
       const a = k/3*Math.PI*2 + G.time*2.2;
-      ctx.beginPath(); ctx.arc(e.x, e.y, e.r+25, a-0.24, a+0.24); ctx.stroke();
+      ctx.beginPath(); ctx.arc(e.x, e.y, rr2, a-0.30, a+0.30); ctx.stroke();
     }
-    if ((e.st&16) && Math.random()<.5) part(e.x, e.y+e.r*.4, '#ff2f4f', 1, 55, .5, 2.6);
+    // running tears the wound wide open — a blood trail and a warning you can read
+    if (running){
+      if (Math.random()<.85)
+        part(e.x+rnd(-e.r*.5,e.r*.5), e.y+e.r*.4, Math.random()<.7?'#ff2f4f':'#8a1020', 2, 60, .65, 3.2);
+      ctx.fillStyle = Math.floor(G.time*6)%2 ? '#ff2f4f' : '#ffb0b0';
+      ctx.font='800 10px Segoe UI'; ctx.textAlign='center';
+      ctx.fillText('RUPTURED', e.x, e.y-e.r-94);
+    }
   }
   if (e.st&8192){                                  // counterspell window
     ctx.strokeStyle='#ffd166'; ctx.lineWidth=4;
@@ -695,6 +769,7 @@ export function drawEntity(e, v, own){
   ctx.strokeText(H.name, e.x, e.y-e.r-40);
   ctx.fillText(H.name, e.x, e.y-e.r-40);
   emberPips(e);
+  debuffBadges(e);
 }
 
 export function drawProjectiles(v){

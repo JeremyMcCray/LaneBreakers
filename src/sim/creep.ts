@@ -27,6 +27,7 @@ export function creepAcquire(S,e){
   return best;
 }
 export function creepThink(S,e,dt){
+  if (e.dummy) return;                          // dev sandbox target — never moves, never swings
   if (e.stun>0) return;
   if (e.windT>0) return;
   if (e.noHeroT>0) e.noHeroT -= dt;

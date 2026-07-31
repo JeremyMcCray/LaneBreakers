@@ -6,7 +6,7 @@ import { applyCmd, buildSnapshot } from '../sim/engine';
 import { G, SLOT_TEAM } from './state';
 import { beginMatch, teamOfSlot } from './shell';
 import { spawnFx, addToast } from '../render/fx';
-import { showEnd } from '../ui/endCard';
+import { showEnd, refreshEndStats } from '../ui/endCard';
 import { showScreen } from '../ui/menus';
 import {
   newLobby, lobbySeat, lobbyFreeSlot, lobbyCap,
@@ -277,6 +277,19 @@ export function copyCode(){
   if (navigator.clipboard) navigator.clipboard.writeText(t);
   addToast('Code copied: '+t);
 }
+/* A client putting up the end card. Guarded: whatever breaks inside, the
+   players still get told the match is over — and we get a stack to fix. */
+function clientShowEnd(w){
+  if (G.endShown) return;
+  try{ showEnd(w); }
+  catch(err){
+    console.error('[LB] end card failed — please report this stack:', err);
+    addToast('End screen hit an error — press F12 and send us the red text');
+    G.endShown = true;
+    const ec = document.getElementById('endcard');
+    if (ec) ec.classList.remove('hide');
+  }
+}
 export function onNetMsg(m, fromSlot){
   /* ---------- host side ---------- */
   if (m.k==='hello'){                       // a client has arrived and told us its pick
@@ -340,13 +353,33 @@ export function onNetMsg(m, fromSlot){
     if (!G.started){ G.matchId = m.mid || null; beginMatch('client', m.picks, m.slot, m.mode); }
     return;
   }
+  if (m.k==='over'){                        // the verdict, tiny and on its own
+    if (!G.started) return;
+    // stamp the outcome onto whatever view we hold so the card can describe it
+    for (const view of [G.view, G.latest]){
+      if (view){ view.ov = true; view.w = m.w; view.hw = view.hw || m.hw; }
+    }
+    clientShowEnd(m.w);
+    return;
+  }
   if (m.k==='s'){                           // snapshot
     if (!G.started) return;
     G.buf.push({rt:now(), v:m});
     if (G.buf.length>28) G.buf.shift();
-    if (m.f) for (const f of m.f) spawnFx(f);
+    // one bad effect must never take the whole message handler down with it —
+    // everything after this loop (G.latest, the end card) still has to run
+    if (m.f) for (const f of m.f){
+      try{ spawnFx(f); }
+      catch(err){ console.error('[LB] fx failed:', f && f.t, err); }
+    }
     G.latest = m;
-    if (m.ov && G.endShown===false) showEnd(m.w);
+    if (m.ov && !G.endShown) clientShowEnd(m.w);
+    // the card may have gone up off the tiny 'over' message before the full
+    // final snapshot landed — upgrade it to the real breakdown when it does
+    else if (m.ov && G.endShown && !G.endHadDetail && m.ps && m.ps.some(p=>p.dby)){
+      try{ refreshEndStats(); }
+      catch(err){ console.error('[LB] end stats refresh failed:', err); }
+    }
     return;
   }
 }

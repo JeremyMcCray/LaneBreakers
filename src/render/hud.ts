@@ -84,6 +84,11 @@ export function drawHUD(v, own){
   ctx.fillText(HD.name.slice(0,3), hx+34, BY+48);
   ctx.fillStyle='#ffcc55'; ctx.beginPath(); ctx.arc(hx+58, BY+72, 14, 0, 7); ctx.fill();
   ctx.fillStyle='#1a1408'; ctx.font='800 14px Segoe UI'; ctx.fillText(me.lvl, hx+58, BY+72);
+  // the Ascendant Scepter — a hero carrying it wears the mark
+  if (me.items.some(i=>i.id==='scepter')){
+    ctx.fillStyle='#ffcc55'; ctx.font='800 15px Segoe UI';
+    ctx.fillText('⚜', hx+10, BY+24);
+  }
   ctx.restore();
   // bars
   const bx = hx+76, bw = Math.max(150, Math.min(214, (W/2-146) - (hx+76)));
@@ -252,7 +257,7 @@ export function drawHUD(v, own){
   }
   ctx.textAlign='center';
   ctx.fillStyle='#8b9ab4'; ctx.font='600 11px Segoe UI';
-  ctx.fillText('[B] SHOP   ·   drag to reorder', ix+ (ITEM_SLOTS*(iw+ig))/2 , BY+82);
+  ctx.fillText('[B] SHOP  ·  drag to reorder  ·  [F1] HELP', ix+ (ITEM_SLOTS*(iw+ig))/2 , BY+82);
   // the item currently in hand
   if (G.drag && G.drag.moved){
     const it = me.items[G.drag.from];

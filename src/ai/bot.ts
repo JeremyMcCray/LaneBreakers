@@ -5,28 +5,30 @@ import { TOWER_X, BASE_X, LANE_Y, ULT_REQ, dist, clamp, armorMult } from '../dat
 import { canCast, castAbility, buyItem, useItem, nearestFoe, foesOf } from '../sim/engine';
 
 /* ============================== BOT AI ============================= */
+/* Every build saves for the Ascendant Scepter once its core is online — the
+   per-hero upgrade is close to a seventh ability, so the bots want it too. */
 export const BOT_BUILD = {
-  vex:  ['boots','blade','quick','fang','vit','plate'],
-  ilva: ['boots','arc','blade','vit','quick','fang'],
-  gruk: ['boots','vit','blade','plate','arc','quick'],
-  brann:['boots','vit','blade','plate','arc','quick'],
-  sable:['boots','blade','quick','fang','vit','arc'],
-  vhal: ['boots','blade','arc','sunder','vit','orb'],   // Symbiosis turns her damage into the brood's
-  ash:  ['boots','arc','orb','ember','vit','wither'],   // pure ability damage now — embers do the work
-  mara: ['boots','vit','blade','titan','plate','quick'],
-  orrin:['boots','arc','blade','orb','vit','quick'],
-  nix:  ['boots','blade','quick','fang','vit','reaver'],
-  thorne:['boots','vit','blade','plate','titan','quick'],
-  krell:['boots','arc','orb','vit','blade','quick'],
-  shiv: ['boots','quell','blade','quick','reaver','vit'],
-  svaar:['boots','vit','blade','cleaver','plate','quick'],
-  liora:['boots','arc','vit','orb','blade','quick'],
-  drex: ['boots','arc','orb','blade','vit','quick'],
-  ronin:['boots','blade','quick','fang','vit','reaver'],
-  zaal: ['boots','arc','orb','vit','ember','quick'],
-  jarak:['boots','blade','quick','fang','vit','plate'],
-  stryg:['boots','quell','blade','quick','fang','vit'],
-  vosk: ['boots','arc','orb','vit','blade','quick']
+  vex:  ['boots','blade','quick','fang','scepter','plate'],
+  ilva: ['boots','arc','blade','vit','scepter','fang'],
+  gruk: ['boots','vit','blade','plate','scepter','quick'],
+  brann:['boots','vit','blade','scepter','plate','quick'],
+  sable:['boots','blade','quick','fang','scepter','arc'],
+  vhal: ['boots','blade','arc','sunder','scepter','orb'],   // Symbiosis turns her damage into the brood's
+  ash:  ['boots','arc','orb','scepter','vit','wither'],     // pure ability damage now — embers do the work
+  mara: ['boots','vit','blade','titan','scepter','quick'],
+  orrin:['boots','arc','blade','orb','scepter','quick'],
+  nix:  ['boots','blade','quick','fang','scepter','reaver'],
+  thorne:['boots','vit','blade','plate','scepter','quick'],
+  krell:['boots','arc','orb','scepter','blade','quick'],
+  shiv: ['boots','quell','blade','quick','scepter','vit'],
+  svaar:['boots','vit','blade','cleaver','scepter','quick'],
+  liora:['boots','arc','vit','orb','scepter','quick'],
+  drex: ['boots','arc','orb','scepter','vit','quick'],
+  ronin:['boots','blade','quick','fang','scepter','reaver'],
+  zaal: ['boots','arc','orb','scepter','vit','quick'],
+  jarak:['boots','blade','quick','fang','scepter','plate'],
+  stryg:['boots','quell','blade','quick','scepter','fang'],
+  vosk: ['boots','arc','orb','scepter','vit','quick']
 };
 export const BOT_SKILL_DEFAULT = [0,1,2,0,0,3,0,1,1,3,1,2];
 export const BOT_SKILL = {};

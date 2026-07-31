@@ -58,6 +58,7 @@ LaneBreakers/
       tournament.ts       Draft / lives / field logic
       persistence.ts      LocalStorage history + stats
     render/               Canvas draw (world, HUD, FX)
+    audio/                Procedural WebAudio sfx (no asset files); fx events → sounds
     ui/                   DOM panels (shop, menus, books, input, end card)
     styles/               CSS split by area; game.css imports the rest
     headless.ts           Exports used by Node (sim + a few app helpers)
@@ -106,6 +107,36 @@ Host (or local practice) runs `simStep`. Online clients receive `buildSnapshot` 
 | `npm run smoke` | Tiny headless match | Sanity-check the sim after rule changes |
 | `npm run smoke:neural` | Neural path smoke | Sanity-check AI wiring |
 | `npm run smoke:parity` | Tour / store / train exports | Quick “did I break the app APIs?” check |
+| `npm run smoke:sandbox` | Dev-sandbox tuning against the real sim | After touching `src/dev/`, `src/data/world.ts` or the `dbg` commands |
+
+---
+
+## Dev sandbox — **F4**
+
+A testing ground for balance work. Press **F4** anywhere (menu or mid-match) — or run `lbDev()` in the console.
+
+Everything the sim knows about a hero is re-read from `src/data/heroes.ts` on the tick or the cast that needs it, so the sandbox just writes into that live object. **Change a number and the next cast uses it** — no reload, no restart. The HUD tooltips and the hero book follow along, because they read the same data.
+
+| Tab | What you can change |
+|-----|---------------------|
+| **Abilities** | Cast range, charges, and the per-rank **value / cooldown / mana** tables for all four spells, on any of the 21 heroes |
+| **Hero** | Base HP / mana / damage / armor and their per-level growth, move speed, attack range, base attack time, projectile speed |
+| **World** | Wave interval, passive gold, XP radius, max level, kills to win, creep aggro ranges, cleave cone, courier delay, match cap |
+| **Sandbox** | Time scale (0.05×–4×), freeze + frame step, freeze bots, training dummies, cheats, range overlays, a live DPS readout |
+| **Changes** | Everything that differs from the shipped numbers, with copy / download / load / reset |
+
+**Spell scaling** — each per-rank row has a `ramp` tool (*start* + *per rank* rewrites `100 · 160 · 220 · 280`) and ±% buttons that always scale from the **shipped** value, so clicking `+25%` twice is still +25%.
+
+**Time control** — `[` halve speed, `=` double it, `\` freeze, `]` step one tick. Freezing plus 0.1× is how you read a wind-up frame by frame. The host of an online match always runs at 1×; the netcode assumes real time on both ends.
+
+**Training dummies** — an inert enemy with the HP, armor and regen you ask for. It never moves, never swings, and pays no gold or XP. Clear the creeps and freeze the bots first for a clean DPS reading.
+
+### Things to know
+
+- Overrides live in **localStorage**, so a tuned session survives a reload. A purple **SANDBOX · n TUNED** badge sits on the HUD whenever any are live — tuned numbers must never be mistaken for shipped balance.
+- Nothing here writes to disk. When you like a number, **Changes → Copy JSON** and put the real value into `src/data/`.
+- The Node trainer under `ai/` reads `dist-sim`, so it only ever sees numbers actually committed to `src/data/`. The in-browser TRAIN screen shares the live objects and *will* train against your overrides — reset before you trust a brain.
+- Item stats are not tunable: `itemStats()` is a hardcoded switch rather than data, so there is nothing to override. Item **costs** are data and could be added later.
 
 ---
 
@@ -197,6 +228,7 @@ On a public repo this stays free/unmetered within GitHub’s limits (jobs die ar
 | Tournament draft rules | `src/app/tournament.ts` |
 | Canvas look | `src/render/` |
 | Menus / shop UI / CSS | `src/ui/`, `src/styles/` |
+| Dev sandbox / live tuning | `src/dev/` |
 
 After sim or data changes that affect training: run **`npm run build:sim`** before the next Node train.
 
@@ -208,6 +240,7 @@ After sim or data changes that affect training: run **`npm run build:sim`** befo
 npm run smoke
 npm run smoke:neural
 npm run smoke:parity
+npm run smoke:sandbox
 npm run build          # also catches TypeScript errors
 ```
 

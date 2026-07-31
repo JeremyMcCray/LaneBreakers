@@ -59,6 +59,8 @@ export function simStep(S,dt){
     if (e.shredT>0) e.shredT-=dt;
     if (e.hasteT>0){ e.hasteT-=dt; if (e.hasteT<=0){ if (e.baseAps) e.aps = e.baseAps; e.ls = 0; } }
     if (e.drT>0)   e.drT-=dt;
+    if (e.fbT>0){ e.fbT-=dt; if (e.fbT<=0) e.fbN=0; }   // Frostbite thaws
+    if (e.fbCd>0) e.fbCd-=dt;
     if (e.hitFlash>0) e.hitFlash-=dt;
     if (e.swing>0) e.swing-=dt;
     if (e.type!=='tower' && e.atkCd>0) e.atkCd = Math.max(0, e.atkCd - dt);
@@ -70,6 +72,8 @@ export function simStep(S,dt){
     tickDot(S,e,dt);
     tickEmber(S,e,dt);
     if (e.ttl!==undefined){ e.ttl-=dt; if (e.ttl<=0 && !e.dead){ e.dead=true; fx(S,{t:'die', x:e.x, y:e.y, team:e.team}); } }
+    // dev sandbox dummy on regen — it heals back so you can read a sustained DPS
+    if (e.dummy && e.dmyRegen>0 && e.hp<e.maxHp) e.hp = Math.min(e.maxHp, e.hp + e.dmyRegen*dt);
     e.moving=false;
   }
   for (const p of S.players) heroThink(S,p,dt);

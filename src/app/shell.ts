@@ -6,7 +6,7 @@ import { HERO_IDS } from '../data/heroes';
 import { newSim, simStep, applyCmd, buildSnapshot } from '../sim/engine';
 import { aiThink, lbCurrentAiSpec } from '../ai/neural/runtime';
 import { G, SLOT_TEAM } from './state';
-import { netSendCmd, lobbySeat, netSendStateAll } from './online';
+import { netSendCmd, netBroadcast, lobbySeat, netSendStateAll } from './online';
 import { spawnFx } from '../render/fx';
 import { render } from '../render/view';
 import { toggleShop, buildShopUI } from '../ui/panels';
@@ -28,13 +28,14 @@ export function beginMatch(mode, picks, mySlot, gameMode){
   G.started = true;
   G.paused = false;
   G.matchCount = (G.matchCount||0) + 1;
-  G.endShown = false;
+  G.endShown = false; G.overMsg = false; G.endHadDetail = false;
   G.view = null; G.latest = null; G.buf = []; G.netFx = [];
   G.acc = 0; G.sendAcc = 0;
   G.order = {type:'stop'}; G.aMode = false; G.hoverId = 0; G.drag = null;
   G.parts = []; G.nums = []; G.rings = []; G.lines = []; G.shake = 0;
   toggleShop(false);
   G.debugOpen=false;
+  G.dev.frozen=false; G.dev.stepReq=0;      // never start a match paused mid-tick
   document.getElementById('debug').classList.add('hide');
   document.getElementById('endcard').classList.add('hide');
   if (mode!=='client'){
@@ -45,7 +46,7 @@ export function beginMatch(mode, picks, mySlot, gameMode){
     }
   }
   document.getElementById('overlay').classList.add('hide');
-  document.getElementById('help').classList.remove('hide');
+  document.getElementById('help').classList.add('hide');   // F1 opens it on demand
   G.cam.x = BASE_X[G.myTeam]; G.cam.y = LANE_Y;
   G.pred.init = false;
   G.last = now();
@@ -130,21 +131,49 @@ export function loop(ts){
 
     if (G.mode!=='client' && G.S){
       const S = G.S;
-      G.acc += dt;
-      let steps = 0;
-      while (G.acc >= TICK && steps < 6){
+      const D = G.dev;
+      // dev sandbox owns the clock: frozen runs only the ticks you ask for,
+      // otherwise time flows at timeScale. Online host stays at 1× — the
+      // netcode assumes real time on both ends.
+      const scale = (G.mode==='host') ? 1 : (D.timeScale||1);
+      const frozen = D.frozen && G.mode!=='host';
+      let steps = 0, budget = 6;
+      if (frozen){
+        budget = Math.min(60, D.stepReq);
+        D.stepReq = 0;
+        G.acc = budget * TICK;
+      } else {
+        G.acc += dt * scale;
+        budget = scale > 1 ? 40 : 6;
+      }
+      while (G.acc >= TICK && steps < budget){
         G.acc -= TICK; steps++;
-        for (const bp of S.players) if (bp.bot) aiThink(S, bp, TICK);
+        for (const bp of S.players) if (bp.bot && !D.freezeBots) aiThink(S, bp, TICK);
         simStep(S, TICK);
       }
+      if (frozen) G.acc = 0;
       for (const f of S.fx){ spawnFx(f); G.netFx.push(f); }
       S.fx = [];
       if (G.netFx.length > 90) G.netFx = G.netFx.slice(-90);
       G.view = buildSnapshot(S, G.myTeam); G.view.f = null;
       if (S.over && !G.endShown) showEnd(S.winner);
+      // the verdict travels as its own tiny reliable message the moment the game
+      // ends — a client's end card must never hinge on the heavyweight final
+      // snapshot surviving the trip
+      if (G.mode==='host' && S.over && !G.overMsg){
+        G.overMsg = true;
+        netBroadcast({k:'over', w:S.winner, hw:S.how||''});
+      }
       if (G.mode==='host'){
         G.sendAcc += dt;
-        if (G.sendAcc >= 1/SNAP_HZ){ G.sendAcc = 0; netSendStateAll(S); }
+        if (G.sendAcc >= 1/SNAP_HZ){
+          G.sendAcc = 0;
+          // the final snapshot hauls the whole post-game payload (breakdowns,
+          // graphs, events) — repeat it for a couple of seconds so every client
+          // has it on the reliable channel, then stop hammering their tabs
+          if (!S.over) G.overSent = 0;
+          if (!S.over || (G.overSent = (G.overSent||0)+1) <= 40) netSendStateAll(S);
+        }
       }
     } else if (G.mode==='client'){
       G.view = interpolatedView();

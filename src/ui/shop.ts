@@ -1,8 +1,10 @@
 // @ts-nocheck
 import { ITEMS, ITEM_IDS, ITEM_CATS, CAT_COL } from '../data/items';
+import { HEROES } from '../data/heroes';
 import { buyPlan } from '../sim/engine';
 import { G } from '../app/state';
 import { cmd } from '../app/shell';
+import { playSfx } from '../audio/sfx';
 
 export const SHOP_HINT = 'Hover an item for details. Components on the left build into the upgrades on the right.';
 export function shopInfo(id){
@@ -22,8 +24,15 @@ export function shopInfo(id){
   const into = ITEM_IDS.filter(o=>(ITEMS[o].from||[]).indexOf(id)>=0);
   if (into.length)
     build += '<br><span style="color:#5a6885">↑ builds into '+into.map(o=>ITEMS[o].name).join(', ')+'</span>';
+  // the Scepter is a different item for every hero — show what it does for YOURS
+  let sc = '';
+  if (id==='scepter' && me){
+    const H = HEROES[me.hid];
+    if (H && H.scepter)
+      sc = '<br><b style="color:'+H.col+'">'+H.name+' — '+H.scepter.name+':</b> '+H.scepter.desc;
+  }
   box.innerHTML = '<b style="color:'+CAT_COL[it.cat]+';font-size:13px">'+it.name+'</b>  '+price+
-                  '<br>'+it.d+build;
+                  '<br>'+it.d+sc+build;
 }
 export function buildShopUI(){
   const board = document.getElementById('shopBoard');
@@ -41,7 +50,7 @@ export function buildShopUI(){
       d.className='chip'; d.dataset.id=id;
       d.style.borderLeftColor = CAT_COL[cat];
       d.innerHTML = '<span class="cn">'+it.name+'</span><span class="cc">'+it.cost+'</span>';
-      d.onclick = ()=>{ cmd({a:'buy', id:id}); };
+      d.onclick = ()=>{ playSfx(d.classList.contains('poor') ? 'error' : 'buy'); cmd({a:'buy', id:id}); };
       d.onmouseenter = ()=> shopInfo(id);
       col.appendChild(d);
     }
@@ -65,8 +74,10 @@ export function refreshShop(v){
   }
 }
 export function toggleShop(on){
+  const was = G.shopOpen;
   G.shopOpen = on===undefined ? !G.shopOpen : on;
   document.getElementById('shop').classList.toggle('hide', !G.shopOpen);
+  if (G.shopOpen && !was) playSfx('click');
   if (G.shopOpen && G.view) refreshShop(G.view);
 }
 

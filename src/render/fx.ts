@@ -2,6 +2,7 @@
 import { ITEMS } from '../data/items';
 import { CLEAVE_R, clamp, dist, rnd } from '../data/world';
 import { G } from '../app/state';
+import { fxSound } from '../audio/sfx';
 
 export function part(x,y,col,n,spd,life,size,rise){
   for (let i=0;i<n;i++){
@@ -22,6 +23,7 @@ export function addToast(txt){
   setTimeout(()=>d.remove(), 2600);
 }
 export function spawnFx(f){
+  fxSound(f);          // both the local-sim and online-client paths land here
   switch(f.t){
     // damage numbers fly out to the SIDE so they never sit on top of the health bar
     case 'dmg':  { const side = Math.random()<.5 ? -1 : 1;

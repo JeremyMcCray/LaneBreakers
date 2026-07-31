@@ -2,11 +2,19 @@
 import {
   clamp, clampToLane, dist, heal, now
 } from '../data/world';
-import { sliceAndDice } from './abilities';
+import { overheal, sliceAndDice } from './abilities';
 import { addEmber, applyDot, applyRoot, applySilence, applySlow, applyStun, damage, disjoint } from './combat';
 import { ent, fx, spawnBrood } from './create';
 
 export function addZone(S,o){ o.id=S.nextId++; S.zones.push(o); return o; }
+/* Shock and Awe — an explosion hurls whatever it catches away from its center. */
+function knockback(o, fx0, fy0, d){
+  if (o.dead || o.type==='tower' || o.colT>0) return;
+  let dx = o.x - fx0, dy = o.y - fy0, dd = Math.hypot(dx,dy);
+  if (dd < 1){ const a = Math.random()*Math.PI*2; dx = Math.cos(a); dy = Math.sin(a); dd = 1; }
+  o.x += dx/dd*d; o.y += dy/dd*d;
+  clampToLane(o);
+}
 export function aoe(S, srcTeam, x, y, r, dmgAmt, src, cb){
   let hit = 0;
   for (const o of S.ents){
@@ -99,6 +107,10 @@ export function stepZones(S,dt){
           damage(S, ent(S,z.src), o, z.dmg, {ability:true});
           applyRoot(S, o, 1.5);
           z.t = 0;                              // sprung
+          // Wild Growth — the trap grows back once, three seconds later
+          if (z.regrow)
+            addZone(S,{kind:'trap', team:z.team, x:z.x, y:z.y, r:z.r, t:48, arm:3,
+              dmg:z.dmg, src:z.src, tag:z.tag});
           break;
         }
       }
@@ -137,9 +149,16 @@ export function stepZones(S,dt){
             fx(S,{t:'dash', x:z.px, y:z.py, x2:h.x, y2:h.y, col:'#ffd9e8'});
             fx(S,{t:'slash', x:h.x, y:h.y, a:h.facing, team:h.team, rng:h.range});
             z.px = h.x; z.py = h.y;
-            // every cut is the flat rank value on top of a full right click
-            damage(S, h, tg, z.dmg + (h.dmg||0), {ability:true});
+            // every cut is the flat rank value on top of a full right click.
+            // Dance of Death: scepter cuts can land Blade Dance crits, and every
+            // crit buys one more cut — the dance runs as long as the blade is hot
+            const crit = z.canCrit && h.crit>0 && Math.random() < h.crit;
+            damage(S, h, tg, (z.dmg + (h.dmg||0)) * (crit?1.9:1), {ability:true, crit:crit});
             z.n--;
+            if (crit && z.ex>0){
+              z.ex--; z.n++;
+              z.t += z.iv; h.castLock += z.iv; h.invT += z.iv;
+            }
             if (z.n<=0){ z.t = 0; h.castLock = 0; h.invT = Math.min(h.invT||0, .2); }
           }
         }
@@ -171,7 +190,14 @@ export function stepZones(S,dt){
           else {
             h.mp -= z.cost;
             fx(S,{t:'nova', x:z.x, y:z.y, r:z.r});
-            aoe(S, z.team, z.x, z.y, z.r, z.dmg, h);
+            let hh = 0;
+            aoe(S, z.team, z.x, z.y, z.r, z.dmg, h, o=>{ if (o.type==='hero') hh++; });
+            // Perpetual Torment — a pulse that catches a hero pays for itself and feeds him
+            if (z.aghs && hh>0){
+              h.mp = Math.min(h.maxMp, h.mp + z.cost);
+              heal(S, h, 0.3*z.dmg*hh);
+              fx(S,{t:'heal', x:h.x, y:h.y});
+            }
           }
         }
       }
@@ -216,6 +242,8 @@ export function stepZones(S,dt){
     } else if (z.kind==='quake' || z.kind==='light' || z.kind==='thicket' || z.kind==='spin'){
       z.tickT -= dt;
       const src = ent(S,z.src);
+      // Wild Growth — Thorne's thicket keeps spreading while it lives
+      if (z.grow && z.r < z.rMax) z.r = Math.min(z.rMax, z.r + 26*dt);
       for (const o of S.ents){
         if (o.dead || o.team===z.team || o.type==='tower') continue;
         if (dist(o.x,o.y,z.x,z.y) < z.r){
@@ -231,7 +259,7 @@ export function stepZones(S,dt){
     } else if (z.kind==='sanct'){
       for (const q of S.players){                       // Liora's ground heals her side
         if (q.team!==z.team || !q.hero || q.hero.dead) continue;
-        if (dist(q.hero.x,q.hero.y,z.x,z.y) < z.r) heal(S, q.hero, z.hps*dt);
+        if (dist(q.hero.x,q.hero.y,z.x,z.y) < z.r) overheal(S, q.hero, z.hps*dt, z.aghs);
       }
       for (const o of S.ents){
         if (o.dead || o.team===z.team || o.type==='tower') continue;
@@ -246,7 +274,10 @@ export function stepZones(S,dt){
           if (o.dead || o.team===z.team || o.type==='tower') continue;
           if (dist(o.x,o.y,z.x,z.y) > z.r) continue;
           fx(S,{t:'blast', x:z.x, y:z.y, r:150, col:'#ff7a3c'});
-          aoe(S, z.team, z.x, z.y, 150, z.dmg, ent(S,z.src), o2=> applySlow(o2,.40,2));
+          aoe(S, z.team, z.x, z.y, 150, z.dmg, ent(S,z.src), o2=>{
+            applySlow(o2,.40,2);
+            if (z.kb) knockback(o2, z.x, z.y, 150);     // Shock and Awe
+          });
           z.t = 0;                              // spent
           break;
         }
@@ -255,7 +286,8 @@ export function stepZones(S,dt){
       // the fuse ran out: the launch blast lands where he was standing, then he goes
       const q = S.players[z.slot], h = q && q.hero;
       fx(S,{t:'blast', x:z.x, y:z.y, r:z.r, col:'#ff7a3c'});
-      aoe(S, z.team, z.x, z.y, z.r, z.dmg, h || ent(S,z.src));
+      aoe(S, z.team, z.x, z.y, z.r, z.dmg, h || ent(S,z.src),
+          z.kb ? (o=> knockback(o, z.x, z.y, 150)) : undefined);
       if (h && !h.dead){
         h.x = z.tx; h.y = z.ty; clampToLane(h);
         fx(S,{t:'dash', x:z.x, y:z.y, x2:h.x, y2:h.y, col:'#ff7a3c'});
@@ -264,7 +296,10 @@ export function stepZones(S,dt){
     } else if (z.kind==='bomb' && z.t<=0){
       const src = ent(S,z.src);
       fx(S,{t:'blast', x:z.x, y:z.y, r:z.r, col:'#ff7a3c'});
-      aoe(S, z.team, z.x, z.y, z.r, z.dmg, src, o=> applySlow(o,.30,1.5));
+      aoe(S, z.team, z.x, z.y, z.r, z.dmg, src, o=>{
+        applySlow(o,.30,1.5);
+        if (z.kb) knockback(o, z.x, z.y, 150);          // Shock and Awe
+      });
     } else if (z.kind==='azero' && z.t<=0){
       const src = ent(S,z.src);
       fx(S,{t:'blast', x:z.x, y:z.y, r:z.r, col:'#bfe9ff'});

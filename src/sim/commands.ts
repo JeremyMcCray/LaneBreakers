@@ -4,12 +4,15 @@ import {
 } from '../data/world';
 import { HEROES } from '../data/heroes';
 import { castAbility } from './abilities';
-import { ent, fx } from './create';
+import { kill } from './combat';
+import { ent, fx, spawnPet } from './create';
 import { buyItem, moveItem, sellItem, useItem } from './shop';
 import { addXp } from './stats';
 
 export function applyCmd(S, slot, c){
-  const p = S.players[slot];
+  // dev sandbox cheats may be aimed at another seat (c.sl) — everything else is
+  // always the sender's own hero. The client only offers cross-seat cheats in practice.
+  const p = (c.a==='dbg' && c.sl!==undefined && S.players[c.sl]) ? S.players[c.sl] : S.players[slot];
   if (!p || S.over) return;
   const team = p.team;
   switch(c.a){
@@ -48,11 +51,47 @@ export function applyCmd(S, slot, c){
         case 'god':    p.god = !p.god; break;
         case 'wave':   S.waveT = 0.05; break;
         case 'clear':
-          for (const o of S.ents) if (o.type==='creep' && !o.dead){
+          for (const o of S.ents) if (o.type==='creep' && !o.dead && !o.dummy){
             o.dead = true; fx(S,{t:'die', x:o.x, y:o.y, team:o.team});
           }
           break;
         case 'fast':   S.fastGold = !S.fastGold; break;
+        /* ---- dev sandbox ---- */
+        case 'free':   p.devFree = !p.devFree; if (p.devFree) p.cds=[0,0,0,0]; break;
+        case 'maxsk':  {
+          const H = HEROES[p.heroId];
+          for (let i=0;i<4;i++){
+            const A = H.abilities[i], max = A.ult?3:4;
+            if (p.sk[i] < max){ p.sk[i] = max; if (A.charges) p.chg[i] = A.charges; }
+          }
+          p.points = 0;
+          break; }
+        case 'resetsk': p.sk=[0,0,0,0]; p.chg=[0,0,0,0]; p.points=p.lvl; break;
+        case 'respawn': p.respawn = 0.05; break;
+        // dies without feeding — no bounty, no score, just the respawn timer
+        case 'suicide': if (h && !h.dead){ h.hp = 0; kill(S, null, h); } break;
+        case 'setgold': p.gold = Math.max(0, c.v||0); break;
+        case 'setlvl': {
+          const want = Math.max(1, Math.min(MAX_LEVEL, Math.round(c.v||1)));
+          if (want > p.lvl) addXp(S, p, XP_TABLE[want] - p.xp);
+          break; }
+        case 'sethp':  if (h) h.hp = Math.max(1, Math.min(h.maxHp, c.v||h.maxHp)); break;
+        case 'setmp':  if (h) h.mp = Math.max(0, Math.min(h.maxMp, c.v||h.maxMp)); break;
+        case 'dummy': {
+          if (!h) break;
+          const face = team ? -1 : 1;
+          const hp = Math.max(1, c.v || 20000);
+          spawnPet(S, 1-team, h.x + face*300, h.y, undefined, {
+            dummy:true, static:true, r:22, dmg:0, range:0, ms:0,
+            hp:hp, maxHp:hp, armor:c.arm||0, dmyRegen:c.rg||0
+          });
+          break; }
+        case 'nodummy':
+          for (const o of S.ents) if (o.dummy && !o.dead){ o.dead = true; }
+          break;
+        case 'healdummy':
+          for (const o of S.ents) if (o.dummy && !o.dead) o.hp = o.maxHp;
+          break;
       }
       break; }
     case 'use':    useItem(S,p,c.slot,c.x,c.y); break;

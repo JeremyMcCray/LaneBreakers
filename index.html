@@ -40,7 +40,8 @@
     <button onclick="dbg('clear')">Clear all creeps</button>
     <button onclick="dbg('fast')">Toggle fast gold</button>
   </div>
-  <div class="note" style="margin-top:8px">Applies to your own hero. Works in practice and in a live match.</div>
+  <div class="note" style="margin-top:8px">Applies to your own hero. Works in practice and in a live match.<br>
+  Press <b>F4</b> for the SANDBOX — live spell ranges, damage, scaling, time control and dummies.</div>
 </div>
 
 <!-- ================= HELP ================= -->
@@ -52,8 +53,9 @@
   <span class="kbd">Q W E R</span> cast ability<br>
   <span class="kbd">Shift</span>+<span class="kbd">Q/W/E/R</span> level ability<br>
   <span class="kbd">1</span>–<span class="kbd">6</span> use item slot<br>
-  <span class="kbd">B</span> shop &nbsp; <span class="kbd">Space</span> recenter<br>
-  <span class="kbd">F1</span> this panel &nbsp; <span class="kbd">F2</span> attack click &nbsp; <span class="kbd">F3</span> debug<br><span style="color:#4a5670">Full hero and item reference on the menu screen.</span><br><br><b>ATTACK CLICK</b> — <span class="kbd">A</span>+<span class="kbd">LMB</span> in SMART mode
+  <span class="kbd">B</span> shop &nbsp; <span class="kbd">Space</span> recenter &nbsp; <span class="kbd">M</span> mute<br>
+  <span class="kbd">F1</span> this panel &nbsp; <span class="kbd">F2</span> attack click<br>
+  <span class="kbd">F3</span> debug &nbsp; <span class="kbd">F4</span> sandbox &mdash; live balance tuning<br><span style="color:#4a5670">Full hero and item reference on the menu screen.</span><br><br><b>ATTACK CLICK</b> — <span class="kbd">A</span>+<span class="kbd">LMB</span> in SMART mode
 attacks whatever sits nearest your <i>cursor</i>, so you never pixel-hunt a creep's centre.
 It also keeps going: when that target dies you roll onto the next one in range, so you can
 hold the wave without re-clicking. <span class="kbd">S</span> stops it.
@@ -87,6 +89,7 @@ Right-click is always just move — or a single attack, if you click directly on
   <div class="card">
     <h1>LANEBREAKER</h1>
     <div class="sub">1 v 1 MID · PEER TO PEER · NO SERVER</div>
+    <div id="verTag" style="color:#3d4863;font-size:11px;margin-top:2px"></div>
 
     <!-- hero select -->
     <div id="scrHero">
@@ -96,6 +99,9 @@ Right-click is always just move — or a single attack, if you click directly on
         <button onclick="showScreen('scrStats')">Match History</button>
         <button onclick="showScreen('scrHeroBook')">Heroes</button>
         <button onclick="showScreen('scrItems')">Items</button>
+        <button id="btnMute" title="Mute sound — M in match" onclick="sfxMuteClick()" style="min-width:44px">🔊</button>
+        <input type="range" id="sfxVol" min="0" max="100" step="1" title="Sound volume"
+               style="width:110px;accent-color:var(--acc);align-self:center">
       </div>
       <h2>Choose your hero
         <button onclick="randomHero()" style="float:right;padding:5px 14px;font-size:12px;margin-top:-8px">Random Hero</button>
