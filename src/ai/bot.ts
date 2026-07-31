@@ -11,8 +11,8 @@ export const BOT_BUILD = {
   gruk: ['boots','vit','blade','plate','arc','quick'],
   brann:['boots','vit','blade','plate','arc','quick'],
   sable:['boots','blade','quick','fang','vit','arc'],
-  vhal: ['boots','arc','vit','blade','quick','fang'],
-  ash:  ['boots','arc','orb','blade','vit','quick'],
+  vhal: ['boots','blade','arc','sunder','vit','orb'],   // Symbiosis turns her damage into the brood's
+  ash:  ['boots','arc','orb','ember','vit','wither'],   // pure ability damage now — embers do the work
   mara: ['boots','vit','blade','titan','plate','quick'],
   orrin:['boots','arc','blade','orb','vit','quick'],
   nix:  ['boots','blade','quick','fang','vit','reaver'],
@@ -21,7 +21,12 @@ export const BOT_BUILD = {
   shiv: ['boots','quell','blade','quick','reaver','vit'],
   svaar:['boots','vit','blade','cleaver','plate','quick'],
   liora:['boots','arc','vit','orb','blade','quick'],
-  drex: ['boots','arc','orb','blade','vit','quick']
+  drex: ['boots','arc','orb','blade','vit','quick'],
+  ronin:['boots','blade','quick','fang','vit','reaver'],
+  zaal: ['boots','arc','orb','vit','ember','quick'],
+  jarak:['boots','blade','quick','fang','vit','plate'],
+  stryg:['boots','quell','blade','quick','fang','vit'],
+  vosk: ['boots','arc','orb','vit','blade','quick']
 };
 export const BOT_SKILL_DEFAULT = [0,1,2,0,0,3,0,1,1,3,1,2];
 export const BOT_SKILL = {};

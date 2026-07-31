@@ -11,8 +11,8 @@ export function newSim(picks, mode){
   setLaneMode(mode);
   const big = mode==='2v2';
   const S = {
-    t:0, tick:0, nextId:1, ents:[], projs:[], fx:[], zones:[],
-    waveT:FIRST_WAVE, waveNum:0, winner:-1, over:false, aggro:[null,null],
+    t:0, tick:0, nextId:1, ents:[], projs:[], fx:[], zones:[], tag:null, seriesT:0,
+    waveT:FIRST_WAVE, waveNum:0, winner:-1, over:false, aggro:[null,null], towerAggro:[null,null],
     mode:mode, big:big, teamKills:[0,0], winKills: big?KILLS_TO_WIN_2V2:KILLS_TO_WIN,
     players:[]
   };
@@ -23,14 +23,15 @@ export function newSim(picks, mode){
       sk:[0,0,0,0], cds:[0,0,0,0], chg:[0,0,0,0], chgT:[0,0,0,0], chgM:[0,0,0,0],
       items:[], pending:[],
       kills:0, deaths:0, assists:0, cs:0, denies:0, respawn:0, hero:null,
-      dmgHero:0, dmgAll:0, healed:0,
+      dmgHero:0, dmgAll:0, healed:0, dmgTaken:0, goldEarned:START_GOLD,
+      dmgBy:{}, dmgHeroBy:{}, takenBy:{}, series:[], events:[],
       order:{type:'stop', x:0, y:0, tid:0}, lastCastAt:-99
     });
   });
   const twrHp = big ? 2300 : 1500;
   for (let tm=0; tm<2; tm++){
     mkEnt(S,{type:'tower', team:tm, x:TOWER_X[tm], y:LANE_Y, r:46,
-      hp:twrHp, maxHp:twrHp, armor:9, dmg: big?150:135, range:720, bat:0.95, atkCd:0, ramp:0, tid:0});
+      hp:twrHp, maxHp:twrHp, armor:9, dmg: big?150:135, range:576, bat:0.95, atkCd:0, ramp:0, tid:0, lockT:0, lockId:0, heroThreatLockT:0});
   }
   for (const p of S.players) spawnHero(S, p);
   return S;
@@ -61,7 +62,7 @@ export function spawnHero(S,p){
     x:BASE_X[p.team], y:LANE_Y + (p.slot>1 ? 60 : -60)*(S.players.length>2?1:0), r:26,
     hp:1, maxHp:1, mp:1, maxMp:1, atkCd:0, windT:0, wTid:0, castLock:0, facing:p.team?Math.PI:0,
     shield:0, shieldT:0, shieldRef:0, asT:0, asP:0, lsT:0, lsP:0, msT:0, msP:0,
-    armT:0, armB:0, regT:0, regP:0, bonusHp:0, bonusDmg:0, colT:0,
+    armT:0, armB:0, regT:0, regP:0, bonusHp:0, bonusDmg:0, colT:0, towerAgroDropCd:0,
     drT:0, drP:0, markT:0, markP:0, rendT:0, rendV:0, dotT:0, dotDps:0, dotSrc:0,
     salveT:0, draughtT:0, phaseCd:0, prevMaxHp:0, prevMaxMp:0, hitFlash:0, dead:false, curTid:0
   });
@@ -84,5 +85,25 @@ export function spawnPet(S, team, x, y, ttl, o){
     ms:318, ranged:false, laneOff:rnd(-70,70), tid:0, ttl:ttl}, o));
   clampToLane(e);
   return e;
+}
+
+/* One of Vhal's spawnlings. Symbiosis is what makes it worth anything — the brood
+   is cut from her own damage and health, so her items scale the whole swarm.
+   Kept in step with her by updateHeroStats for as long as it lives. */
+export function broodStats(h, V){
+  return {hp: Math.round(110 + h.maxHp*V/400), dmg: Math.round(12 + h.dmg*V/100)};
+}
+export function symbiosisRank(p){
+  const A = HEROES[p.heroId].abilities[2];
+  return (A && A.grants==='symbiosis' && p.sk[2]>0) ? A.val[p.sk[2]-1] : 0;
+}
+export function spawnBrood(S, p, x, y, ttl){
+  const h = p.hero;
+  const st = broodStats(h, symbiosisRank(p));
+  return spawnPet(S, p.team, x, y, ttl, {
+    brood:true, owner:h.id, oslot:p.slot, r:13,
+    hp:st.hp, maxHp:st.hp, dmg:st.dmg, armor:0,
+    range:95, bat:0.9, aps:1/0.9, baseAps:1/0.9, ms:330
+  });
 }
 

@@ -14,8 +14,9 @@ import {
   LANE_Y, clamp, dist, dist2, clampToLane, heal, rnd
 } from '../data/world';
 import { HEROES } from '../data/heroes';
-import { ent, fx, mkEnt, nearbyHeroes, playerOf, spawnPet } from './create';
-import { damage, kill, applyDot, applySlow, applyRoot, applySilence, applyStun, disjoint, warded } from './combat';
+import { ent, fx, mkEnt, nearbyHeroes, playerOf, spawnBrood, spawnPet } from './create';
+import { damage, kill, addEmber, applyDot, applySlow, applyRoot, applySilence, applyStun,
+         clearEmber, disjoint, warded } from './combat';
 import { addZone, aoe, nearestFoe } from './zones';
 import { updateHeroStats } from './stats';
 import { cancelWind } from './attack';
@@ -58,6 +59,10 @@ export function castAbility(S,p,i,tx,ty){
   fx(S,{t:'cast', x:e.x, y:e.y, col:H.col});
   const K = H.id + i;
   const wasX = e.x, wasY = e.y;
+  // everything this cast does — now, or later out of a projectile or zone it leaves
+  // behind — is booked against this ability slot on the post-game breakdown
+  const slotTag = 'a'+i, projMark = S.projs.length, zoneMark = S.zones.length;
+  S.tag = slotTag;
   switch(K){
   /* ---- VEX ---- */
   case 'vex0': {
@@ -69,10 +74,14 @@ export function castAbility(S,p,i,tx,ty){
     break; }
   case 'vex1':
     e.asT=5; e.asP=V; e.lsT=5; e.lsP=.30;
-    fx(S,{t:'buff', x:e.x, y:e.y, col:'#ff9b4a'}); break;
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#ff9b4a'});
+    fx(S,{t:'blast', x:e.x, y:e.y, r:140, col:'#ff9b4a'});
+    break;
   case 'vex2':
     e.shield=V; e.shieldT=3; e.shieldRef=.6;
-    fx(S,{t:'buff', x:e.x, y:e.y, col:'#8fe3ff'}); break;
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#8fe3ff'});
+    fx(S,{t:'counter', x:e.x, y:e.y});
+    break;
   case 'vex3': {
     const tg = nearestFoe(S, e.team, tx, ty, 280);
     if (tg){
@@ -122,6 +131,7 @@ export function castAbility(S,p,i,tx,ty){
     updateHeroStats(S,p);
     e.hp = Math.min(e.maxHp, e.hp + V);
     fx(S,{t:'blast', x:e.x, y:e.y, r:220, col:'#ffb45a'});
+    fx(S,{t:'quake', x:e.x, y:e.y, r:220});
     break; }
   /* ---- BRANN ---- */
   case 'brann0': {
@@ -172,49 +182,62 @@ export function castAbility(S,p,i,tx,ty){
     break; }
   /* ---- VHAL ---- */
   case 'vhal0': {
-    const a = Math.atan2(ty-e.y, tx-e.x);
-    S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
-      vx:Math.cos(a)*1050, vy:Math.sin(a)*1050, life:820/1050, dmg:V, src:e.id, r:16,
-      dot:{dps:V/4, t:4}, col:'#b78cff'});
+    for (let n=0;n<V;n++){
+      const a = (n/V)*Math.PI*2 + rnd(0,1);
+      spawnBrood(S, p, e.x+Math.cos(a)*54, e.y+Math.sin(a)*54, 20);
+    }
+    fx(S,{t:'blast', x:e.x, y:e.y, r:130, col:'#b78cff'});
     break; }
   case 'vhal1': {
-    for (let n=0;n<V;n++){
-      const a = (n/V)*Math.PI*2;
-      spawnPet(S, e.team, e.x+Math.cos(a)*54, e.y+Math.sin(a)*54, 14);
+    const brood = broodOf(S, e);
+    fx(S,{t:'blast', x:tx, y:ty, r:200, col:'#c9a6ff'});
+    for (const o of brood){
+      const px=o.x, py=o.y;
+      const a2 = Math.random()*Math.PI*2;
+      o.x = tx + Math.cos(a2)*rnd(16,86); o.y = ty + Math.sin(a2)*rnd(16,86);
+      clampToLane(o);
+      o.aps = (o.baseAps || 1/0.9) * (1 + V/100);
+      o.ls = .40; o.hasteT = 5;
+      o.tid = 0; o.acqT = 0; o.leashX = undefined;   // re-acquire wherever they land
+      fx(S,{t:'dash', x:px, y:py, x2:o.x, y2:o.y, col:'#b78cff'});
     }
-    fx(S,{t:'blast', x:e.x, y:e.y, r:120, col:'#b78cff'});
+    aoe(S, e.team, tx, ty, 200, 0, e, o=> applySlow(o,.30,2));
     break; }
-  case 'vhal2':
-    addZone(S,{kind:'miasma', team:e.team, x:tx, y:ty, r:240, t:4,
-      dps:V, slow:.30, src:e.id, tickT:0});
-    break;
+  case 'vhal2': break;                         // Symbiosis is passive
   case 'vhal3':
-    fx(S,{t:'blast', x:tx, y:ty, r:330, col:'#c9a6ff'});
-    aoe(S, e.team, tx, ty, 330, V, e, o=>{ applyDot(S, o, V*0.12, 4, e.id); });
+    e.hiveT = 16; e.hiveP = V/100;
+    addZone(S,{kind:'hive', team:e.team, follow:e.id, x:e.x, y:e.y, r:550, rr:550,
+      t:16, iv:2, tickT:2, cap:8, slot:p.slot});
+    fx(S,{t:'blast', x:e.x, y:e.y, r:300, col:'#c9a6ff'});
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#b78cff'});
     break;
   /* ---- ASH ---- */
   case 'ash0': {
     const a = Math.atan2(ty-e.y, tx-e.x);
     S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
       vx:Math.cos(a)*1150, vy:Math.sin(a)*1150, life:820/1150, dmg:V, src:e.id, r:17,
-      dot:{dps:V*0.13, t:3}, col:'#ffb347'});
+      emb:2, col:'#ffb347'});
     break; }
-  case 'ash1':
-    e.armT=5; e.armB=4;
-    addZone(S,{kind:'fire', team:e.team, follow:e.id, x:e.x, y:e.y, r:240, t:5,
-      dps:V, slow:0, src:e.id, tickT:0});
-    fx(S,{t:'buff', x:e.x, y:e.y, col:'#ffb347'});
-    break;
+  case 'ash1': break;                          // Wildfire is passive
   case 'ash2': {
-    const ox=e.x, oy=e.y;
-    e.x=tx; e.y=ty; clampToLane(e);
-    e.msT=2; e.msP=.15;
-    fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:'#ffb347'});
-    addZone(S,{kind:'fire', team:e.team, x:ox, y:oy, r:190, t:4, dps:V, slow:0, src:e.id, tickT:0});
+    fx(S,{t:'blast', x:tx, y:ty, r:300, col:'#ff8a4a'});
+    for (const o of S.ents){
+      if (o.dead || o.team===e.team || o.type==='tower') continue;
+      if (dist(o.x,o.y,tx,ty) > 300 + o.r) continue;
+      const n = o.embN||0;
+      if (n>0){
+        fx(S,{t:'detonate', x:o.x, y:o.y, v:n});
+        clearEmber(o);
+        damage(S, e, o, V*n, {ability:true});
+      } else {
+        addEmber(S, o, 2, e);                  // nothing to blow out — light them instead
+      }
+    }
     break; }
   case 'ash3':
-    addZone(S,{kind:'meteor', team:e.team, x:tx, y:ty, r:280, t:.65, dmg:V, src:e.id});
-    fx(S,{t:'telegraph', x:tx, y:ty, r:280, life:.65, col:'#ffb347'});
+    addZone(S,{kind:'firestorm', team:e.team, x:tx, y:ty, r:380, t:6,
+      dps:V, src:e.id, tickT:0, embT:0});
+    fx(S,{t:'blast', x:tx, y:ty, r:380, col:'#ff8a4a'});
     break;
   /* ---- MARA ---- */
   case 'mara0': {
@@ -333,7 +356,7 @@ export function castAbility(S,p,i,tx,ty){
     const fromX = e.x, fromY = e.y;            // where the dash STARTED — the echo retraces this
     sliceAndDice(S, p, fromX, fromY, tx, ty, V, false);
     if (wasEnraged)
-      addZone(S,{kind:'echo', team:e.team, x:fromX, y:fromY, r:120, t:1,
+      addZone(S,{kind:'echo', team:e.team, x:fromX, y:fromY, r:120, t:0.5,
                  ox:fromX, oy:fromY, tx:e.x, ty:e.y, dmg:V, src:e.id, slot:p.slot});
     break; }
   case 'shiv3':
@@ -493,8 +516,169 @@ export function castAbility(S,p,i,tx,ty){
     e.msT=6; e.msP=.25;
     fx(S,{t:'blast', x:e.x, y:e.y, r:150, col:'#ff7fd0'});
     break; }
+  /* ---- RONIN ---- */
+  case 'ronin0':
+    e.spinT = 3;
+    e.csT = Math.max(e.csT||0, 3);              // spinning through everything magical
+    addZone(S,{kind:'spin', team:e.team, follow:e.id, x:e.x, y:e.y, r:260, t:3,
+      dps:V, slow:0, src:e.id, tickT:0});
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#ff9ec4'});
+    break;
+  case 'ronin1': {
+    const w = spawnPet(S, e.team, tx, ty, 9, {static:true, ward:true, r:11,
+      hp:70, maxHp:70, dmg:0, armor:0, range:0, bat:9, ms:0});
+    addZone(S,{kind:'hward', team:e.team, follow:w.id, x:w.x, y:w.y, r:340, t:9,
+      hps:V, tickT:0});
+    fx(S,{t:'buff', x:w.x, y:w.y, col:'#8affd4'});
+    break; }
+  case 'ronin2': break;                        // Blade Dance is passive
+  case 'ronin3': {
+    const tg = nearestFoe(S, e.team, tx, ty, 340);
+    if (tg){
+      e.castLock = 2.1; e.invT = 2.2;
+      addZone(S,{kind:'omni', team:e.team, x:e.x, y:e.y, ax:tg.x, ay:tg.y, r:420,
+        t:2.2, n:6, iv:0.3, tickT:0, dmg:V, px:e.x, py:e.y, slot:p.slot});
+      fx(S,{t:'blast', x:tg.x, y:tg.y, r:120, col:'#ffd9e8'});
+    }
+    break; }
+  /* ---- ZAAL ---- */
+  case 'zaal0':
+    chainLightning(S, e, tx, ty, V, 5, .22, 480, '#9fd8ff');
+    break;
+  case 'zaal1':
+    addZone(S,{kind:'strike', team:e.team, x:tx, y:ty, r:260, t:.5, mt:.5,
+      dmg:V, stun:0.7, bolt:1, src:e.id, col:'#cfe9ff'});
+    fx(S,{t:'telegraph', x:tx, y:ty, r:260, life:.5, col:'#9fd8ff'});
+    break;
+  case 'zaal2': break;                         // Static Field is passive
+  case 'zaal3': {
+    for (const q of S.players){
+      if (q.team===e.team || !q.hero || q.hero.dead) continue;
+      fx(S,{t:'lightning', x:q.hero.x, y:q.hero.y, r:140, col:'#cfe9ff'});
+      damage(S, e, q.hero, V, {ability:true});
+    }
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#9fd8ff'});
+    break; }
+  /* ---- JARAK ---- */
+  case 'jarak0': {
+    const a0 = Math.atan2(ty-e.y, tx-e.x);
+    for (const off of [-0.20, 0, 0.20]){
+      const a = a0 + off;
+      S.projs.push({id:S.nextId++, kind:'axe', team:e.team, x:e.x, y:e.y-8,
+        vx:Math.cos(a)*1250, vy:Math.sin(a)*1250, life:700/1250, dmg:V, src:e.id, r:15,
+        slow:{p:.30,t:2}, col:'#7be0a4'});
+    }
+    break; }
+  case 'jarak1': break;                        // Fervor is passive
+  case 'jarak2':
+    e.armT=8; e.armB=V; e.msT=8; e.msP=.20; e.bzT=8;
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#7be0a4'});
+    fx(S,{t:'blast', x:e.x, y:e.y, r:150, col:'#7be0a4'});
+    break;
+  case 'jarak3': {
+    for (const q of S.players){
+      if (q.team!==e.team || !q.hero || q.hero.dead) continue;
+      if (dist(q.hero.x, q.hero.y, e.x, e.y) > 700) continue;
+      q.hero.asT = 7; q.hero.asP = Math.max(q.hero.asP||0, V);
+      q.hero.lsT = 7; q.hero.lsP = Math.max(q.hero.lsP||0, .30);
+      fx(S,{t:'buff', x:q.hero.x, y:q.hero.y, col:'#7be0a4'});
+    }
+    fx(S,{t:'blast', x:e.x, y:e.y, r:700, col:'#7be0a4'});
+    break; }
+  /* ---- STRYG ---- */
+  case 'stryg0':
+    addZone(S,{kind:'strike', team:e.team, x:tx, y:ty, r:280, t:1.2, mt:1.2,
+      dmg:V, sil:3, src:e.id, col:'#ff5f7a'});
+    fx(S,{t:'telegraph', x:tx, y:ty, r:280, life:1.2, col:'#ff5f7a'});
+    break;
+  case 'stryg1':
+    e.brT=8; e.brP=V/100; e.vulT=8; e.vulP=.20;
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#ff5f7a'});
+    break;
+  case 'stryg2': break;                        // Thirst is passive
+  case 'stryg3': {
+    let tg=null, bd=360;                       // heroes only — creeps cannot be ruptured
+    for (const o of S.ents){
+      if (o.dead || o.team===e.team || o.type!=='hero') continue;
+      const d = dist(o.x,o.y,tx,ty);
+      if (d<bd){ bd=d; tg=o; }
+    }
+    if (tg && !warded(S, tg)){
+      tg.rupT=6; tg.rupV=V; tg.rupSrc=e.id;
+      tg.rupLx=tg.x; tg.rupLy=tg.y; tg.rupBank=0;
+      fx(S,{t:'rupture', x:tg.x, y:tg.y});
+    }
+    break; }
+  /* ---- VOSK ---- */
+  case 'vosk0':
+    addZone(S,{kind:'strike', team:e.team, x:tx, y:ty, r:240, t:.55, mt:.55,
+      dmg:V, stun:1.4, src:e.id, col:'#c58aff'});
+    fx(S,{t:'telegraph', x:tx, y:ty, r:240, life:.55, col:'#c58aff'});
+    break;
+  case 'vosk1':
+    addZone(S,{kind:'edict', team:e.team, follow:e.id, x:e.x, y:e.y, r:340, t:8,
+      iv:0.5, tickT:0.5, dmg:V, src:e.id});
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#c58aff'});
+    break;
+  case 'vosk2':
+    chainLightning(S, e, tx, ty, V, 4, .18, 460, '#d8b0ff', o=> applySlow(o,.50,1));
+    break;
+  case 'vosk3':
+    addZone(S,{kind:'nova', team:e.team, follow:e.id, x:e.x, y:e.y, r:340, t:12,
+      iv:0.8, tickT:0.05, dmg:V, cost:22, slot:p.slot});
+    fx(S,{t:'blast', x:e.x, y:e.y, r:340, col:'#c58aff'});
+    break;
   }
+  for (let n=projMark; n<S.projs.length; n++) if (!S.projs[n].tag) S.projs[n].tag = slotTag;
+  for (let n=zoneMark; n<S.zones.length; n++) if (!S.zones[n].tag) S.zones[n].tag = slotTag;
+  // Zaal's Static Field bleeds everything nearby every single time he casts
+  if (H.id==='zaal' && p.sk[2]>0){
+    const pct = H.abilities[2].val[p.sk[2]-1]/100;
+    let n2 = 0;
+    S.tag = 'a2';                                // the field, not the spell that set it off
+    for (const o of S.ents){
+      if (o.dead || o.team===e.team || o.type==='tower') continue;
+      if (dist(o.x,o.y,e.x,e.y) > 700) continue;
+      damage(S, e, o, o.hp*pct, {ability:true});
+      n2++;
+    }
+    if (n2) fx(S,{t:'static', x:e.x, y:e.y, r:700});
+  }
+  S.tag = null;
   if (A.blink && (e.x!==wasX || e.y!==wasY)) disjoint(S, e);
+}
+/* A bolt that leaps from body to body, losing power with every jump.
+   The first arc reaches out from the cast point; every one after it from the last body hit. */
+export function chainLightning(S, src, x, y, dmg, jumps, fall, jumpR, col, onHit){
+  const seen = [];
+  let fromX = src.x, fromY = src.y - 8;
+  let cx = x, cy = y, cur = dmg, n = 0;
+  for (let k=0; k<jumps; k++){
+    let best=null, bd = k===0 ? 320 : jumpR;
+    for (const o of S.ents){
+      if (o.dead || o.team===src.team || o.type==='tower') continue;
+      if (seen.indexOf(o.id)>=0) continue;
+      const d = dist(o.x,o.y,cx,cy);
+      if (d<bd){ bd=d; best=o; }
+    }
+    if (!best) break;
+    seen.push(best.id);
+    fx(S,{t:'chain', x:fromX, y:fromY, x2:best.x, y2:best.y-6, col:col});
+    fromX = best.x; fromY = best.y-6;
+    cx = best.x; cy = best.y;
+    damage(S, src, best, cur, {ability:true});
+    if (onHit && !best.dead) onHit(best);
+    cur *= (1 - fall);
+    n++;
+  }
+  if (!n) fx(S,{t:'chain', x:src.x, y:src.y-8, x2:x, y2:y, col:col});
+  return n;
+}
+/* Every spawnling still answering to this hero. */
+export function broodOf(S, e){
+  const out = [];
+  for (const o of S.ents) if (!o.dead && o.brood && o.owner===e.id) out.push(o);
+  return out;
 }
 /* Full rage: Shiv's abilities all get their second gear. */
 export function enraged(e){ return !!(e && e.rageOn && e.rage>=100); }
@@ -543,7 +727,7 @@ export function spawnIllusion(S, p, x, y, ttl, pct, lvl, ult){
   const sc = illuScale(lvl||1, !!ult);
   const hp = Math.round(h.maxHp*sc.hp);
   const e = spawnPet(S, p.team, x, y, ttl, {
-    illu:true, heroId:p.heroId, owner:h.id, r:h.r*0.9,
+    illu:true, heroId:p.heroId, owner:h.id, oslot:p.slot, r:h.r*0.9,
     hp:hp, maxHp:hp,
     dmg:Math.round(h.dmg*pct), armor:Math.max(0, h.armor*0.5),
     range:h.range, bat:HEROES[p.heroId].bat, ranged:h.ranged, ms:h.ms,

@@ -180,32 +180,18 @@ export function drawHUD(v, own){
       const ox = sx / G.dpr, oy = sy / G.dpr;
       const or = A.range * camScale() / G.dpr;
       ctx.save();
-      ctx.strokeStyle = '#5ef0c88'; ctx.lineWidth = 2; ctx.setLineDash([10,10]);
+      ctx.globalAlpha = 0.24;
+      ctx.fillStyle = 'rgba(94,240,200,0.12)';
+      ctx.beginPath(); ctx.arc(ox, oy, or, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = 'rgba(94,240,200,0.75)'; ctx.lineWidth = 2;
+      ctx.setLineDash([10,10]);
       ctx.beginPath(); ctx.arc(ox, oy, or, 0, 7); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = '#5ef0c22'; ctx.beginPath(); ctx.arc(ox, oy, or, 0, 7); ctx.fill();
       ctx.restore();
     }
   }
-  // ability tooltip on hover
-  for (const b of G.hud.ab){
-    if (G.mouse.x>=b.x && G.mouse.x<=b.x+b.w && G.mouse.y>=b.y && G.mouse.y<=b.y+b.h){
-      const A=HD.abilities[b.i], lv=Math.max(1,me.sk[b.i]);
-      const txt = A.desc.replace('%d', A.val[lv-1]);
-      const w2=330, h2=76, x2=clamp(b.x+31-w2/2, 8, W-w2-8), y2=b.y-h2-12;
-      ctx.fillStyle='#0b111cf2'; rr(x2,y2,w2,h2,8); ctx.fill();
-      ctx.strokeStyle='#233049'; ctx.lineWidth=1; ctx.stroke();
-      ctx.textAlign='left'; ctx.fillStyle=HD.col; ctx.font='800 14px Segoe UI';
-      ctx.fillText(A.name+'  ['+A.key+']', x2+12, y2+18);
-      ctx.fillStyle='#8b9ab4'; ctx.font='600 11px Segoe UI';
-      ctx.fillText(A.passive ? 'Passive    Lv '+me.sk[b.i]
-                             : 'Mana '+A.mana[lv-1]+'    Cooldown '+A.cd[lv-1]+'s    Lv '+me.sk[b.i],
-                   x2+12, y2+36);
-      ctx.fillStyle='#dfe7f5'; ctx.font='600 11.5px Segoe UI';
-      wrapText(txt, x2+12, y2+54, w2-24, 15);
-      break;
-    }
-  }
+  // ability tooltip on hover is rendered after the item row so it stays on top
 
   // items
   G.hud.items = [];
@@ -282,6 +268,26 @@ export function drawHUD(v, own){
       ctx.fillText(D.name.slice(0,9), x+iw/2, y+34);
       ctx.globalAlpha=1;
     }
+  }
+
+  if (hoverAb){
+    const A = HD.abilities[hoverAb.i], lv = Math.max(1, me.sk[hoverAb.i]);
+    const txt = A.desc.replace('%d', A.val[lv-1]);
+    const w2=330, h2=76;
+    let x2 = clamp(hoverAb.x + 31 - w2/2, 8, W-w2-8);
+    let y2 = hoverAb.y - h2 - 12;
+    if (y2 < 8) y2 = hoverAb.y + hoverAb.h + 12;
+    y2 = clamp(y2, 8, H-h2-8);
+    ctx.fillStyle='#0b111cf2'; rr(x2,y2,w2,h2,8); ctx.fill();
+    ctx.strokeStyle='#233049'; ctx.lineWidth=1; ctx.stroke();
+    ctx.textAlign='left'; ctx.fillStyle=HD.col; ctx.font='800 14px Segoe UI';
+    ctx.fillText(A.name+'  ['+A.key+']', x2+12, y2+18);
+    ctx.fillStyle='#8b9ab4'; ctx.font='600 11px Segoe UI';
+    ctx.fillText(A.passive ? 'Passive    Lv '+me.sk[hoverAb.i]
+                           : 'Mana '+A.mana[lv-1]+'    Cooldown '+A.cd[lv-1]+'s    Lv '+me.sk[hoverAb.i],
+                 x2+12, y2+36);
+    ctx.fillStyle='#dfe7f5'; ctx.font='600 11.5px Segoe UI';
+    wrapText(txt, x2+12, y2+54, w2-24, 15);
   }
 
   /* ---------- your teammate ---------- */

@@ -26,6 +26,7 @@ export function beginMatch(mode, picks, mySlot, gameMode){
   G.gameMode = gameMode || (picks.length>2 ? '2v2' : '1v1');
   setLaneMode(G.gameMode);
   G.started = true;
+  G.paused = false;
   G.matchCount = (G.matchCount||0) + 1;
   G.endShown = false;
   G.view = null; G.latest = null; G.buf = []; G.netFx = [];
@@ -123,29 +124,32 @@ export function loop(ts){
   const t = now();
   let dt = (t - G.last)/1000; G.last = t;
   dt = Math.min(dt, .1);
-  G.time += dt;
 
-  if (G.mode!=='client' && G.S){
-    const S = G.S;
-    G.acc += dt;
-    let steps = 0;
-    while (G.acc >= TICK && steps < 6){
-      G.acc -= TICK; steps++;
-      for (const bp of S.players) if (bp.bot) aiThink(S, bp, TICK);
-      simStep(S, TICK);
+  if (!G.paused){
+    G.time += dt;
+
+    if (G.mode!=='client' && G.S){
+      const S = G.S;
+      G.acc += dt;
+      let steps = 0;
+      while (G.acc >= TICK && steps < 6){
+        G.acc -= TICK; steps++;
+        for (const bp of S.players) if (bp.bot) aiThink(S, bp, TICK);
+        simStep(S, TICK);
+      }
+      for (const f of S.fx){ spawnFx(f); G.netFx.push(f); }
+      S.fx = [];
+      if (G.netFx.length > 90) G.netFx = G.netFx.slice(-90);
+      G.view = buildSnapshot(S, G.myTeam); G.view.f = null;
+      if (S.over && !G.endShown) showEnd(S.winner);
+      if (G.mode==='host'){
+        G.sendAcc += dt;
+        if (G.sendAcc >= 1/SNAP_HZ){ G.sendAcc = 0; netSendStateAll(S); }
+      }
+    } else if (G.mode==='client'){
+      G.view = interpolatedView();
     }
-    for (const f of S.fx){ spawnFx(f); G.netFx.push(f); }
-    S.fx = [];
-    if (G.netFx.length > 90) G.netFx = G.netFx.slice(-90);
-    G.view = buildSnapshot(S, G.myTeam); G.view.f = null;
-    if (S.over && !G.endShown) showEnd(S.winner);
-    if (G.mode==='host'){
-      G.sendAcc += dt;
-      if (G.sendAcc >= 1/SNAP_HZ){ G.sendAcc = 0; netSendStateAll(S); }
-    }
-  } else if (G.mode==='client'){
-    G.view = interpolatedView();
   }
-  if (G.view) render(dt);
+  if (G.view) render(G.paused ? 0 : dt);
 }
 

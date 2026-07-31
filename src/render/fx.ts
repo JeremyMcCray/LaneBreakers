@@ -15,7 +15,7 @@ export function num(x,y,txt,col,size,vy){
   const n={x,y,txt,col,size:size||16,life:1,vy:vy||-42,vx:0};
   G.nums.push(n); return n;
 }
-export function line(x,y,x2,y2,col,life){ G.lines.push({x,y,x2,y2,col,life,max:life}); }
+export function line(x,y,x2,y2,col,life,w){ G.lines.push({x,y,x2,y2,col,life,max:life,w:w}); }
 export function addToast(txt){
   const d=document.createElement('div'); d.className='tmsg'; d.textContent=txt;
   document.getElementById('toast').appendChild(d);
@@ -80,6 +80,48 @@ export function spawnFx(f){
       }
       ring(f.x2,f.y2,60,'#ff6b6b',.35,3); break; }
     case 'quake':ring(f.x,f.y,f.r,'#c8945a',.45,3); break;
+    case 'chain':{                                  // a bolt leaping from body to body
+      const col=f.col||'#bfe9ff';
+      const dx=f.x2-f.x, dy=f.y2-f.y, L=Math.hypot(dx,dy)||1;
+      const nx=-dy/L, ny=dx/L, segs=6;
+      let px=f.x, py=f.y;
+      for (let k=1;k<=segs;k++){
+        const t2=k/segs, off = k===segs ? 0 : rnd(-15,15);
+        const qx=f.x+dx*t2+nx*off, qy=f.y+dy*t2+ny*off;
+        line(px,py,qx,qy,col,.20,3.5);
+        px=qx; py=qy;
+      }
+      ring(f.x2,f.y2,24,col,.28,3); part(f.x2,f.y2,col,5,120,.3,2.4);
+      break; }
+    case 'lightning':{                              // a bolt falling out of the sky
+      const col=f.col||'#cfe9ff';
+      const x0=f.x+rnd(-60,60), y0=f.y-420;
+      let px=x0, py=y0;
+      for (let k=1;k<=6;k++){
+        const t2=k/6, last=k===6;
+        const qx = last ? f.x : x0+(f.x-x0)*t2+rnd(-22,22);
+        const qy = y0+(f.y-y0)*t2;
+        line(px,py,qx,qy,col,.26,last?5:4);
+        px=qx; py=qy;
+      }
+      ring(f.x,f.y,f.r||120,col,.45,5); part(f.x,f.y,col,16,240,.55,3.4);
+      G.shake=Math.max(G.shake,12);
+      break; }
+    case 'static': ring(f.x,f.y,f.r||700,'#9fd8ff',.4,3); break;
+    case 'ember': part(f.x, f.y-6, '#ff8a4a', 2, 60, .4, 2.3, 34); break;
+    case 'emberjump': line(f.x,f.y,f.x2,f.y2,'#ff8a4a',.28,3);
+                      part(f.x2,f.y2,'#ffcc55',6,120,.4,2.6,20); break;
+    case 'detonate': ring(f.x,f.y,52+13*(f.v||1),'#ffcc55',.45,4);
+                     part(f.x,f.y,'#ff7a3c',8+(f.v||0)*2,220,.5,3.4);
+                     G.shake=Math.max(G.shake,6); break;
+    case 'raise': ring(f.x,f.y,54,'#b78cff',.5,3); part(f.x,f.y,'#c9a6ff',10,120,.5,3,45); break;
+    case 'nova': ring(f.x,f.y,f.r,'#c58aff',.5,5); part(f.x,f.y,'#c58aff',10,260,.4,3);
+                 G.shake=Math.max(G.shake,5); break;
+    case 'rupture': ring(f.x,f.y,100,'#ff2f4f',.6,5); part(f.x,f.y,'#ff2f4f',16,180,.6,3.4);
+                    G.shake=Math.max(G.shake,10); break;
+    case 'bleed': part(f.x,f.y+6,'#ff2f4f',3,70,.45,2.6); break;
+    case 'thirst': part(f.x,f.y-8,'#ff5f7a',6,90,.5,3);
+                   if (f.v>0) num(f.x,f.y-52,'+'+f.v,'#ff8fa4',15,-42); break;
     case 'twrfire':part(f.x,f.y,'#ffd28a',5,120,.3,3); break;
     case 'respawn':ring(f.x,f.y,80,f.team?'#ff5f5f':'#4aa8ff',.6,4); break;
     case 'sell': if (f.team===G.myTeam) num(f.x,f.y-40,'+'+f.v+'g SOLD','#ffcc55',15,-44); break;

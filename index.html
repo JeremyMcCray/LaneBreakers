@@ -106,11 +106,9 @@ Right-click is always just move — or a single attack, if you click directly on
         <button class="pri" onclick="showScreen('scrQuick')">Play Online</button>
         <button onclick="startPractice('1v1')">Practice 1v1</button>
         <button onclick="startPractice('2v2')">Practice 2v2</button>
-        <select id="aiTier" class="modedd" style="width:auto;margin:0;padding:9px 10px"
+        <select id="aiTier" class="modedd"
+                style="width:180px;min-width:180px;flex:0 0 180px;margin:0;padding:9px 10px"
                 onchange="lbSetAiTier(this.value)" title="Which AI you practise against"></select>
-        <button onclick="showScreen('scrTrain')">Train AI</button>
-        <button onclick="showScreen('scrHost')">Manual Connect</button>
-        <button onclick="toggleHelpMenu()">Controls</button>
       </div>
       <div class="note" id="aiTierDesc" style="margin-top:6px"></div>
       <div class="row hide" id="rowLobby">
@@ -273,51 +271,10 @@ Right-click is always just move — or a single attack, if you click directly on
       <div id="quickStatus" class="note"></div>
       <div class="row">
         <button onclick="showScreen('scrHero')">Back</button>
-        <button onclick="showScreen('scrHost')">Manual connect instead</button>
       </div>
     </div>
 
-    <!-- host -->
-    <div id="scrHost" class="hide">
-      <h2>Host — you are the authority</h2>
-      <div class="step">
-        <div class="h">Step 1 · send this invite code to your friend</div>
-        <textarea id="hostOffer" readonly placeholder="generating…"></textarea>
-        <div class="row" style="margin-top:8px">
-          <button onclick="copyBox('hostOffer')">Copy invite code</button>
-        </div>
-      </div>
-      <div class="step">
-        <div class="h">Step 2 · paste their reply code here</div>
-        <textarea id="hostAnswer" placeholder="paste the reply code your friend sends back"></textarea>
-        <div class="row" style="margin-top:8px">
-          <button class="pri" onclick="hostAccept()">Connect &amp; Start</button>
-          <button onclick="showScreen('scrHero')">Back</button>
-        </div>
-      </div>
-      <div id="connStatus"></div>
-    </div>
 
-    <!-- join -->
-    <div id="scrJoin" class="hide">
-      <h2>Join</h2>
-      <div class="step">
-        <div class="h">Step 1 · paste the invite code you were sent</div>
-        <textarea id="joinOffer" placeholder="paste invite code"></textarea>
-        <div class="row" style="margin-top:8px">
-          <button class="pri" onclick="joinGenerate()">Generate reply code</button>
-          <button onclick="showScreen('scrHero')">Back</button>
-        </div>
-      </div>
-      <div class="step">
-        <div class="h">Step 2 · send this reply code back to the host</div>
-        <textarea id="joinAnswer" readonly placeholder="appears after step 1"></textarea>
-        <div class="row" style="margin-top:8px">
-          <button onclick="copyBox('joinAnswer')">Copy reply code</button>
-        </div>
-      </div>
-      <div id="connStatus2"></div>
-    </div>
   </div>
 </div>
 

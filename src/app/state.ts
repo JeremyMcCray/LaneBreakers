@@ -1,7 +1,7 @@
 // @ts-nocheck
 /** Client shell state (replaces monolith G). */
 export const G = {
-  pick:'vex', mode:null, myTeam:0, mySlot:0, gameMode:'1v1', S:null, started:false, view:null, latest:null,
+  pick:'vex', mode:null, myTeam:0, mySlot:0, gameMode:'1v1', S:null, started:false, paused:false, view:null, latest:null,
   buf:[], netFx:[], acc:0, sendAcc:0, last:0, endShown:false,
   order:{type:'stop'}, pred:{x:0,y:0,init:false},
   cam:{x:0,y:0}, shake:0, parts:[], nums:[], rings:[], lines:[], toasts:[],

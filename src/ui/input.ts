@@ -18,11 +18,11 @@ export function entUnder(px,py){
   }
   return best;
 }
-/* can I legally order an attack on this thing? (denies need the creep under 50%) */
+/* allied creeps can be targeted to drop tower agro, even when they are not denyable */
 export function attackable(e){
   if (!e) return false;
   if (e.tm!==G.myTeam) return true;
-  return e.ty===1 && e.h/e.mh < .5;          // own creep, low enough to deny
+  return e.ty===1;                         // own creep, for deny or agro-drop
 }
 /* SMART LAST HIT — grab whatever sits nearest the cursor, not nearest the hero.
    In legacy mode only a unit directly under the cursor counts. */
@@ -56,6 +56,7 @@ cv.addEventListener('mousemove', e=>{
   }
 });
 addEventListener('mouseup', e=>{
+  if (G.paused || !G.started) return;
   if (!G.drag) return;
   const d = G.drag; G.drag = null;
   if (e.button!==0) return;
@@ -67,7 +68,7 @@ addEventListener('mouseup', e=>{
   else cmd({a:'use', slot:d.from, x:wx, y:wy});
 });
 cv.addEventListener('mousedown', e=>{
-  if (!G.started) return;
+  if (!G.started || G.paused) return;
   const [wx,wy]=s2w(e.clientX,e.clientY);
   if (e.button===2){
     // right click is plain move — unless you clicked squarely on something
@@ -105,6 +106,8 @@ addEventListener('keydown', e=>{
   if (!G.started){ return; }
   if (e.target && (e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT')) return;
   const k = e.key.toLowerCase();
+  if (k==='p'){ e.preventDefault(); G.paused=!G.paused; addToast(G.paused?'Paused':'Resumed'); return; }
+  if (G.paused) return;
   const abKeys = {q:0, w:1, e:2, r:3};
   if (k in abKeys){
     if (e.ctrlKey) return;                    // never fight browser shortcuts like Ctrl+W

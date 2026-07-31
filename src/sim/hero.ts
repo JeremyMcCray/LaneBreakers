@@ -3,7 +3,7 @@ import {
   BASE_X, LANE_Y, dist, heal
 } from '../data/world';
 import { attackWith, autoNext, cancelWind, moveToward, releaseAttack } from './attack';
-import { damage, kill, tickDot } from './combat';
+import { clearEmber, damage, kill, tickDot, tickEmber, tickRupture } from './combat';
 import { ent, fx } from './create';
 import { updateHeroStats } from './stats';
 
@@ -15,6 +15,10 @@ export function heroThink(S,p,dt){
       e.dead=false; e.x=BASE_X[p.team]; e.y=LANE_Y + (p.slot>1 ? 60 : -60)*(S.players.length>2?1:0);
       e.stun=0; e.slowT=0; e.shieldT=0; e.colT=0; e.bonusHp=0; e.bonusDmg=0; e.windT=0; e.wTid=0;
       e.rootT=0; e.silT=0; e.barbT=0; e.defer=0; e.rage=0;
+      e.spinT=0; e.invT=0; e.csT=0; e.brT=0; e.vulT=0; e.bzT=0;
+      e.rupT=0; e.rupV=0; e.rupBank=0; e.rupLx=undefined; e.rupLy=undefined;
+      e.fervN=0; e.fervTid=0; e.fervT=0; e.hiveT=0;
+      clearEmber(e);
       updateHeroStats(S,p);
       e.hp=e.maxHp; e.mp=e.maxMp;
       p.order={type:'stop'};
@@ -37,6 +41,19 @@ export function heroThink(S,p,dt){
       const nxt = o.au ? autoNext(S,e) : null;
       if (!nxt){ p.order={type:'stop'}; e.curTid=0; return; }
       o.tid = nxt.id; tg = nxt;
+    }
+    const denyTarget = tg && tg.team===e.team && tg.type==='creep';
+    const denyLegal = !!(denyTarget && tg.hp/tg.maxHp < .5 && dist(e.x,e.y,tg.x,tg.y) <= e.range + tg.r + e.r*0.4 + 45);
+    if (denyTarget && e.towerAgroDropCd<=0){
+      for (const tw of S.ents){
+        if (tw.type!=='tower' || tw.team===e.team || tw.dead) continue;
+        tw.heroThreatLockT = 2.0;
+        tw.tid = 0; tw.lockT = 0; tw.lockId = 0;
+      }
+      e.towerAgroDropCd = 3.0;
+    }
+    if (denyTarget && !denyLegal){
+      p.order={type:'stop'}; e.curTid=0; return;
     }
     e.curTid = tg.id;
     const reach = e.range + tg.r + e.r*0.4;
@@ -76,9 +93,14 @@ export function heroTimers(S,p,dt){
   const dec = k => { if (e[k]>0) e[k]=Math.max(0, e[k]-dt); };
   ['stun','slowT','shieldT','asT','lsT','msT','armT','regT','salveT','draughtT',
    'castLock','hitFlash','swing','drT','markT','rendT','hcT','shredT',
-   'rootT','silT','barbT','bleedT','gsT','csT','banT'].forEach(dec);
+   'rootT','silT','barbT','bleedT','gsT','csT','banT',
+   'spinT','invT','brT','vulT','bzT','fervT','wardFxT','hiveT'].forEach(dec);
   tickDot(S,e,dt);
+  tickEmber(S,e,dt);
+  tickRupture(S,e,dt);
+  if (!(e.fervT>0)){ e.fervN=0; e.fervTid=0; }   // stacks fall off once he stops swinging
   if (e.colT>0){ e.colT-=dt; if (e.colT<=0){ e.bonusHp=0; e.bonusDmg=0; } }
+  if (e.towerAgroDropCd>0) e.towerAgroDropCd = Math.max(0, e.towerAgroDropCd-dt);
   if (e.bleedT<=0){ e.bleedV=0; e.bleedHeal=0; }
   if (e.gsT<=0) e.gsP=0;
   // deferred damage bleeds off the account, and can still kill you
@@ -112,7 +134,7 @@ export function heroTimers(S,p,dt){
   const dBase = dist(e.x,e.y,BASE_X[p.team],LANE_Y);
   if (dBase < 330){ hpr += e.maxHp*0.10; mpr += e.maxMp*0.09; }
   const dFoe = dist(e.x,e.y,BASE_X[1-p.team],LANE_Y);
-  if (dFoe < 380) damage(S, null, e, 260*dt, {pure:true, silent:true});
+  if (dFoe < 380) damage(S, null, e, 260*dt, {pure:true, silent:true, tag:'fountain'});
   heal(S, e, hpr*dt);
   e.mp = Math.min(e.maxMp, e.mp + mpr*dt);
 }

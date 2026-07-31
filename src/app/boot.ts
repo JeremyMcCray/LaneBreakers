@@ -53,6 +53,4 @@ export function bootClient() {
       Store.set(NAME_KEY, G.name);
     };
   }
-  // Match original: controls blurb shown by default; Controls button toggles it off/on
-  toggleHelpMenu();
 }

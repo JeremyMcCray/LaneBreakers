@@ -17,8 +17,8 @@ export function applyCmd(S, slot, c){
     case 'amove':  p.order={type:'amove', x:c.x, y:c.y, sm:c.sm?1:0}; break;
     case 'attack': {
       const tg = ent(S,c.id);
-      // you may only deny your own creeps once they drop below half health
-      if (tg && tg.team===team && !(tg.type==='creep' && tg.hp/tg.maxHp < .5)) break;
+      // own creeps can still be used as an agro-drop order, even if they are not denyable
+      if (tg && tg.team===team && tg.type!=='creep') break;
       p.order={type:'attack', tid:c.id, au:c.au?1:0};
       break; }
     case 'hold':   p.order={type:'hold'}; break;

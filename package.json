@@ -18,6 +18,8 @@
     "desktop:dist": "npm run build && electron-builder",
     "desktop:dist:win": "npm run build && electron-builder --win",
     "smoke": "npx vite-node tools/smoke-sim.mjs",
+    "smoke:heroes": "npx vite-node tools/smoke-newheroes.mjs",
+    "smoke:endstats": "npx vite-node tools/smoke-endstats.mjs",
     "smoke:neural": "npx vite-node tools/smoke-neural.mjs",
     "smoke:parity": "npx vite-node tools/smoke-parity.mjs",
     "extract:neural": "node tools/extract-neural.mjs",

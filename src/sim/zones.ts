@@ -3,8 +3,8 @@ import {
   clamp, clampToLane, dist, heal, now
 } from '../data/world';
 import { sliceAndDice } from './abilities';
-import { applyDot, applyRoot, applySlow, applyStun, damage, disjoint } from './combat';
-import { ent, fx } from './create';
+import { addEmber, applyDot, applyRoot, applySilence, applySlow, applyStun, damage, disjoint } from './combat';
+import { ent, fx, spawnBrood } from './create';
 
 export function addZone(S,o){ o.id=S.nextId++; S.zones.push(o); return o; }
 export function aoe(S, srcTeam, x, y, r, dmgAmt, src, cb){
@@ -31,6 +31,7 @@ export function nearestFoe(S, team, x, y, r){
 export function stepZones(S,dt){
   for (let i=S.zones.length-1;i>=0;i--){
     const z=S.zones[i];
+    S.tag = z.tag || null;                    // whatever laid this down owns what it does
     z.t -= dt;
     if (z.follow){ const h=ent(S,z.follow); if (h && !h.dead){ z.x=h.x; z.y=h.y; } }
     if (z.kind==='frost'){
@@ -69,7 +70,7 @@ export function stepZones(S,dt){
           // find the first thing standing on the line right now
           let best=null, bd=1e9;
           for (const o of S.ents){
-            if (o.dead || o.team===e2.team || o.type==='tower') continue;
+            if (o.dead || o.team===e2.team || o.type==='tower' || o.type==='creep') continue;
             const t2 = clamp(((o.x-z.ox)*dx + (o.y-z.oy)*dy) / (len*len), 0, 1);
             const px = z.ox + dx*t2, py = z.oy + dy*t2;
             if (dist(px,py,o.x,o.y) > 70 + o.r) continue;
@@ -101,7 +102,117 @@ export function stepZones(S,dt){
           break;
         }
       }
-    } else if (z.kind==='quake' || z.kind==='miasma' || z.kind==='fire' || z.kind==='light' || z.kind==='thicket'){
+    } else if (z.kind==='hward'){
+      const w = ent(S, z.follow);
+      if (!w || w.dead) z.t = 0;                        // shoot the ward, lose the heal
+      else {
+        for (const q of S.players){
+          if (q.team!==z.team || !q.hero || q.hero.dead) continue;
+          if (dist(q.hero.x,q.hero.y,z.x,z.y) < z.r) heal(S, q.hero, z.hps*dt);
+        }
+        z.tickT -= dt;
+        if (z.tickT<=0){ z.tickT=.5; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r, col:'#8affd4'}); }
+      }
+    } else if (z.kind==='omni'){
+      const q = S.players[z.slot], h = q && q.hero;
+      if (!h || h.dead){ z.t = 0; }
+      else {
+        z.tickT -= dt;
+        if (z.tickT<=0){
+          z.tickT = z.iv;
+          const pool = [];
+          for (const o of S.ents){
+            if (o.dead || o.team===h.team || o.type==='tower') continue;
+            if (dist(o.x,o.y,z.ax,z.ay) > z.r) continue;
+            pool.push(o);
+          }
+          if (!pool.length){ z.t = 0; h.castLock = 0; h.invT = Math.min(h.invT||0, .2); }
+          else {
+            const tg = pool[Math.floor(Math.random()*pool.length)];
+            const a = Math.random()*Math.PI*2;
+            h.x = tg.x + Math.cos(a)*(tg.r + h.r + 8);
+            h.y = tg.y + Math.sin(a)*(tg.r + h.r + 8);
+            clampToLane(h);
+            h.facing = Math.atan2(tg.y-h.y, tg.x-h.x);
+            fx(S,{t:'dash', x:z.px, y:z.py, x2:h.x, y2:h.y, col:'#ffd9e8'});
+            fx(S,{t:'slash', x:h.x, y:h.y, a:h.facing, team:h.team, rng:h.range});
+            z.px = h.x; z.py = h.y;
+            damage(S, h, tg, z.dmg, {ability:true});
+            z.n--;
+            if (z.n<=0){ z.t = 0; h.castLock = 0; h.invT = Math.min(h.invT||0, .2); }
+          }
+        }
+      }
+    } else if (z.kind==='edict'){
+      z.tickT -= dt;
+      if (z.tickT<=0){
+        z.tickT = z.iv;
+        const pool = [];
+        for (const o of S.ents){
+          if (o.dead || o.team===z.team || o.type==='tower') continue;
+          if (dist(o.x,o.y,z.x,z.y) > z.r) continue;
+          pool.push(o);
+        }
+        if (pool.length){
+          const tg = pool[Math.floor(Math.random()*pool.length)];
+          fx(S,{t:'blast', x:tg.x, y:tg.y, r:80, col:'#c58aff'});
+          damage(S, ent(S,z.src), tg, z.dmg, {ability:true});
+        }
+      }
+    } else if (z.kind==='nova'){
+      const q = S.players[z.slot], h = q && q.hero;
+      if (!h || h.dead){ z.t = 0; }
+      else {
+        z.tickT -= dt;
+        if (z.tickT<=0){
+          z.tickT = z.iv;
+          if (h.mp < z.cost) z.t = 0;                   // the nova stops when he runs dry
+          else {
+            h.mp -= z.cost;
+            fx(S,{t:'nova', x:z.x, y:z.y, r:z.r});
+            aoe(S, z.team, z.x, z.y, z.r, z.dmg, h);
+          }
+        }
+      }
+    } else if (z.kind==='firestorm'){
+      const src = ent(S,z.src);
+      z.tickT -= dt; z.embT -= dt;
+      const feed = z.embT<=0;
+      if (feed) z.embT = .5;
+      for (const o of S.ents){
+        if (o.dead || o.team===z.team || o.type==='tower') continue;
+        if (dist(o.x,o.y,z.x,z.y) > z.r) continue;
+        damage(S, src, o, z.dps*dt, {ability:true, silent:true});
+        o.embHold = 0.6;                              // nothing burns out inside the storm
+        if (feed) addEmber(S, o, 1, src);
+      }
+      if (z.tickT<=0){ z.tickT=.4; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r, col:'#ff8a4a'}); }
+    } else if (z.kind==='hive'){
+      const q = S.players[z.slot], h = q && q.hero;
+      if (!h || h.dead){ z.t = 0; }
+      else {
+        z.tickT -= dt;
+        if (z.tickT<=0){
+          z.tickT = z.iv;
+          let n = 0;
+          for (const o of S.ents) if (!o.dead && o.brood && o.owner===h.id) n++;
+          if (n < z.cap){
+            const a = Math.random()*Math.PI*2;
+            spawnBrood(S, q, h.x+Math.cos(a)*52, h.y+Math.sin(a)*52, 20);
+            fx(S,{t:'raise', x:h.x, y:h.y});
+          }
+        }
+      }
+    } else if (z.kind==='strike' && z.t<=0){
+      const src = ent(S,z.src);
+      if (z.bolt) fx(S,{t:'lightning', x:z.x, y:z.y, r:z.r, col:z.col});
+      fx(S,{t:'blast', x:z.x, y:z.y, r:z.r, col:z.col||'#bfe9ff'});
+      aoe(S, z.team, z.x, z.y, z.r, z.dmg, src, o=>{
+        if (z.stun) applyStun(S,o,z.stun);
+        if (z.slow) applySlow(o, z.slow, z.slowT||2);
+        if (z.sil)  applySilence(S,o,z.sil);
+      });
+    } else if (z.kind==='quake' || z.kind==='light' || z.kind==='thicket' || z.kind==='spin'){
       z.tickT -= dt;
       const src = ent(S,z.src);
       for (const o of S.ents){
@@ -114,8 +225,8 @@ export function stepZones(S,dt){
       if (z.kind==='light' && src && !src.dead && dist(src.x,src.y,z.x,z.y) < z.r)
         heal(S, src, z.dps*1.2*dt);
       if (z.tickT<=0){ z.tickT=.5; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r,
-        col: z.kind==='miasma' ? '#b78cff' : (z.kind==='fire' ? '#ff8a4a' :
-             (z.kind==='light' ? '#ffe9a8' : (z.kind==='thicket' ? '#7fdc6a' : '#c8945a')))}); }
+        col: z.kind==='light' ? '#ffe9a8' : (z.kind==='thicket' ? '#7fdc6a' :
+             (z.kind==='spin' ? '#ff9ec4' : '#c8945a'))}); }
     } else if (z.kind==='sanct'){
       for (const q of S.players){                       // Liora's ground heals her side
         if (q.team!==z.team || !q.hero || q.hero.dead) continue;
@@ -143,14 +254,12 @@ export function stepZones(S,dt){
       const src = ent(S,z.src);
       fx(S,{t:'blast', x:z.x, y:z.y, r:z.r, col:'#ff7a3c'});
       aoe(S, z.team, z.x, z.y, z.r, z.dmg, src, o=> applySlow(o,.30,1.5));
-    } else if ((z.kind==='azero' || z.kind==='meteor') && z.t<=0){
+    } else if (z.kind==='azero' && z.t<=0){
       const src = ent(S,z.src);
-      fx(S,{t:'blast', x:z.x, y:z.y, r:z.r, col: z.kind==='meteor' ? '#ff8a4a' : '#bfe9ff'});
-      aoe(S, z.team, z.x, z.y, z.r, z.dmg, src, o=>{
-        if (z.kind==='meteor') applyDot(S, o, z.dmg*0.08, 4, z.src);
-        else applyStun(S,o,1.4);
-      });
+      fx(S,{t:'blast', x:z.x, y:z.y, r:z.r, col:'#bfe9ff'});
+      aoe(S, z.team, z.x, z.y, z.r, z.dmg, src, o=>{ applyStun(S,o,1.4); });
     }
     if (z.t<=0) S.zones.splice(i,1);
   }
+  S.tag = null;
 }

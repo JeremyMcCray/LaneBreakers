@@ -95,43 +95,43 @@ sable:{
   ]
 },
 vhal:{
-  id:'vhal', name:'VHAL', title:'The Plaguebinder', col:'#b78cff', col2:'#4b2f7a',
-  desc:'A summoner who rots the lane. The swarm pushes the wave while he poisons from range.',
+  id:'vhal', name:'VHAL', title:'The Broodmother', col:'#b78cff', col2:'#4b2f7a',
+  desc:'She never fights alone. The brood is her damage, her wave clear and her body count — every spell she owns makes, moves, or feeds it.',
   hp:560, hpg:84, mp:360, mpg:52, dmg:43, dmgg:4.4, arm:2, armg:.34,
   ms:318, range:545, bat:1.05, ranged:true, projSpeed:1050,
   abilities:[
-    {key:'Q', name:'Corrosive Bolt', cast:'point', range:820, mana:[45,50,55,60], cd:[5,4.5,4,3.5],
-     desc:'A bolt dealing %d damage, then that much again as poison over 4s.',
-     val:[70,115,160,205]},
-    {key:'W', name:'Swarm', cast:'self', mana:[75,85,95,105], cd:[22,20,18,16],
-     desc:'Summon %d spawnlings for 14s. They fight, push, and give the enemy no gold.',
+    {key:'Q', name:'Spawn Brood', cast:'self', mana:[70,75,80,85], cd:[16,15,14,13],
+     desc:'Split off %d spawnlings for 20s. They fight, they push, and they pay the enemy nothing when they die.',
      val:[2,3,4,5]},
-    {key:'E', name:'Miasma', cast:'point', range:680, mana:[60,65,70,75], cd:[14,13,12,11],
-     desc:'A cloud for 4s dealing %d damage per second and slowing by 30%.',
-     val:[40,65,90,115]},
-    {key:'R', name:'Contagion', cast:'point', range:780, ult:true, mana:[150,175,200], cd:[65,55,45],
-     desc:'Detonate a plague for %d damage that infects everything within 330.',
-     val:[300,450,600]}
+    {key:'W', name:'Unleash', cast:'point', range:800, mana:[55,60,65,70], cd:[13,12,11,10],
+     desc:'The whole brood tears to the cursor at once, attacking %d% faster with 40% lifesteal for 5s. Everything they land on is slowed 30%.',
+     val:[60,90,120,150]},
+    {key:'E', name:'Symbiosis', passive:true, grants:'symbiosis', mana:[0,0,0,0], cd:[0,0,0,0],
+     desc:'Passive: every spawnling is built out of Vhal herself, inheriting %d% of her attack damage and a quarter as much of her maximum health. While one still lives she gains 5 armor and 10 health regen.',
+     val:[20,28,36,44]},
+    {key:'R', name:'Hive Ascendant', cast:'self', ult:true, mana:[150,175,200], cd:[85,75,65],
+     desc:'For 16s Vhal becomes a hive: a spawnling crawls out every 2s, the brood deals +%d% damage, and every enemy creep that dies within 550 of her gets back up on her side. Eight at once, no more.',
+     val:[40,70,100]}
   ]
 },
 ash:{
   id:'ash', name:'ASH', title:'The Emberlord', col:'#ffb347', col2:'#8a4a1f',
-  desc:'A ranged pyromancer. Stack burns, own the ground with fire, finish with a meteor.',
-  hp:550, hpg:82, mp:380, mpg:54, dmg:44, dmgg:4.5, arm:2, armg:.32,
-  ms:320, range:560, bat:1.02, ranged:true, projSpeed:1150,
+  desc:'Nothing he throws kills on its own. He sets EMBERS on everything, lets them eat, and blows them out all at once — and anything that dies still burning passes the fire on.',
+  hp:560, hpg:82, mp:380, mpg:54, dmg:44, dmgg:4.5, arm:2, armg:.32,
+  ms:325, range:560, bat:1.02, ranged:true, projSpeed:1150,
   abilities:[
-    {key:'Q', name:'Fireball', cast:'point', range:820, mana:[50,55,60,65], cd:[6,5.4,4.8,4.2],
-     desc:'Hurl a fireball for %d damage plus 40% of that again as burn over 3s.',
-     val:[90,145,200,255]},
-    {key:'W', name:'Cinder Shell', cast:'self', mana:[60,65,70,75], cd:[14,13,12,11],
-     desc:'For 5s gain 4 armor and scorch nearby enemies for %d damage per second.',
-     val:[30,50,70,90]},
-    {key:'E', name:'Blazing Trail', cast:'point', range:440, blink:true, mana:[50,50,50,50], cd:[15,13,11,9],
-     desc:'Blink to the cursor, leaving a firefield behind that burns for %d damage per second.',
-     val:[35,55,75,95]},
-    {key:'R', name:'Meteor', cast:'point', range:800, ult:true, mana:[160,185,210], cd:[70,60,50],
-     desc:'After 0.65s a meteor crashes down for %d damage and ignites everything hit.',
-     val:[320,480,640]}
+    {key:'Q', name:'Cinderbolt', cast:'point', range:820, charges:3, mana:[35,40,45,50], cd:[6,5.4,4.8,4.2],
+     desc:'A bolt for %d damage that sets 2 EMBERS alight. Holds three charges — the whole hand primes a target instantly.',
+     val:[55,90,125,160]},
+    {key:'W', name:'Wildfire', passive:true, grants:'wildfire', mana:[0,0,0,0], cd:[0,0,0,0],
+     desc:'Passive: your EMBERS stack six deep instead of three and each burns for %d damage per second. Anything that dies still burning throws its embers to the nearest enemy within 350.',
+     val:[7,10,13,16]},
+    {key:'E', name:'Conflagrate', cast:'point', range:700, mana:[60,65,70,75], cd:[11,10,9,8],
+     desc:'Blow out every EMBER within 300 at once — each one consumed deals %d damage. Anything not yet burning catches 2 embers instead.',
+     val:[32,50,68,86]},
+    {key:'R', name:'Firestorm', cast:'point', range:800, ult:true, mana:[160,185,210], cd:[75,65,55],
+     desc:'A storm rages over a 380 radius for 6s: %d damage per second, a fresh EMBER every half second, and while it burns no ember inside can go out.',
+     val:[45,70,95]}
   ]
 },
 mara:{
@@ -305,6 +305,106 @@ drex:{
     {key:'R', name:'Carpet Bombing', cast:'point', range:900, ult:true, mana:[160,185,210], cd:[80,70,60],
      desc:'Call in four bombs that march from Drex toward the cursor, each detonating for %d damage.',
      val:[180,270,360]}
+  ]
+},
+ronin:{
+  id:'ronin', name:'RONIN', title:'The Maskbearer', col:'#ff9ec4', col2:'#7a2340',
+  desc:'A masked blademaster. Spin through the spells that were meant to stop you, then take the fight apart one blink at a time.',
+  hp:640, hpg:96, mp:270, mpg:34, dmg:50, dmgg:5.4, arm:3, armg:.42,
+  ms:330, range:145, bat:0.95, ranged:false,
+  abilities:[
+    {key:'Q', name:'Bladefury', cast:'self', mana:[60,70,80,90], cd:[20,18,16,14],
+     desc:'Whirl for 3s, dealing %d damage per second within 260. You cannot swing while spinning — but nothing magical can touch you.',
+     val:[55,85,115,145]},
+    {key:'W', name:'Healing Ward', cast:'point', range:600, mana:[70,75,80,85], cd:[26,24,22,20],
+     desc:'Plant a fragile ward for 9s. Allied heroes within 340 of it heal %d health per second. It can be killed.',
+     val:[20,30,40,50]},
+    {key:'E', name:'Blade Dance', passive:true, grants:'crit', mana:[0,0,0,0], cd:[0,0,0,0],
+     desc:'Passive: %d% of your attacks land as a critical strike for 190% damage.',
+     val:[15,22,29,36]},
+    {key:'R', name:'Omnislash', cast:'point', range:400, ult:true, mana:[150,175,200], cd:[70,60,50],
+     desc:'Leap onto the enemy nearest the cursor and cut six times for %d each, blinking between everything within 420. Untouchable until the last strike lands.',
+     val:[60,85,110]}
+  ]
+},
+zaal:{
+  id:'zaal', name:'ZAAL', title:'The Skyfather', col:'#9fd8ff', col2:'#2a4d7a',
+  desc:'A storm with a temper. Nothing he throws can miss, and every spell he casts bleeds the whole lane a little.',
+  hp:520, hpg:76, mp:430, mpg:60, dmg:40, dmgg:4.0, arm:2, armg:.28,
+  ms:315, range:550, bat:1.10, ranged:true, projSpeed:1100,
+  abilities:[
+    {key:'Q', name:'Arc Lightning', cast:'point', range:800, mana:[40,45,50,55], cd:[5,4.5,4,3.5],
+     desc:'A bolt that leaps between up to 5 enemies for %d damage, losing 22% of its bite with every jump.',
+     val:[65,100,135,170]},
+    {key:'W', name:'Lightning Bolt', cast:'point', range:850, mana:[75,85,95,105], cd:[10,9,8,7],
+     desc:'The sky marks the ground for 0.5s, then a bolt lands for %d damage and a 0.7s stun in a 260 radius.',
+     val:[130,205,280,355]},
+    {key:'E', name:'Static Field', passive:true, grants:'static', mana:[0,0,0,0], cd:[0,0,0,0],
+     desc:'Passive: every spell Zaal casts tears %d% of the CURRENT health out of every enemy within 700.',
+     val:[4,5.5,7,8.5]},
+    {key:'R', name:"Thundergod's Wrath", cast:'self', ult:true, mana:[175,200,225], cd:[95,85,75],
+     desc:'Strike every enemy hero on the map for %d damage, wherever they are hiding.',
+     val:[300,450,600]}
+  ]
+},
+jarak:{
+  id:'jarak', name:'JARAK', title:'The Frenzied', col:'#7be0a4', col2:'#1f6b45',
+  desc:'A duellist who gets faster the longer he stays on one throat. Pick a target and never let go of it.',
+  hp:650, hpg:98, mp:250, mpg:32, dmg:49, dmgg:5.3, arm:3, armg:.42,
+  ms:330, range:150, bat:0.98, ranged:false,
+  abilities:[
+    {key:'Q', name:'Whirling Axes', cast:'point', range:700, mana:[50,55,60,65], cd:[11,10,9,8],
+     desc:'Fling three axes in a spread, each dealing %d damage and slowing by 30% for 2s.',
+     val:[80,125,170,215]},
+    {key:'W', name:'Fervor', passive:true, grants:'fervor', mana:[0,0,0,0], cd:[0,0,0,0],
+     desc:'Passive: every blow landed on the SAME target grants +%d% attack speed, stacking four times. Switch targets and it is gone.',
+     val:[16,23,30,37]},
+    {key:'E', name:"Berserker's Rage", cast:'self', mana:[45,50,55,60], cd:[18,16,14,12],
+     desc:'For 8s gain %d armor and 20% move speed, and Fervor stacks twice as fast, up to eight.',
+     val:[5,8,11,14]},
+    {key:'R', name:'Battle Trance', cast:'self', ult:true, mana:[125,150,175], cd:[70,60,50],
+     desc:'For 7s you and every ally within 700 gain +%d% attack speed and 30% lifesteal.',
+     val:[70,100,130]}
+  ]
+},
+stryg:{
+  id:'stryg', name:'STRYG', title:'The Bloodhound', col:'#ff5f7a', col2:'#6b1226',
+  desc:'A hunter who feeds on the lane itself. Every last hit puts him back on his feet, and nothing he has opened up can run away from him.',
+  hp:600, hpg:92, mp:290, mpg:40, dmg:48, dmgg:5.1, arm:3, armg:.38,
+  ms:340, range:145, bat:1.00, ranged:false,
+  abilities:[
+    {key:'Q', name:'Blood Rite', cast:'point', range:800, mana:[60,70,80,90], cd:[13,12,11,10],
+     desc:'Sanctify the ground. After 1.2s it erupts for %d damage and silences enemy heroes for 3s.',
+     val:[95,155,215,275]},
+    {key:'W', name:'Bloodrage', cast:'self', mana:[30,35,40,45], cd:[12,11,10,9],
+     desc:'For 8s everything you deal hits %d% harder — and everything you take hits 20% harder.',
+     val:[25,35,45,55]},
+    {key:'E', name:'Thirst', passive:true, grants:'thirst', mana:[0,0,0,0], cd:[0,0,0,0],
+     desc:'Passive: every creep you last hit or deny restores %d health. A hero kill restores five times as much.',
+     val:[30,45,60,75]},
+    {key:'R', name:'Rupture', cast:'point', range:750, ult:true, mana:[125,150,175], cd:[65,55,45],
+     desc:'The enemy hero nearest the cursor bleeds for 6s, taking %d pure damage for every 100 units they move. Standing still costs nothing.',
+     val:[12,18,24]}
+  ]
+},
+vosk:{
+  id:'vosk', name:'VOSK', title:'The Tormented', col:'#c58aff', col2:'#4a2170',
+  desc:'A walking siege engine. Everything near him is already dying — he only decides how fast.',
+  hp:570, hpg:86, mp:400, mpg:56, dmg:43, dmgg:4.3, arm:2.5, armg:.32,
+  ms:320, range:550, bat:1.05, ranged:true, projSpeed:1100,
+  abilities:[
+    {key:'Q', name:'Split Earth', cast:'point', range:800, mana:[60,70,80,90], cd:[13,12,11,10],
+     desc:'The ground cracks after 0.55s for %d damage and a 1.4s stun in a 240 radius.',
+     val:[100,160,220,280]},
+    {key:'W', name:'Diabolic Edict', cast:'self', mana:[65,75,85,95], cd:[18,17,16,15],
+     desc:'For 8s, sixteen explosions burst out of Vosk, each striking one enemy within 340 for %d damage.',
+     val:[22,36,50,64]},
+    {key:'E', name:'Lightning Storm', cast:'point', range:800, mana:[55,60,65,70], cd:[8,7,6,5],
+     desc:'A storm bolt that leaps between up to 4 enemies for %d damage, slowing each by 50% for 1s.',
+     val:[80,125,170,215]},
+    {key:'R', name:'Pulse Nova', cast:'self', ult:true, mana:[150,175,200], cd:[80,70,60],
+     desc:'For 12s a nova bursts out of Vosk every 0.8s for %d damage within 340. Each pulse costs 22 mana and it stops the moment you run dry.',
+     val:[85,125,165]}
   ]
 }};
 export const HERO_IDS = Object.keys(HEROES);

@@ -27,6 +27,7 @@ export function cancelWind(e){
 export function attackWith(S,e,tgt,dt){
   e.facing = Math.atan2(tgt.y-e.y, tgt.x-e.x);
   if (e.type==='hero') e.curTid = tgt.id;
+  if (e.spinT>0) return;                     // whirling — there is no room to swing
   if (e.windT>0) return;                     // mid wind-up
   if (e.atkCd>0) return;                     // swing recharging (ticks globally now)
   const aps = e.aps || (1/e.bat);
@@ -42,6 +43,12 @@ export function releaseAttack(S,e){
   if (dist(e.x,e.y,tgt.x,tgt.y) > reach){ e.atkCd = Math.min(e.atkCd, .1); return; }
   e.facing = Math.atan2(tgt.y-e.y, tgt.x-e.x);
   e.swing = .16;
+  // Fervor — consecutive blows on ONE throat wind the next swing up
+  if (e.fervMax>0){
+    if (e.fervTid===tgt.id) e.fervN = Math.min(e.fervMax, (e.fervN||0) + (e.fervStep||1));
+    else { e.fervTid = tgt.id; e.fervN = 0; }
+    e.fervT = 4;                             // stacks survive a short break in the chase
+  }
   const bonus = e.rendT>0 ? e.rendV : 0;
   let amt = e.dmg + bonus, crit = false;
   if (e.type==='creep' && tgt.type==='creep') amt *= 0.7;   // creeps whittle each other slowly
@@ -51,10 +58,13 @@ export function releaseAttack(S,e){
     const sp = e.type==='hero' ? (HEROES[e.heroId].projSpeed||900) : 850;
     S.projs.push({id:S.nextId++, kind:'atk', team:e.team, x:e.x, y:e.y-10,
       tid:tgt.id, dmg:amt, src:e.id, speed:sp, r:7,
+      ps: e.type==='hero' ? e.slot : (e.oslot!==undefined ? e.oslot : -1),
       rend:e.rendT>0, chill:e.chill>0, crit:crit});
   } else {
     fx(S,{t:'slash', x:e.x, y:e.y, a:e.facing, team:e.team, rng:e.range});
+    S.tag = 'atk';
     damage(S, e, tgt, amt, {attack:true, melee:true, crit:crit});
+    S.tag = null;
     if (e.cleave>0 && tgt.team!==e.team)                   // melee only, and never on a deny
       cleaveHit(S, e, tgt, amt, e.cleave);
     if (e.rendT>0)  applySlow(tgt, .25, 1.5);
@@ -87,7 +97,7 @@ export function cleaveHit(S, src, tgt, raw, pct){
     const a = Math.atan2(o.y-src.y, o.x-src.x);
     let da = Math.abs(((a - swing + Math.PI*3) % (Math.PI*2)) - Math.PI);
     if (da > CLEAVE_ARC) continue;
-    damage(S, src, o, raw*pct, {cleave:true});
+    damage(S, src, o, raw*pct, {cleave:true, tag:'cleave'});
     hit++;
   }
   if (hit) fx(S,{t:'cleave', x:tgt.x, y:tgt.y, a:swing, team:src.team});
@@ -97,10 +107,12 @@ export function cleaveHit(S, src, tgt, raw, pct){
 export function previewHit(e, tgt){
   const bonus = e.rendT>0 ? e.rendV : 0;
   let raw = e.dmg + bonus + (e.quell>0 && tgt.type==='creep' ? e.quell : 0);
+  if (e.brT>0)     raw *= (1 + e.brP);           // Bloodrage
   let d = raw * armorMult(effArmor(tgt));
   if (tgt.block>0) d = Math.max(0, d - tgt.block);
   if (tgt.illu)    d *= (tgt.illuTake||1.6);
   if (tgt.markT>0) d *= (1 + tgt.markP);
+  if (tgt.vulT>0)  d *= (1 + tgt.vulP);
   if (tgt.drT>0)   d *= (1 - tgt.drP);
   return d;
 }

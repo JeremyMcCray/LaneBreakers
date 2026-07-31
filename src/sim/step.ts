@@ -4,13 +4,13 @@ import {
 } from '../data/world';
 import { HEROES } from '../data/heroes';
 import { releaseAttack } from './attack';
-import { tickDot } from './combat';
+import { tickDot, tickEmber } from './combat';
 import { fx } from './create';
 import { creepThink } from './creep';
 import { heroThink, heroTimers } from './hero';
 import { stepProjectiles } from './projectiles';
 import { deliver } from './shop';
-import { endGame, timeWinner } from './stats';
+import { SERIES_TICK, addGold, endGame, sampleSeries, timeWinner } from './stats';
 import { towerThink } from './tower';
 import { spawnWave } from './waves';
 import { stepZones } from './zones';
@@ -20,11 +20,14 @@ export function simStep(S,dt){
   if (S.over) return;
   if (S.t >= MATCH_LIMIT){ endGame(S, timeWinner(S), 'time'); return; }
   for (let i=0;i<2;i++){ const a=S.aggro[i]; if (a){ a.t-=dt; if (a.t<=0) S.aggro[i]=null; } }
+  for (let i=0;i<2;i++){ const a=S.towerAggro[i]; if (a){ a.t-=dt; if (a.t<=0) S.towerAggro[i]=null; } }
   S.waveT -= dt;
   if (S.waveT<=0){ spawnWave(S); S.waveT = WAVE_INTERVAL; }
 
+  S.seriesT -= dt;
+  if (S.seriesT<=0){ S.seriesT += SERIES_TICK; sampleSeries(S); }
   for (const p of S.players){
-    p.gold += GOLD_PER_SEC*dt*(S.fastGold?14:1);
+    addGold(p, GOLD_PER_SEC*dt*(S.fastGold?14:1));
     for (let i=0;i<4;i++) if (p.cds[i]>0) p.cds[i]=Math.max(0,p.cds[i]-dt);
     // charge abilities refill one at a time
     for (let i=0;i<4;i++){
@@ -54,7 +57,7 @@ export function simStep(S,dt){
     if (e.hcT>0) e.hcT-=dt;
     if (e.rootT>0) e.rootT-=dt;
     if (e.shredT>0) e.shredT-=dt;
-    if (e.hasteT>0){ e.hasteT-=dt; if (e.hasteT<=0 && e.illu && e.baseAps) e.aps = e.baseAps; }
+    if (e.hasteT>0){ e.hasteT-=dt; if (e.hasteT<=0){ if (e.baseAps) e.aps = e.baseAps; e.ls = 0; } }
     if (e.drT>0)   e.drT-=dt;
     if (e.hitFlash>0) e.hitFlash-=dt;
     if (e.swing>0) e.swing-=dt;
@@ -65,6 +68,7 @@ export function simStep(S,dt){
     }
     if (e.windT>0 && e.stun<=0){ e.windT-=dt; if (e.windT<=0){ e.windT=0; releaseAttack(S,e); } }
     tickDot(S,e,dt);
+    tickEmber(S,e,dt);
     if (e.ttl!==undefined){ e.ttl-=dt; if (e.ttl<=0 && !e.dead){ e.dead=true; fx(S,{t:'die', x:e.x, y:e.y, team:e.team}); } }
     e.moving=false;
   }

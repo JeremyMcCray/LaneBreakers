@@ -5,6 +5,7 @@ import { G } from '../app/state';
 import { fmtTime } from '../render/view';
 import { tourFinish } from '../app/online';
 import { recordMatch } from '../app/persistence';
+import { renderMatchStats, resetMatchStats } from './matchStats';
 
 export function showEnd(winner){
   G.endShown = true;
@@ -21,6 +22,9 @@ export function showEnd(winner){
     (v? (v.md||'1v1').toUpperCase()+' · '+fmtTime(v.t)+' match':'') + (reason? ' — '+reason : '') +
     (G.tour && G.tour.on ? '  ·  series '+G.tour.score[0]+'–'+G.tour.score[1] : '');
   if (me && v){
+    // the breakdown and the graphs only ride in on the final snapshot — prefer the
+    // rawest one we hold, since the interpolated view can still be a frame behind
+    const detail = (G.latest && G.latest.ps && G.latest.ps.some(p=>p.dby)) ? G.latest : v;
     const order = v.ps.slice().sort((a,b)=> (a.tm===G.myTeam?0:1)-(b.tm===G.myTeam?0:1) || a.sl-b.sl);
     const rows = order.map(q=>
       '<tr class="'+(q.sl===G.mySlot?'mine':'')+'">'+
@@ -32,11 +36,14 @@ export function showEnd(winner){
       '<td>'+q.cs+'</td>'+
       '<td>'+q.dn+'</td>'+
       '<td>'+(q.dh||0).toLocaleString()+'</td>'+
+      '<td>'+Math.round(q.dtk||0).toLocaleString()+'</td>'+
       '<td>'+(q.hl||0).toLocaleString()+'</td>'+
       '<td><b>'+q.nw.toLocaleString()+'g</b></td></tr>').join('');
-    document.getElementById('endStats').innerHTML =
-      '<table class="etab"><tr><th>Player</th><th>K / D / A</th><th>Lvl</th><th>CS</th>'+
-      '<th>Deny</th><th>Hero dmg</th><th>Healed</th><th>Net worth</th></tr>'+rows+'</table>';
+    const summary =
+      '<table class="stab etbl"><tr><th>Player</th><th>K / D / A</th><th>Lvl</th><th>CS</th>'+
+      '<th>Deny</th><th>Hero dmg</th><th>Taken</th><th>Healed</th><th>Net worth</th></tr>'+rows+'</table>';
+    resetMatchStats();
+    renderMatchStats(detail, summary);
   }
   // a three second cooling-off period so nobody fat-fingers their way out of the lobby
   const leave = document.getElementById('btnLeave');

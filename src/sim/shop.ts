@@ -5,7 +5,7 @@ import {
 import { ITEMS, ITEM_SLOTS } from '../data/items';
 import { disjoint } from './combat';
 import { fx } from './create';
-import { updateHeroStats } from './stats';
+import { logEvent, updateHeroStats } from './stats';
 import { aoe } from './zones';
 
 export function buyPlan(p, id){
@@ -35,6 +35,7 @@ export function buyItem(S,p,id){
   if (p.items.length + p.pending.length - plan.use.length >= ITEM_SLOTS) return;
   p.gold -= plan.cost;
   p.pending.push({id:id, t:BUY_DELAY, use:plan.use});
+  logEvent(S, p, 'item', id);
 }
 export function deliver(S,p,q){
   for (const cid of (q.use||[])){            // components are consumed on delivery
@@ -113,7 +114,9 @@ export function useItem(S,p,slot,tx,ty){
     const d = dist(e.x,e.y,tx,ty); const R = 700;
     if (d > R){ tx = e.x + (tx-e.x)/d*R; ty = e.y + (ty-e.y)/d*R; }
     fx(S,{t:'blast', x:tx, y:ty, r:300, col:'#a9d8ff'});
+    const prev = S.tag; S.tag = 'i:bomb';       // credited to the item, not to a spell
     aoe(S, e.team, tx, ty, 300, 320, e);
+    S.tag = prev;
     it.cd = def.cd;
   } else if (it.id==='horn'){
     e.asT = 5; e.asP = Math.max(e.asP, 40);

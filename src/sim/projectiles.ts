@@ -2,12 +2,13 @@
 import {
   clamp, clampToLane, dist, walkable
 } from '../data/world';
-import { applyDot, applySilence, applySlow, applyStun, damage } from './combat';
+import { addEmber, applyDot, applySilence, applySlow, applyStun, damage } from './combat';
 import { ent, fx } from './create';
 
 export function stepProjectiles(S,dt){
   for (let i=S.projs.length-1;i>=0;i--){
     const pr = S.projs[i];
+    S.tag = pr.tag || (pr.kind==='atk' ? 'atk' : (pr.kind==='tower' ? 'tower' : null));
     if (pr.kind==='atk' || pr.kind==='tower'){
       const tg = ent(S,pr.tid);
       if (!tg || tg.dead){ S.projs.splice(i,1); continue; }
@@ -15,7 +16,7 @@ export function stepProjectiles(S,dt){
       const step = pr.speed*dt;
       if (d<=step+4){
         const src = ent(S,pr.src);
-        damage(S, src, tg, pr.dmg, {attack:pr.kind==='atk', crit:pr.crit});
+        damage(S, src, tg, pr.dmg, {attack:pr.kind==='atk', crit:pr.crit, blame:pr.ps});
         if (pr.kind==='atk' && !tg.dead){
           if (pr.rend)  applySlow(tg, .25, 1.5);
           if (pr.chill) applySlow(tg, .20, 1.5);
@@ -38,6 +39,8 @@ export function stepProjectiles(S,dt){
       if (hitE){
         const src = ent(S,pr.src);
         const amt = pr.dmg * (hitE.type==='tower' ? (pr.twr||1) : 1);
+        // embers land BEFORE the blow, so a killing bolt still passes the fire on
+        if (pr.emb) addEmber(S, hitE, pr.emb, src);
         damage(S, src, hitE, amt, {ability:true});
         if (pr.slow) applySlow(hitE, pr.slow.p, pr.slow.t);
         if (pr.stun) applyStun(S, hitE, pr.stun);
@@ -67,4 +70,5 @@ export function stepProjectiles(S,dt){
       }
     }
   }
+  S.tag = null;
 }

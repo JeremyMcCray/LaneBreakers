@@ -225,7 +225,7 @@ export async function quickHost(){
   const ok = await loadPeerJS();
   if (!ok){ btn.disabled=false;
     return setQuickStatus('<b style="color:var(--red)">Could not reach the relay service.</b> '+
-      'Your network may be blocking it — use <b>Manual Connect</b> instead, it always works.'); }
+      'Please try again shortly.'); }
   let tries=0;
   const attempt = ()=>{
     const code = mkCode();
@@ -243,7 +243,7 @@ export async function quickHost(){
       if (err && err.type==='unavailable-id' && tries++ < 4){ try{peer.destroy();}catch(e){} return attempt(); }
       if (err && err.type==='peer-unavailable') return;
       btn.disabled=false;
-      setQuickStatus('<b style="color:var(--red)">Relay error: '+(err&&err.type||err)+'</b> — try Manual Connect.');
+      setQuickStatus('<b style="color:var(--red)">Relay error: '+(err&&err.type||err)+'</b> — please try again shortly.');
     });
   };
   attempt();
@@ -254,7 +254,7 @@ export async function quickJoin(){
   setQuickStatus('Contacting the relay…');
   const ok = await loadPeerJS();
   if (!ok) return setQuickStatus('<b style="color:var(--red)">Could not reach the relay service.</b> '+
-    'Use <b>Manual Connect</b> instead.');
+    'Please try again shortly.');
   const peer = new Peer({debug:0});
   Net.peer = peer;
   peer.on('open', ()=>{
@@ -269,7 +269,7 @@ export async function quickJoin(){
     const t = err && err.type;
     if (t==='peer-unavailable')
       setQuickStatus('<b style="color:var(--red)">No lobby with code '+code+'.</b> Check the code and that your friend still has the lobby open.');
-    else setQuickStatus('<b style="color:var(--red)">Relay error: '+(t||err)+'</b> — try Manual Connect.');
+    else setQuickStatus('<b style="color:var(--red)">Relay error: '+(t||err)+'</b> — please try again shortly.');
   });
 }
 export function copyCode(){
