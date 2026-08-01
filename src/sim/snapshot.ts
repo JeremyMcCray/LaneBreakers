@@ -42,7 +42,7 @@ export function buildSnapshot(S, forTeam){
       x:Math.round(e.x*10)/10, y:Math.round(e.y*10)/10, h:Math.round(e.hp), mh:Math.round(e.maxHp),
       r:e.r, fa:Math.round((e.facing||0)*100)/100, pv:pv, ih:inc, pet:e.pet?1:0,
       il:e.illu?1:0, tu:e.turret?1:0, wa:e.ward?1:0, br:e.brood?1:0, im:imm,
-      eb:e.embN||0,
+      eb:e.embN||0, ng:e.neutral?1:0, jg:e.jungle||0,
       st:(e.stun>0?ST_STUN:0)|(e.slowT>0?ST_SLOW:0)|(e.shieldT>0&&e.shield>0?ST_SHIELD:0)|(e.colT>0?ST_COL:0)|(e.moving?ST_MOVING:0)|((e.hitFlash>0)?ST_HITFLASH:0)|((e.swing>0)?ST_SWING:0)|((e.markT>0)?ST_MARK:0)|((e.drT>0)?ST_DR:0)|((e.dotT>0)?ST_DOT:0)|((e.windT>0)?ST_WIND:0)|((e.rootT>0)?ST_ROOT:0)|((e.silT>0)?ST_SIL:0)|((e.csT>0)?ST_CS:0)|((e.bd>0)?ST_BD:0)|(towerAim[e.id]?ST_TOWER:0)|((e.heroId==='vex'&&e.asT>0)?ST_VEX_BLADESTORM:0)|((e.heroId==='vex'&&e.shieldT>0&&e.shield>0)?ST_VEX_RIPOSTE:0)|((e.heroId==='gruk'&&e.armT>0)?ST_GRUK_STONE_SKIN:0)|((e.heroId==='svaar'&&e.gsT>0)?ST_SVAAR_ULT:0)|((e.spinT>0)?ST_SPIN:0)|((e.invT>0)?ST_INVULN:0)|((e.brT>0)?ST_BLOODRAGE:0)|((e.rupT>0)?ST_RUPTURE:0),
       hi:e.heroId, sl:isHero?e.slot:-1,
       fv:isHero?(e.fervN||0):0, fvm:isHero?(e.fervMax||0):0,
@@ -86,5 +86,6 @@ export function buildSnapshot(S, forTeam){
       ox:q.ox===undefined?0:Math.round(q.ox), oy:q.oy===undefined?0:Math.round(q.oy),
       tx:q.tx===undefined?0:Math.round(q.tx), ty:q.ty===undefined?0:Math.round(q.ty)})),
     ps:ps, tk:S.teamKills.slice(), md:S.mode, wk:S.winKills,
+    cs:(S.campSides||[]).slice(), cc:(S.campCharges||[[],[]]).map(a=>a.slice()),
     w:S.winner, ov:S.over, hw:S.how||'', wt:Math.round(S.waveT*10)/10, f:null};
 }

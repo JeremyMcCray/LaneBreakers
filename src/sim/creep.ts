@@ -10,6 +10,7 @@ export function creepAcquire(S,e){
   let best=null, bestPri=99, bd=1e9;
   for (const o of S.ents){
     if (o.dead || o.team===e.team) continue;
+    if (o.neutral) continue;               // lane creeps never wander into the jungle
     const d = dist(e.x,e.y,o.x,o.y);
     if (d > CREEP_ACQ) continue;
     let pri;

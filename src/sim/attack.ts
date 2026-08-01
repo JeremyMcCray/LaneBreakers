@@ -1,6 +1,6 @@
 // @ts-nocheck
 import {
-  AUTO_ACQ, CLEAVE_ARC, CLEAVE_R, armorMult, clamp, clampToLane, dist, effArmor, now
+  AUTO_ACQ, CLEAVE_ARC, CLEAVE_R, armorMult, clamp, clampToLane, dist, effArmor, nearCamp, now
 } from '../data/world';
 import { HEROES } from '../data/heroes';
 import { applyDot, applyRoot, applySlow, damage } from './combat';
@@ -53,6 +53,7 @@ export function releaseAttack(S,e){
   let amt = e.dmg + bonus, crit = false;
   if (e.type==='creep' && tgt.type==='creep') amt *= 0.7;   // creeps whittle each other slowly
   if (e.quell>0 && tgt.type==='creep') amt += e.quell;      // Quelling Blade
+  if (e.siege>0 && tgt.type==='tower') amt *= e.siege;      // Barrow Ram — born to break gates
   if (e.crit>0 && Math.random() < e.crit){ amt *= 1.9; crit = true; }
   if (e.ranged){
     const sp = e.type==='hero' ? (HEROES[e.heroId].projSpeed||900) : 850;
@@ -104,6 +105,8 @@ export function autoNext(S, e){
   for (const o of S.ents){
     if (o.dead || o.team===e.team) continue;
     if (o.type==='tower') continue;        // never auto-walk yourself into a tower
+    // neutrals only tempt a hero already standing at their camp
+    if (o.neutral && !nearCamp(e.x, e.y, 140)) continue;
     const d = dist(e.x,e.y,o.x,o.y);
     if (d > AUTO_ACQ) continue;
     const pri = o.type==='creep' ? 0 : 1;  // creeps first, the enemy hero second

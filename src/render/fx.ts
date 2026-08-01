@@ -136,6 +136,32 @@ export function spawnFx(f){
       else addToast('Enemy picked up: '+nm);
       break; }
     case 'wave': break;
+    // ---- jungle camps
+    case 'jspawn':                                  // a pack claws its way up out of the pocket
+      ring(f.x,f.y,120,f.col||'#d8b45a',.7,5); ring(f.x,f.y,60,f.col||'#d8b45a',.45,3);
+      part(f.x,f.y,f.col||'#d8b45a',18,180,.6,3.4); break;
+    case 'jbolt':{                                  // shaman sky-bolt — smaller, greener than Zeus
+      const col='#a8ffe0';
+      const x0=f.x+rnd(-40,40), y0=f.y-260;
+      let px=x0, py=y0;
+      for (let k=1;k<=5;k++){
+        const t2=k/5, last=k===5;
+        const qx = last ? f.x : x0+(f.x-x0)*t2+rnd(-16,16);
+        const qy = y0+(f.y-y0)*t2;
+        line(px,py,qx,qy,col,.22,last?4:3);
+        px=qx; py=qy;
+      }
+      ring(f.x,f.y,70,col,.35,4); part(f.x,f.y,col,10,180,.4,3);
+      break; }
+    case 'jheal':                                   // grove mender pulse — soft petals outward
+      ring(f.x,f.y,f.r||240,'#ff9ad5',.5,3); ring(f.x,f.y,(f.r||240)*.45,'#ffd6ec',.3,2);
+      part(f.x,f.y-8,'#ff9ad5',8,90,.55,3,30); break;
+    case 'jcharge':                                 // the last hit banked a wave reinforcement
+      num(f.x, f.y, 'CHARGE BANKED', f.team===G.myTeam ? '#9be15d' : '#ff9b6b', 14, -46);
+      ring(f.x, f.y+16, 34, f.team===G.myTeam ? '#9be15d' : '#ff9b6b', .4, 3); break;
+    case 'jwave':                                   // reinforcements marching out with the wave
+      if (f.team===G.myTeam) num(f.x, f.y-60, '+'+f.v+' JUNGLE ALLIES', '#9be15d', 15, -40);
+      ring(f.x,f.y,90,f.team===G.myTeam?'#9be15d':'#ff9b6b',.5,4); break;
     case 'telegraph': G.rings.push({x:f.x,y:f.y,r0:f.r,r:f.r,life:f.life||f.t,max:f.life||f.t,col:f.col,w:2,flat:true}); break;
   }
 }

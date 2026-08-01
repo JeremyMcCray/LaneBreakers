@@ -11,17 +11,27 @@
  * in a map — do not change numbers/order while doing that.
  */
 import {
-  LANE_Y, clamp, dist, dist2, clampToLane, heal, rnd
+  BASE_X, LANE_Y, clamp, dist, dist2, clampToLane, heal, rnd
 } from '../data/world';
 import { HEROES } from '../data/heroes';
 import { ent, fx, mkEnt, nearbyHeroes, playerOf, spawnBrood, spawnPet } from './create';
 import { damage, kill, addEmber, applyDot, applySlow, applyRoot, applySilence, applyStun,
          clearEmber, disjoint, warded } from './combat';
-import { addZone, aoe, nearestFoe } from './zones';
+import { addZone, aoe, knockback, nearestFoe } from './zones';
 import { updateHeroStats } from './stats';
 import { cancelWind } from './attack';
 
 export function abilityLevel(p,i){ return p.sk[i]; }
+/* Timbersaw with every blade he can field already out: pressing R is the free
+   recall — no mana, no cooldown check. The cooldown starts when they come home. */
+export function chakramRecall(S,p,i){
+  if (i!==3 || p.heroId!=='timber') return false;
+  const e = p.hero;
+  let out = 0;
+  for (const z of S.zones)
+    if ((z.kind==='chakram' || z.kind==='chakret') && z.slot===p.slot) out++;
+  return out >= ((e && e.aghs) ? 2 : 1);
+}
 export function canCast(S,p,i){
   const e=p.hero, A=HEROES[p.heroId].abilities[i];
   if (!e || e.dead || e.stun>0 || S.over) return false;
@@ -29,7 +39,7 @@ export function canCast(S,p,i){
   if (A.passive) return false;                  // nothing to cast — it is always on
   // dev sandbox "free cast": lifts cooldowns and mana only — stun, silence and
   // root still stop you, so what you are testing still behaves like the real thing
-  if (!p.devFree){
+  if (!p.devFree && !chakramRecall(S,p,i)){
     if (A.charges){ if ((p.chg[i]||0) <= 0) return false; }
     else if (p.cds[i]>0) return false;
     if (e.mp < A.mana[p.sk[i]-1]) return false;
@@ -41,7 +51,7 @@ export function canCast(S,p,i){
 export function castAbility(S,p,i,tx,ty){
   if (!canCast(S,p,i)) return;
   const e=p.hero, H=HEROES[p.heroId], A=H.abilities[i], l=p.sk[i], V=A.val[l-1];
-  if (!p.devFree){
+  if (!p.devFree && !chakramRecall(S,p,i)){
     e.mp -= A.mana[l-1];
     if (A.charges){
       p.chg[i]--;
@@ -682,6 +692,147 @@ export function castAbility(S,p,i,tx,ty){
       aghs: e.aghs?1:0});                       // Perpetual Torment
     fx(S,{t:'blast', x:e.x, y:e.y, r:A.aoe, col:'#ff7ae0'});
     break;
+  /* ---- DORN ---- */
+  case 'dorn0': {
+    // Revolving Door — a wide swing that shoves everything in front of him
+    const aim = Math.atan2(ty-e.y, tx-e.x);
+    fx(S,{t:'cleave', x:e.x+Math.cos(aim)*60, y:e.y+Math.sin(aim)*60, a:aim, team:e.team});
+    fx(S,{t:'blast', x:e.x, y:e.y, r:A.aoe, col:'#f0e6d2'});
+    for (const o of S.ents){
+      if (o.dead || o.team===e.team || o.type==='tower') continue;
+      if (dist(o.x,o.y,e.x,e.y) > A.aoe + o.r) continue;
+      const a2 = Math.atan2(o.y-e.y, o.x-e.x);
+      const da = Math.abs(((a2 - aim + Math.PI*3) % (Math.PI*2)) - Math.PI);
+      if (da > 1.05) continue;
+      damage(S, e, o, V, {ability:true});
+      if (!o.dead){ knockback(o, e.x, e.y, 260); applySlow(o, .25, 1.5); }
+    }
+    break; }
+  case 'dorn1': {
+    const a = Math.atan2(ty-e.y, tx-e.x);
+    S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
+      vx:Math.cos(a)*1200, vy:Math.sin(a)*1200, life:760/1200, dmg:V, src:e.id, r:16,
+      lug:p.slot, col:'#f0e6d2'});
+    break; }
+  case 'dorn2': {
+    // one pair at a time — opening new doors closes the old ones
+    for (let n=S.zones.length-1;n>=0;n--)
+      if (S.zones[n].kind==='doors' && S.zones[n].slot===p.slot) S.zones.splice(n,1);
+    const B = {x:tx, y:ty};
+    clampToLane(B);
+    addZone(S,{kind:'doors', team:e.team, x:e.x, y:e.y, tx:B.x, ty:B.y, r:A.aoe,
+      t:V, slot:p.slot, aghs: e.aghs?1:0});
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#f0e6d2'});
+    fx(S,{t:'buff', x:B.x, y:B.y, col:'#f0e6d2'});
+    break; }
+  case 'dorn3': {
+    // The Grand Door — seize the nearest enemy hero and show them out
+    let tg=null, bd=360;
+    for (const o of S.ents){
+      if (o.dead || o.team===e.team || o.type!=='hero') continue;
+      const d = dist(o.x,o.y,tx,ty);
+      if (d<bd){ bd=d; tg=o; }
+    }
+    if (tg && !warded(S, tg) && !(tg.invT>0)){
+      fx(S,{t:'exec', x:tg.x, y:tg.y});
+      damage(S, e, tg, V, {ability:true});
+      if (!tg.dead){
+        const door = S.zones.find(z=>z.kind==='doors' && z.slot===p.slot);
+        const ox2=tg.x, oy2=tg.y;
+        if (door){
+          // escorted through the Service Doors, out the endpoint farther from
+          // where they stood — his door placement is the ult's aim
+          const dA = dist(tg.x,tg.y,door.x,door.y), dB = dist(tg.x,tg.y,door.tx,door.ty);
+          tg.x = dA>dB ? door.x : door.tx;
+          tg.y = dA>dB ? door.y : door.ty;
+          clampToLane(tg);
+          tg.doorCd = 1.0;
+          disjoint(S, tg);
+          applyStun(S, tg, 0.9);
+          fx(S,{t:'dash', x:ox2, y:oy2, x2:tg.x, y2:tg.y, col:'#f0e6d2'});
+          fx(S,{t:'blast', x:tg.x, y:tg.y, r:90, col:'#f0e6d2'});
+        } else {
+          // no doors standing — hurled back toward their own base
+          const dir = BASE_X[tg.team] > tg.x ? 1 : -1;
+          tg.x += dir*450;
+          clampToLane(tg);
+          tg.shovedT = 0.5;
+          disjoint(S, tg);
+          applySlow(tg, .40, 2);
+          fx(S,{t:'dash', x:ox2, y:oy2, x2:tg.x, y2:tg.y, col:'#f0e6d2'});
+        }
+      }
+    }
+    break; }
+  /* ---- TIMBER ---- */
+  case 'timber0':
+    fx(S,{t:'blast', x:e.x, y:e.y, r:A.aoe, col:'#d98862'});
+    aoe(S, e.team, e.x, e.y, A.aoe, V, e, o=> applySlow(o,.25,2));
+    break;
+  case 'timber1': {
+    // Timber Chain — reel himself to the cursor, sawing everything on the line
+    const ox=e.x, oy=e.y;
+    e.x=tx; e.y=ty; clampToLane(e);
+    fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:'#d98862'});
+    const len2 = Math.max(1, (e.x-ox)*(e.x-ox) + (e.y-oy)*(e.y-oy));
+    for (const o of S.ents){
+      if (o.dead || o.team===e.team || o.type==='tower') continue;
+      const t2 = clamp(((o.x-ox)*(e.x-ox) + (o.y-oy)*(e.y-oy)) / len2, 0, 1);
+      const px = ox + (e.x-ox)*t2, py = oy + (e.y-oy)*t2;
+      if (dist(px,py,o.x,o.y) > 110 + o.r) continue;
+      damage(S, e, o, V, {ability:true});
+    }
+    break; }
+  case 'timber2': break;                        // Reactive Armor is passive
+  case 'timber3': {
+    const mine = S.zones.filter(z=>(z.kind==='chakram' || z.kind==='chakret') && z.slot===p.slot);
+    if (mine.length >= (e.aghs ? 2 : 1)){
+      // the recall — every blade comes home, sawing the whole way
+      for (const z of mine) if (z.kind==='chakram'){ z.kind='chakret'; z.hits=[]; }
+      fx(S,{t:'buff', x:e.x, y:e.y, col:'#d98862'});
+    } else {
+      addZone(S,{kind:'chakram', team:e.team, x:tx, y:ty, r:A.aoe, t:999,
+        dps:V, drain:18, slot:p.slot, tickT:0, hits:[],
+        cd: A.cd[l-1] * (1 - (e.cdr||0))});
+      p.cds[3] = 0;                             // the clock only starts when it returns
+      fx(S,{t:'dash', x:e.x, y:e.y, x2:tx, y2:ty, col:'#d98862'});
+      fx(S,{t:'blast', x:tx, y:ty, r:A.aoe, col:'#d98862'});
+    }
+    break; }
+  /* ---- DRIFT ---- */
+  case 'drift0': {
+    const a = Math.atan2(ty-e.y, tx-e.x);
+    S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
+      vx:Math.cos(a)*1350, vy:Math.sin(a)*1350, life:710/1350, dmg:V, src:e.id, r:14,
+      steal:A.val2[l-1], col:'#b0b8d8'});
+    break; }
+  case 'drift1':
+    e.invT = Math.max(e.invT||0, 0.75);
+    e.slowT = 0; e.slowP = 0;
+    e.msT = 2; e.msP = Math.max(e.msP||0, V/100);
+    fx(S,{t:'counter', x:e.x, y:e.y});
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#b0b8d8'});
+    break;
+  case 'drift2': break;                         // Trophies is passive
+  case 'drift3': {
+    // Cash Out — lunge onto the mark and collect, scaled by the belt
+    let tg=null, bd=360;
+    for (const o of S.ents){
+      if (o.dead || o.team===e.team || o.type!=='hero') continue;
+      const d = dist(o.x,o.y,tx,ty);
+      if (d<bd){ bd=d; tg=o; }
+    }
+    if (tg && !warded(S, tg) && !(tg.invT>0)){
+      const ox=e.x, oy=e.y;
+      const a2 = Math.atan2(tg.y-e.y, tg.x-e.x);
+      e.x = tg.x - Math.cos(a2)*(tg.r + e.r + 6);
+      e.y = tg.y - Math.sin(a2)*(tg.r + e.r + 6);
+      clampToLane(e);
+      fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:'#b0b8d8'});
+      fx(S,{t:'exec', x:tg.x, y:tg.y});
+      damage(S, e, tg, V * (1 + 0.25*(p.trophies||0)), {ability:true});
+    }
+    break; }
   }
   for (let n=projMark; n<S.projs.length; n++) if (!S.projs[n].tag) S.projs[n].tag = slotTag;
   for (let n=zoneMark; n<S.zones.length; n++) if (!S.zones[n].tag) S.zones[n].tag = slotTag;

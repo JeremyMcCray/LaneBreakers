@@ -3,9 +3,10 @@ import {
   PULL_TIME, XP_RADIUS, armorMult, dist, effArmor, heal, now, rnd
 } from '../data/world';
 import { HEROES } from '../data/heroes';
+import { CAMP_VARIANTS } from '../data/camps';
 import { cancelWind } from './attack';
 import { ent, foesOf, fx, nearbyHeroes, playerOf, spawnBrood, teamOf } from './create';
-import { addGold, addXp, endGame, logEvent } from './stats';
+import { addGold, addXp, endGame, logEvent, updateHeroStats } from './stats';
 import { towerShielded } from './tower';
 
 /* ---------------------- damage attribution ------------------------- */
@@ -57,6 +58,7 @@ export function damage(S, src, tgt, amount, opt){
   let dmg = amount;
   if (opt.ability && src && src.amp>0) dmg *= (1 + src.amp);
   if (src && src.brT>0) dmg *= (1 + src.brP);               // Bloodrage — everything hits harder
+  if (src && src.hungry) dmg *= 0.88;                       // the Drifter before his first trophy
   if (!opt.pure) dmg *= armorMult(effArmor(tgt));
   if (opt.attack && tgt.block>0) dmg = Math.max(0, dmg - tgt.block);   // Stout Shield
   if (tgt.type==='tower' && towerShielded(S, tgt)) dmg *= 0.15;   // backdoor protection
@@ -70,6 +72,11 @@ export function damage(S, src, tgt, amount, opt){
     if (opt.attack  && src.hcut) { tgt.hcT = 5; tgt.hcP = .55; }   // Reaper's Sigil
     if (opt.ability && src.hcutM){ tgt.hcT = 6; tgt.hcP = .65; }   // Withering Rod
     if (opt.attack  && src.shredOn){ tgt.shredT = 5; tgt.shredV = 5; }
+  }
+  // Reactive Armor — every attack that lands on Timbersaw plates him further
+  if (opt.attack && tgt.reactOn && src && src.team!==tgt.team){
+    tgt.raN = Math.min(10, (tgt.raN||0) + 1);
+    tgt.raT = 12;
   }
   // shield
   if (tgt.shieldT>0 && tgt.shield>0){
@@ -214,6 +221,26 @@ export function kill(S, src, tgt){
     }
     return;                       // summons are worth no gold and no XP to anyone
   }
+  else if (tgt.type==='creep' && tgt.neutral){
+    // jungle camp member: the last hit pays its bounty AND banks a charge —
+    // that exact creep type marches with the killer team's next wave
+    const V = CAMP_VARIANTS[tgt.jungle] || {bounty:20, xp:20};
+    const claimer = src && (src.type==='hero' || (src.type==='creep' && src.pet)) ? src : null;
+    const p = claimer ? (claimer.type==='hero' ? playerOf(S, claimer)
+            : (claimer.oslot!==undefined ? S.players[claimer.oslot] : null)) : null;
+    if (p){
+      p.cs++; addGold(p, V.bounty);
+      fx(S,{t:'gold', x:tgt.x, y:tgt.y-40, v:V.bounty, pet: claimer.type!=='hero' ? 1:0});
+      for (const q of nearbyHeroes(S, p.team, tgt.x, tgt.y, XP_RADIUS)) addXp(S, q, V.xp);
+      S.campCharges[p.team].push(tgt.jungle);
+      fx(S,{t:'jcharge', x:tgt.x, y:tgt.y-58, team:p.team, jg:tgt.jungle});
+      if (claimer.type==='hero' && claimer.thirst>0 && !claimer.dead){
+        const got = heal(S, claimer, thirstAmount(claimer));
+        if (got>0) fx(S,{t:'thirst', x:claimer.x, y:claimer.y, v:Math.round(got)});
+      }
+    }
+    return;
+  }
   else if (tgt.type==='creep'){
     const deny = src && src.team===tgt.team;
     const enemies = foesOf(S, tgt.team);
@@ -296,6 +323,16 @@ export function kill(S, src, tgt){
       if (src.type==='hero' && src.thirst>0 && !src.dead){
         const got = heal(S, src, thirstAmount(src)*5);
         if (got>0) fx(S,{t:'thirst', x:src.x, y:src.y, v:Math.round(got)});
+      }
+      // Trophies — a Drifter kill goes on the belt forever; Cash Out counts twice,
+      // and with the scepter the victim permanently loses what he took
+      if (killer && killer.heroId==='drift'){
+        killer.trophies = (killer.trophies||0) + (S.tag==='a3' ? 2 : 1);
+        if (killer.hero && killer.hero.aghs) p.stolenDmg = (p.stolenDmg||0) + 8;
+        if (killer.hero && !killer.hero.dead){
+          fx(S,{t:'lvlup', x:killer.hero.x, y:killer.hero.y});
+          updateHeroStats(S, killer);
+        }
       }
       fx(S,{t:'kill', x:tgt.x, y:tgt.y, team:kt});
       if (S.teamKills[kt] >= S.winKills) endGame(S, kt, 'kills');

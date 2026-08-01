@@ -185,6 +185,22 @@ const BANK = {
                              tone(t+.08,{f:660, f2:1320, d:.3, v:.1*v, pan});
                              noise(t,{d:.3, v:.05*v, hp:1500, pan}); },
 
+  // jungle camps — every variant event reads differently by ear
+  jspawn:   (t,v,pan,pit)=>{ tone(t,{f:130*pit, f2:65, type:'sawtooth', d:.5, v:.22*v, pan});   // low guttural horn
+                             tone(t+.12,{f:98*pit, f2:60, type:'sawtooth', d:.4, v:.16*v, pan});
+                             noise(t,{d:.35, v:.14*v, lp:600, lp2:150, pan}); },
+  jbolt:    (t,v,pan,pit)=>{ noise(t,{d:.04, v:.25*v, hp:3400, pan});                           // snappier, brighter than Zeus
+                             tone(t,{f:2400*pit, f2:300, type:'sawtooth', d:.09, v:.13*v, pan});
+                             tone(t+.03,{f:120, f2:60, d:.28, v:.16*v, pan}); },
+  jheal:    (t,v,pan,pit)=>{ tone(t,{f:520*pit, d:.16, v:.09*v, pan});                          // warm rising triad
+                             tone(t+.07,{f:655*pit, d:.18, v:.08*v, pan});
+                             tone(t+.14,{f:780*pit, d:.26, v:.07*v, pan}); },
+  jcharge:  (t,v,pan,pit)=>{ tone(t,{f:392, type:'triangle', d:.09, v:.16*v, pan});             // war-drum two-note
+                             tone(t+.08,{f:587, type:'triangle', d:.2, v:.15*v, pan});
+                             noise(t,{d:.06, v:.08*v, lp:900, pan}); },
+  jwave:    (t,v,pan,pit)=>{ tone(t,{f:196, f2:392, type:'sawtooth', d:.35, v:.12*v, pan});     // marching horn swell
+                             tone(t+.1,{f:294, f2:440, type:'triangle', d:.3, v:.1*v, pan}); },
+
   // towers
   towerfire:(t,v,pan,pit)=>{ tone(t,{f:240*pit, f2:110, d:.12, v:.18*v, pan});
                              noise(t,{d:.07, v:.1*v, lp:800, pan}); },
@@ -223,7 +239,8 @@ const BANK = {
 /* chatty events get a longer per-name retrigger gap (seconds) */
 const GAP = { dmg:.07, hit:.06, slash:.07, cleave:.09, die:.05, gold:.11, deny:.09,
               towerfire:.1, chain:.06, static:.12, emberjump:.09,
-              thirst:.14, cast:.05, dash:.07, windup:.25, bleed:.22 };
+              thirst:.14, cast:.05, dash:.07, windup:.25, bleed:.22,
+              jbolt:.15, jheal:.35, jcharge:.2 };
 
 export function playSfx(name, opt){
   if (cfg.mute || cfg.vol <= 0) return;
@@ -289,6 +306,11 @@ export function fxSound(f){
     case 'cdcut':    sfxAt('cdcut', f.x, f.y); break;
     case 'respawn':  sfxAt('respawn', f.x, f.y); break;
     case 'twrfire':  sfxAt('towerfire', f.x, f.y); break;
+    case 'jspawn':   sfxAt('jspawn', f.x, f.y); break;
+    case 'jbolt':    sfxAt('jbolt', f.x, f.y); break;
+    case 'jheal':    sfxAt('jheal', f.x, f.y); break;
+    case 'jcharge':  sfxAt('jcharge', f.x, f.y, {vol: f.team===G.myTeam ? 1.2 : .7}); break;
+    case 'jwave':    sfxAt('jwave', f.x, f.y); break;
     case 'towerdown':playSfx('towerdown'); break;
     case 'gold':     if (!f.passive) sfxAt('gold', f.x, f.y); break;
     case 'deny':     sfxAt('deny', f.x, f.y); break;

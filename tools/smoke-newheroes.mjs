@@ -1,7 +1,7 @@
 // @ts-nocheck
-/* Focused checks on the five new kits — each one asserts the mechanic that
+/* Focused checks on the newer kits — each one asserts the mechanic that
    defines the hero, not just "it did not crash". */
-import { newSim, simStep, castAbility, mkEnt, kill } from "../src/sim/engine.ts";
+import { newSim, simStep, castAbility, mkEnt, kill, damage } from "../src/sim/engine.ts";
 import { HEROES, HERO_IDS } from "../src/data/heroes.ts";
 import { BOT_BUILD } from "../src/ai/bot.ts";
 import { LANE_Y } from "../src/data/world.ts";
@@ -422,6 +422,161 @@ console.log("\n== VHAL — Hive Ascendant grows and raises the dead ==");
   ok("the hive closes after 16s", !S.zones.some(z => z.kind === "hive"), "");
 }
 
+console.log("\n== DORN — the Revolving Door shoves, the luggage comes back ==");
+{
+  const S = sim("dorn", "vex");
+  const p = S.players[0], h = p.hero;
+  const d = dummy(S, 1, h.x + 120, LANE_Y);
+  const x0 = d.x;
+  castAbility(S, p, 0, d.x, d.y);                  // Revolving Door
+  ok("the target was shoved away", d.x > x0 + 150, `${Math.round(x0)} -> ${Math.round(d.x)}`);
+  ok("and slowed", d.slowT > 0, `slowT=${d.slowT.toFixed(1)}`);
+  // a fresh sim so the shoved dummy is not squatting on the suitcase's flight path
+  const S2 = sim("dorn", "vex");
+  const p2 = S2.players[0], h2 = p2.hero;
+  S2.players[1].hero.x = 3200;                     // the suitcase clamps the FIRST thing it meets
+  const far = dummy(S2, 1, h2.x + 600, LANE_Y);
+  const hp0 = far.hp;
+  castAbility(S2, p2, 1, far.x, far.y);            // Baggage Check
+  step(S2, 40);                                    // flight + the clamp
+  const fx0 = far.x;
+  ok("the suitcase hit and clamped on", far.hp < hp0 && S2.zones.some(z => z.kind === "yank"),
+     `hp ${hp0} -> ${Math.round(far.hp)}`);
+  step(S2, 60);                                    // the recall fires at 0.9s
+  ok("the recall dragged them to Dorn", far.x < fx0 - 220, `${Math.round(fx0)} -> ${Math.round(far.x)}`);
+}
+
+console.log("\n== DORN — Service Doors carry his side, once per entry ==");
+{
+  const S = sim("dorn", "vex");
+  const p = S.players[0], h = p.hero;
+  const hx0 = h.x;
+  castAbility(S, p, 2, h.x + 500, LANE_Y);         // door A at his feet, B at +500
+  ok("a pair of doors is standing", S.zones.some(z => z.kind === "doors"), "");
+  step(S, 5);
+  ok("he stepped through to the far door", Math.abs(h.x - (hx0 + 500)) < 80,
+     `${Math.round(hx0)} -> ${Math.round(h.x)}`);
+  step(S, 90);                                     // stand on the mat well past the cooldown
+  ok("standing on the mat does not bounce him back", Math.abs(h.x - (hx0 + 500)) < 120,
+     `x=${Math.round(h.x)}`);
+  step(S, 60 * 10);
+  ok("the doors close on schedule", !S.zones.some(z => z.kind === "doors"), "");
+}
+
+console.log("\n== DORN — The Grand Door shows you out ==");
+{
+  const S = sim("dorn", "vex");                    // with doors: escorted to the far side
+  const p = S.players[0], h = p.hero;
+  const foe = S.players[1].hero;
+  foe.x = h.x + 200; foe.y = LANE_Y;
+  castAbility(S, p, 2, h.x + 500, LANE_Y);
+  const door = S.zones.find(z => z.kind === "doors");
+  castAbility(S, p, 3, foe.x, foe.y);
+  ok("the victim came out the far door", Math.abs(foe.x - door.tx) < 60 && Math.abs(foe.y - door.ty) < 60,
+     `foe at ${Math.round(foe.x)}, far door at ${Math.round(door.tx)}`);
+  ok("dazed by the trip", foe.stun > 0, `stun=${foe.stun.toFixed(2)}`);
+
+  const S2 = sim("dorn", "vex");                   // without doors: hurled toward home
+  const p2 = S2.players[0], h2 = p2.hero;
+  const foe2 = S2.players[1].hero;
+  foe2.x = h2.x + 200; foe2.y = LANE_Y;
+  const fx2 = foe2.x;
+  castAbility(S2, p2, 3, foe2.x, foe2.y);
+  ok("no doors — thrown 450 toward their own base", foe2.x > fx2 + 380,
+     `${Math.round(fx2)} -> ${Math.round(foe2.x)}`);
+  ok("and slowed on the way out", foe2.slowT > 0, `slowT=${foe2.slowT.toFixed(1)}`);
+}
+
+console.log("\n== TIMBER — spin, chain, plates ==");
+{
+  const S = sim("timber", "vex");
+  const p = S.players[0], h = p.hero;
+  const d = dummy(S, 1, h.x + 150, LANE_Y);
+  const hp0 = d.hp;
+  castAbility(S, p, 0, h.x, h.y);                  // Whirling Death
+  ok("the spin chewed the target and slowed it", d.hp < hp0 && d.slowT > 0,
+     `${hp0} -> ${Math.round(d.hp)} slowT=${d.slowT.toFixed(1)}`);
+  const d2 = dummy(S, 1, h.x + 400, LANE_Y + 40);
+  const d2hp = d2.hp, hx0 = h.x;
+  castAbility(S, p, 1, h.x + 500, LANE_Y + 40);    // Timber Chain
+  ok("the chain reeled him across the lane", h.x > hx0 + 400, `${Math.round(hx0)} -> ${Math.round(h.x)}`);
+  ok("and sawed what he passed", d2.hp < d2hp, `${d2hp} -> ${Math.round(d2.hp)}`);
+  const foe = S.players[1].hero;
+  step(S, 2);                                      // a stats pass so Reactive Armor is armed
+  const arm0 = h.armor;
+  for (let k = 0; k < 5; k++) damage(S, foe, h, 10, { attack: true });
+  step(S, 2);
+  ok("five landed attacks are five armor plates", h.raN === 5, `raN=${h.raN}`);
+  ok("and his armor actually rose", h.armor > arm0 + 5*1.5, `${arm0.toFixed(1)} -> ${h.armor.toFixed(1)}`);
+  step(S, 60 * 13);                                // let the plates lapse
+  ok("the plates fall off after 12s", !(h.raN > 0), `raN=${h.raN}`);
+}
+
+console.log("\n== TIMBER — the Chakram parks, drains, and comes home ==");
+{
+  const S = sim("timber", "vex");
+  const p = S.players[0], h = p.hero;
+  const d = dummy(S, 1, h.x - 400, LANE_Y);        // behind him, away from the enemy hero
+  castAbility(S, p, 3, d.x, d.y);
+  ok("the blade is parked with no cooldown ticking", S.zones.some(z => z.kind === "chakram") && p.cds[3] === 0,
+     `cd=${p.cds[3]}`);
+  const hp0 = d.hp, mp0 = h.mp;
+  step(S, 60);
+  ok("it grinds and slows what stands in it", d.hp < hp0 - 30 && d.slowT > 0,
+     `${hp0} -> ${Math.round(d.hp)}`);
+  ok("and feeds on his mana", h.mp < mp0 - 10, `${Math.round(mp0)} -> ${Math.round(h.mp)}`);
+  castAbility(S, p, 3, h.x, h.y);                  // the recall
+  ok("R again recalls it", S.zones.some(z => z.kind === "chakret"), "");
+  step(S, 90);
+  ok("it returns and only then starts the cooldown",
+     !S.zones.some(z => z.kind === "chakram" || z.kind === "chakret") && p.cds[3] > 5,
+     `cd=${p.cds[3].toFixed(1)}`);
+}
+
+console.log("\n== DRIFT — hungry until the first trophy, then the belt ==");
+{
+  const S = sim("drift", "vex");
+  const p = S.players[0], h = p.hero;
+  const foeP = S.players[1], foe = foeP.hero;
+  step(S, 2);
+  ok("before his first kill he is HUNGRY", h.hungry === true, "");
+  const d = dummy(S, 1, h.x + 200, LANE_Y - 120);  // off the knife's firing line
+  const hd0 = d.hp;
+  damage(S, h, d, 100, { pure: true });
+  ok("and the hunger bites his damage", Math.abs((hd0 - d.hp) - 88) < 2, `dealt ${Math.round(hd0 - d.hp)}/100`);
+  foeP.gold = 500;
+  const g0 = p.gold;
+  castAbility(S, p, 0, foe.x, foe.y);              // Stickup
+  step(S, 30);
+  ok("the knife robbed them", foeP.gold < 500 && p.gold > g0,
+     `victim 500 -> ${Math.round(foeP.gold)}, his ${Math.round(g0)} -> ${Math.round(p.gold)}`);
+  const dmg0 = h.dmg;
+  damage(S, h, foe, 99999, { pure: true });        // the first kill
+  step(S, 2);
+  ok("the kill went on the belt", p.trophies === 1, `trophies=${p.trophies}`);
+  ok("the hunger is over", h.hungry === false, "");
+  ok("and the trophy is permanent damage", h.dmg >= dmg0 + 15, `${Math.round(dmg0)} -> ${Math.round(h.dmg)}`);
+  castAbility(S, p, 1, h.x, h.y);                  // Slip
+  ok("Slip makes him untouchable for a beat", h.invT > 0.5, `invT=${h.invT.toFixed(2)}`);
+}
+
+console.log("\n== DRIFT — Cash Out scales with the belt ==");
+{
+  const lossWith = trophies => {
+    const S = sim("drift", "vex");
+    const p = S.players[0], foe = S.players[1].hero;
+    p.trophies = trophies;
+    step(S, 2);
+    foe.x = p.hero.x + 300; foe.y = LANE_Y;
+    const hp0 = foe.hp;
+    castAbility(S, p, 3, foe.x, foe.y);
+    return hp0 - foe.hp;
+  };
+  const broke = lossWith(0), loaded = lossWith(4);
+  ok("four trophies roughly double the payout", loaded > broke * 1.7,
+     `${Math.round(broke)} -> ${Math.round(loaded)}`);
+}
+
 console.log("\n== ROSTER — nothing on the new heroes is half-wired ==");
 {
   const missing = HERO_IDS.filter(id => !BOT_BUILD[id]);
@@ -436,7 +591,7 @@ console.log("\n== ROSTER — nothing on the new heroes is half-wired ==");
     if (A.passive && !A.grants) bad.push(id + i + ":grants");
   });
   ok("rank tables and tooltips are well formed", bad.length === 0, bad.join(",") || "ok");
-  ok("all 21 heroes are registered", HERO_IDS.length === 21, `${HERO_IDS.length} heroes`);
+  ok("all 24 heroes are registered", HERO_IDS.length === 24, `${HERO_IDS.length} heroes`);
 }
 
 console.log(fails === 0 ? "\nALL CHECKS PASSED" : `\n${fails} CHECK(S) FAILED`);

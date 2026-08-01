@@ -13,6 +13,31 @@ export function setLaneMode(m){
 }
 export const BASE_X = [180, WORLD_W - 180];          // fountains
 export const TOWER_X = [760, WORLD_W - 760];         // towers
+
+/* ---------------------------- jungle camps -------------------------- */
+/* Two walkable pockets bulge off the lane at mid-map — north (side 0) and
+   south (side 1). A camp side is only "open" (walkable + drawn + spawning)
+   when the sim turns it on: one random side in 1v1, both in 2v2. */
+export const CAMP_X = WORLD_W / 2;
+export const CAMP_R = 150;                            // pocket radius
+export let CAMP_OPEN = [false, false];
+export function setCampsOpen(sides){
+  CAMP_OPEN = [false, false];
+  if (sides) for (const s of sides) if (s===0 || s===1) CAMP_OPEN[s] = true;
+}
+/* pocket centre for a side — hugs the lane edge, but never leaves the world */
+export function campY(s){
+  return s===0 ? Math.max(CAMP_R + 6, LANE_Y - LANE_HALF - CAMP_R*0.55)
+               : Math.min(WORLD_H - CAMP_R - 6, LANE_Y + LANE_HALF + CAMP_R*0.55);
+}
+/* is this point close enough to an open camp to bother with its neutrals? */
+export function nearCamp(x, y, pad){
+  for (let s=0; s<2; s++){
+    if (!CAMP_OPEN[s]) continue;
+    if (Math.hypot(x-CAMP_X, y-campY(s)) < CAMP_R + (pad||0)) return true;
+  }
+  return false;
+}
 export const TICK = 1 / 60;
 export const SNAP_HZ = 20;
 export const INTERP_MS = 90;
@@ -38,6 +63,8 @@ export let BUY_DELAY = 5;             // courier delivery seconds
 export let SELL_FULL = 10;            // seconds an item can be sold back at full price
 export let START_GOLD = 420;
 export let GOLD_PER_SEC = 2.2;
+export let CAMP_FIRST = 120;          // first jungle camp spawn (s)
+export let CAMP_RESPAWN = 120;        // respawn check cadence — only refills an EMPTY camp
 
 export const XP_TABLE = [0,0,180,420,700,1040,1450,1930,2490,3120,3830,4630,5520];
 export const ULT_REQ  = [6,9,12];
@@ -62,11 +89,28 @@ export function laneHalf(x){
 }
 export function walkable(x,y){
   if (x < 46 || x > WORLD_W-46) return false;
-  return Math.abs(y - LANE_Y) < laneHalf(x) - 10;
+  if (Math.abs(y - LANE_Y) < laneHalf(x) - 10) return true;
+  const s = y < LANE_Y ? 0 : 1;
+  return CAMP_OPEN[s] && dist(x, y, CAMP_X, campY(s)) < CAMP_R - 10;
 }
 export function clampToLane(e){
   e.x = clamp(e.x, 46, WORLD_W-46);
   const h = laneHalf(e.x) - 10;
+  if (Math.abs(e.y - LANE_Y) <= h) return;
+  // off the lane — an open camp pocket is also legal ground
+  const s = e.y < LANE_Y ? 0 : 1;
+  if (CAMP_OPEN[s]){
+    const cy = campY(s), R = CAMP_R - 10;
+    const d = dist(e.x, e.y, CAMP_X, cy);
+    if (d <= R) return;
+    // outside everything: snap to whichever valid edge is closer — the pocket
+    // rim or the lane edge (the pocket overlaps the lane, so there is no gap)
+    const rimx = CAMP_X + (e.x-CAMP_X)/(d||1)*R, rimy = cy + (e.y-cy)/(d||1)*R;
+    const laneEdge = s===0 ? LANE_Y-h : LANE_Y+h;
+    if (dist(e.x, e.y, rimx, rimy) < Math.abs(e.y - laneEdge)){
+      e.x = rimx; e.y = rimy; return;
+    }
+  }
   e.y = clamp(e.y, LANE_Y-h, LANE_Y+h);
 }
 /* armor after any shred effects — everything that computes damage goes through this */
@@ -109,7 +153,9 @@ export const WORLD_TUNABLES = [
   {k:'CLEAVE_R',        label:'Cleave radius',        min:20,  max:700,  step:5,   live:true},
   {k:'CLEAVE_ARC',      label:'Cleave half-angle',    min:.1,  max:3.14, step:.05, live:true},
   {k:'BUY_DELAY',       label:'Courier delay (s)',    min:0,   max:30,   step:.5,  live:true},
-  {k:'SELL_FULL',       label:'Full-refund window',   min:0,   max:120,  step:1,   live:true}
+  {k:'SELL_FULL',       label:'Full-refund window',   min:0,   max:120,  step:1,   live:true},
+  {k:'CAMP_FIRST',      label:'First jungle camp (s)',min:5,   max:600,  step:5,   live:false},
+  {k:'CAMP_RESPAWN',    label:'Camp respawn (s)',     min:10,  max:600,  step:5,   live:true}
 ];
 const WORLD_READ = {
   CREEP_ACQ:()=>CREEP_ACQ, AUTO_ACQ:()=>AUTO_ACQ, CLEAVE_R:()=>CLEAVE_R, CLEAVE_ARC:()=>CLEAVE_ARC,
@@ -117,7 +163,8 @@ const WORLD_READ = {
   FIRST_WAVE:()=>FIRST_WAVE, XP_RADIUS:()=>XP_RADIUS, KILLS_TO_WIN:()=>KILLS_TO_WIN,
   KILLS_TO_WIN_2V2:()=>KILLS_TO_WIN_2V2, MATCH_LIMIT:()=>MATCH_LIMIT, SUDDEN_DEATH:()=>SUDDEN_DEATH,
   MAX_LEVEL:()=>MAX_LEVEL, BUY_DELAY:()=>BUY_DELAY, SELL_FULL:()=>SELL_FULL,
-  START_GOLD:()=>START_GOLD, GOLD_PER_SEC:()=>GOLD_PER_SEC
+  START_GOLD:()=>START_GOLD, GOLD_PER_SEC:()=>GOLD_PER_SEC,
+  CAMP_FIRST:()=>CAMP_FIRST, CAMP_RESPAWN:()=>CAMP_RESPAWN
 };
 const WORLD_WRITE = {
   CREEP_ACQ:v=>CREEP_ACQ=v, AUTO_ACQ:v=>AUTO_ACQ=v, CLEAVE_R:v=>CLEAVE_R=v, CLEAVE_ARC:v=>CLEAVE_ARC=v,
@@ -127,7 +174,8 @@ const WORLD_WRITE = {
   // MAX_LEVEL indexes XP_TABLE — never let it point past the end
   MAX_LEVEL:v=>MAX_LEVEL=clamp(Math.round(v), 1, XP_TABLE.length-1),
   BUY_DELAY:v=>BUY_DELAY=v, SELL_FULL:v=>SELL_FULL=v,
-  START_GOLD:v=>START_GOLD=v, GOLD_PER_SEC:v=>GOLD_PER_SEC=v
+  START_GOLD:v=>START_GOLD=v, GOLD_PER_SEC:v=>GOLD_PER_SEC=v,
+  CAMP_FIRST:v=>CAMP_FIRST=v, CAMP_RESPAWN:v=>CAMP_RESPAWN=v
 };
 export function getWorldTunable(k){ const f = WORLD_READ[k]; return f ? f() : undefined; }
 export function setWorldTunable(k, v){

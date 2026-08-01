@@ -2,6 +2,7 @@
 import {
   BASE_X, CREEP_TICK, LANE_Y, TICK, rnd
 } from '../data/world';
+import { spawnJungleWave } from './camp';
 import { fx, mkEnt } from './create';
 
 export function spawnWave(S){
@@ -24,6 +25,7 @@ export function spawnWave(S){
         ms: 250, ranged:ranged, laneOff: off, tid:0
       });
     }
+    spawnJungleWave(S, tm);          // cash in any banked jungle charges
   }
   fx(S,{t:'wave'});
 }

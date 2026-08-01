@@ -448,6 +448,72 @@ vosk:{
   ],
   scepter:{name:'Perpetual Torment',
     desc:'Pulse Nova feeds on what it hurts: every pulse that catches a hero refunds its own mana cost and heals Vosk for 30% of the pulse per hero struck. In an empty lane it starves — in a fight it never stops.'}
+},
+dorn:{
+  id:'dorn', name:'DORN', title:'The Doorman', col:'#f0e6d2', col2:'#7a2b3a',
+  desc:'A doorman who decides where everyone stands. His doors open where he pleases, his luggage does not stay thrown — and if you were not on the list, you are leaving.',
+  hp:680, hpg:100, mp:310, mpg:44, dmg:48, dmgg:5.0, arm:3.5, armg:.44,
+  ms:328, range:145, bat:1.00, ranged:false,
+  abilities:[
+    {key:'Q', name:'Revolving Door', cast:'point', range:220, aoe:220, mana:[50,55,60,65], cd:[11,10,9,8],
+     desc:'Swing the great door in a wide arc: enemies in front take %d damage, are shoved 260 back and slowed 25% for 1.5s.',
+     val:[80,130,180,230]},
+    {key:'W', name:'Baggage Check', cast:'point', range:750, mana:[55,60,65,70], cd:[13,12,11,10],
+     desc:'Hurl a suitcase for %d damage. It clamps onto whatever it hits — a beat later the luggage is recalled, dragging its holder 320 units to Dorn.',
+     val:[70,115,160,205]},
+    {key:'E', name:'Service Door', cast:'point', range:700, aoe:55, mana:[60,60,60,60], cd:[22,20,18,16],
+     desc:'Open a pair of doors for %ds — one at his feet, one at the cursor. Allied heroes step into either and out the other. Only one pair stands at a time.',
+     val:[6,7,8,9]},
+    {key:'R', name:'The Grand Door', cast:'point', range:350, ult:true, mana:[125,150,175], cd:[80,70,60],
+     desc:'Seize the enemy hero nearest the cursor for %d damage and show them out: through his Service Doors to the far side if a pair stands — dazed 0.9s on arrival — or hurled 450 units back toward their own base if not.',
+     val:[250,380,510]}
+  ],
+  scepter:{name:'Off the Guest List',
+    desc:'His doors stop checking credentials: ANY enemy knocked, yanked or blasted into a Service Door is pulled through and dumped out the far side, slowed 30%. The lane is his lobby now, and everyone in it can be moved.'}
+},
+timber:{
+  id:'timber', name:'TIMBER', title:'The Timbersaw', col:'#d98862', col2:'#5a2f1a',
+  desc:'A saw-armored engine of spite. Get close and everything spins: he wants you in blade range, and the longer you hit him the harder he is to cut down.',
+  hp:700, hpg:104, mp:340, mpg:48, dmg:46, dmgg:4.6, arm:3, armg:.40,
+  ms:322, range:150, bat:1.05, ranged:false,
+  abilities:[
+    {key:'Q', name:'Whirling Death', cast:'self', aoe:275, mana:[55,60,65,70], cd:[7,6.4,5.8,5.2],
+     desc:'The saws spin out around him: %d damage and a 25% slow for 2s to everything within 275.',
+     val:[90,145,200,255]},
+    {key:'W', name:'Timber Chain', cast:'point', range:650, blink:true, mana:[60,65,70,75], cd:[11,10,9,8],
+     desc:'Fire a chain and reel himself to the cursor, sawing everything along the way for %d damage.',
+     val:[80,130,180,230]},
+    {key:'E', name:'Reactive Armor', passive:true, grants:'reactive', mana:[0,0,0,0], cd:[0,0,0,0],
+     desc:'Passive: every enemy ATTACK that lands on him plates him up — +%d armor and +1.2 HP regen per stack for 12s, up to 10 stacks. Hitting Timbersaw is how you lose to Timbersaw.',
+     val:[0.7,1.0,1.3,1.6]},
+    {key:'R', name:'Chakram', cast:'point', range:700, aoe:180, ult:true, mana:[150,175,200], cd:[24,20,16],
+     desc:'Hurl the great blade to a point, where it spins for %d damage per second and slows by 35% within 180. It stays as long as he feeds it 18 mana per second — press R again to recall it, and it saws through everything on the way home. The cooldown starts when the blade returns.',
+     val:[70,105,140]}
+  ],
+  scepter:{name:'Second Chakram',
+    desc:'He built another one. A second Chakram can be deployed alongside the first — two zones the lane simply cannot stand in — and recalling brings both blades home through everything in between.'}
+},
+drift:{
+  id:'drift', name:'DRIFT', title:'The Drifter', col:'#b0b8d8', col2:'#3a3f5c',
+  desc:'A vagabond who arrives with nothing and takes everything. Before his first kill he is the weakest hero in the game — after it, every takedown is another trophy on his belt, and somebody has to stop him before he closes the match out.',
+  hp:570, hpg:88, mp:280, mpg:38, dmg:45, dmgg:4.4, arm:2.5, armg:.36,
+  ms:340, range:150, bat:0.95, ranged:false,
+  abilities:[
+    {key:'Q', name:'Stickup', cast:'point', range:700, mana:[40,45,50,55], cd:[8,7,6,5],
+     desc:'Flick a knife for %d damage. Heroes it strikes are also robbed of %p gold, straight into his pocket.',
+     val:[85,135,185,235], val2:[25,35,45,55]},
+    {key:'W', name:'Slip', cast:'self', mana:[50,55,60,65], cd:[16,14,12,10],
+     desc:'Step between moments: untouchable for 0.75s, slows purged, and +%d% move speed for 2s. His only way out — until he is strong enough to stop leaving.',
+     val:[20,25,30,35]},
+    {key:'E', name:'Trophies', passive:true, grants:'trophy', mana:[0,0,0,0], cd:[0,0,0,0],
+     desc:'Passive: every enemy hero he kills is a permanent trophy — +%d attack damage and +70 max health, forever. Until he takes his first, he is HUNGRY: everything he deals hits 12% weaker. A kill with Cash Out counts as two trophies.',
+     val:[7,10,13,16]},
+    {key:'R', name:'Cash Out', cast:'point', range:500, blink:true, ult:true, mana:[110,135,160], cd:[60,50,40],
+     desc:'Lunge onto the enemy hero nearest the cursor and collect: %d damage, plus 25% more for every trophy he holds. This is the blade that ends matches.',
+     val:[220,340,460]}
+  ],
+  scepter:{name:'Grand Larceny',
+    desc:'His trophies stop being symbolic: every takedown permanently STEALS 8 attack damage from the victim — they lose it for the rest of the match, and he swings it instead. The longer the game goes, the less of them there is.'}
 }};
 export const HERO_IDS = Object.keys(HEROES);
 

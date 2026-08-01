@@ -1,6 +1,6 @@
 // @ts-nocheck
 import {
-  BASE_X, LANE_Y, dist, heal
+  BASE_X, LANE_Y, dist, heal, nearCamp
 } from '../data/world';
 import { attackWith, autoNext, cancelWind, moveToward, releaseAttack } from './attack';
 import { clearEmber, damage, kill, tickDot, tickEmber, tickRupture } from './combat';
@@ -18,7 +18,7 @@ export function heroThink(S,p,dt){
       e.spinT=0; e.invT=0; e.csT=0; e.brT=0; e.vulT=0; e.bzT=0;
       e.rupT=0; e.rupV=0; e.rupBank=0; e.rupLx=undefined; e.rupLy=undefined;
       e.fervN=0; e.fervTid=0; e.fervT=0; e.hiveT=0; e.stanceR=false;
-      e.fbN=0; e.fbT=0; e.fbCd=0;
+      e.fbN=0; e.fbT=0; e.fbCd=0; e.raN=0; e.raT=0;
       clearEmber(e);
       updateHeroStats(S,p);
       e.hp=e.maxHp; e.mp=e.maxMp;
@@ -67,6 +67,9 @@ export function heroThink(S,p,dt){
     let best=null, bd=1e9;
     for (const t of S.ents){
       if (t.dead || t.team===e.team) continue;
+      // A-move only picks up neutrals when the hero is at the camp itself —
+      // a lane A-move must never drag you into the jungle
+      if (t.neutral && !nearCamp(e.x, e.y, 140)) continue;
       const d = dist(e.x,e.y,t.x,t.y);
       if (d>acqR) continue;
       const pri = t.type==='creep'?0:(t.type==='hero'?1:2);   // creeps first — heroes need a manual order
@@ -96,8 +99,9 @@ export function heroTimers(S,p,dt){
    'castLock','hitFlash','swing','drT','markT','rendT','hcT','shredT',
    'rootT','silT','barbT','bleedT','gsT','csT','banT',
    'spinT','invT','brT','vulT','bzT','fervT','wardFxT','hiveT',
-   'undyCd','fbT','fbCd'].forEach(dec);
+   'undyCd','fbT','fbCd','doorCd','shovedT','raT'].forEach(dec);
   if (e.fbT<=0) e.fbN = 0;                       // Frostbite thaws if Ilva lets up
+  if (e.raT<=0) e.raN = 0;                       // Reactive Armor plates fall off together
   tickDot(S,e,dt);
   tickEmber(S,e,dt);
   tickRupture(S,e,dt);

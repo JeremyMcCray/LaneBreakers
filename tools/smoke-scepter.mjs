@@ -52,7 +52,8 @@ console.log("\n== ITEM — the Scepter itself is wired ==");
      ITEMS.scepter && Object.keys(ITEMS).every(id => ITEMS[id].cost <= ITEMS.scepter.cost),
      `cost=${ITEMS.scepter.cost}g`);
   const missing = HERO_IDS.filter(id => !HEROES[id].scepter || !HEROES[id].scepter.name || !HEROES[id].scepter.desc);
-  ok("every hero has a named scepter upgrade", missing.length === 0, missing.join(",") || "all 21");
+  ok("every hero has a named scepter upgrade", missing.length === 0,
+     missing.join(",") || "all " + HERO_IDS.length);
   const S = sim("vex", "ilva");
   ok("holding it sets the aghs flag", S.players[0].hero.aghs === true, "");
   ok("not holding it does not", !S.players[1].hero.aghs, "");
@@ -441,6 +442,67 @@ console.log("\n== VOSK — Perpetual Torment: pulses pay for themselves ==");
      `mp ${Math.round(m20)} -> ${Math.round(h2.mp)}`);
 }
 
+console.log("\n== DORN — Off the Guest List: the shoved go through his doors ==");
+{
+  const S = sim("dorn", "vex");
+  const p = S.players[0], h = p.hero;
+  const ax = h.x;                                  // door A stands here — Dorn himself may travel
+  castAbility(S, p, 2, ax + 340, LANE_Y);          // far door at +340
+  const d = dummy(S, 1, ax + 80, LANE_Y);          // in front — Q shoves it ~260 onto the far door
+  castAbility(S, p, 0, d.x, d.y);
+  step(S, 5);
+  ok("the shoved enemy was pulled through the door", Math.abs(d.x - ax) < 70,
+     `landed at ${Math.round(d.x)}, near-side door at ${Math.round(ax)}`);
+  ok("and dumped out slowed", d.slowT > 0, `slowT=${(d.slowT||0).toFixed(1)}`);
+  const S2 = sim("dorn", "vex", true);             // no scepter — doors check the guest list
+  const p2 = S2.players[0], h2 = p2.hero;
+  const ax2 = h2.x;
+  castAbility(S2, p2, 2, ax2 + 340, LANE_Y);
+  const d2 = dummy(S2, 1, ax2 + 80, LANE_Y);
+  castAbility(S2, p2, 0, d2.x, d2.y);
+  step(S2, 5);
+  ok("without the scepter the door refuses them", Math.abs(d2.x - (ax2 + 340)) < 90,
+     `stayed at ${Math.round(d2.x)}, far door at ${Math.round(ax2 + 340)}`);
+}
+
+console.log("\n== TIMBER — Second Chakram: two blades in the field ==");
+{
+  const S = sim("timber", "vex");
+  const p = S.players[0], h = p.hero;
+  castAbility(S, p, 3, h.x - 400, LANE_Y);
+  h.mp = h.maxMp; p.cds[3] = 0;
+  castAbility(S, p, 3, h.x - 200, LANE_Y + 60);
+  ok("two chakrams deployed at once", S.zones.filter(z => z.kind === "chakram").length === 2, "");
+  castAbility(S, p, 3, h.x, h.y);                  // third press = recall everything
+  ok("the third press recalls both", S.zones.filter(z => z.kind === "chakret").length === 2, "");
+  step(S, 90);
+  ok("both came home and the cooldown started",
+     !S.zones.some(z => z.kind === "chakram" || z.kind === "chakret") && p.cds[3] > 5, `cd=${p.cds[3].toFixed(1)}`);
+  const S2 = sim("timber", "vex", true);           // no scepter — one blade only
+  const p2 = S2.players[0], h2 = p2.hero;
+  castAbility(S2, p2, 3, h2.x - 400, LANE_Y);
+  h2.mp = h2.maxMp;
+  castAbility(S2, p2, 3, h2.x - 200, LANE_Y);      // second press must be the recall
+  ok("without the scepter the second press recalls", S2.zones.some(z => z.kind === "chakret") &&
+     !S2.zones.some(z => z.kind === "chakram"), "");
+}
+
+console.log("\n== DRIFT — Grand Larceny: the victim loses what he takes ==");
+{
+  const S = sim("drift", "vex");
+  const p = S.players[0], h = p.hero;
+  const foeP = S.players[1];
+  const d0 = foeP.hero.dmg;
+  damage(S, h, foeP.hero, 99999, { pure: true });
+  foeP.respawn = 0.05;
+  step(S, 10);
+  ok("the takedown siphoned 8 damage", foeP.stolenDmg === 8, `stolen=${foeP.stolenDmg}`);
+  ok("the victim respawned permanently weaker", foeP.hero.dmg <= d0 - 7,
+     `${Math.round(d0)} -> ${Math.round(foeP.hero.dmg)}`);
+  ok("and the Drifter swings it instead (16+8 per trophy)", h.dmg >= 45 + 24,
+     `dmg=${Math.round(h.dmg)}`);
+}
+
 console.log("\n== ROSTER — every hero can rampage with the scepter and nothing breaks ==");
 {
   let crashed = "";
@@ -460,9 +522,10 @@ console.log("\n== ROSTER — every hero can rampage with the scepter and nothing
       if (!isFinite(h.hp) || !isFinite(h.x) || !isFinite(h.mp)) crashed += id + ":NaN ";
     } catch (err) { crashed += id + ":" + err.message + " "; }
   }
-  ok("all 21 heroes survived a 10s scepter rampage", crashed === "", crashed || "clean");
+  ok("all " + HERO_IDS.length + " heroes survived a 10s scepter rampage", crashed === "", crashed || "clean");
   const noBuild = HERO_IDS.filter(id => !(BOT_BUILD[id] || []).includes("scepter"));
-  ok("every bot build saves for the scepter", noBuild.length === 0, noBuild.join(",") || "all 21");
+  ok("every bot build saves for the scepter", noBuild.length === 0,
+     noBuild.join(",") || "all " + HERO_IDS.length);
 }
 
 console.log(fails === 0 ? "\nALL CHECKS PASSED" : `\n${fails} CHECK(S) FAILED`);

@@ -1,7 +1,7 @@
 {
   "name": "lanebreakers",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Lanebreakers — mid-lane MOBA",
   "author": "Lanebreakers",
   "type": "module",
@@ -20,6 +20,7 @@
     "smoke": "npx vite-node tools/smoke-sim.mjs",
     "smoke:heroes": "npx vite-node tools/smoke-newheroes.mjs",
     "smoke:scepter": "npx vite-node tools/smoke-scepter.mjs",
+    "smoke:camps": "npx vite-node tools/smoke-camps.mjs",
     "smoke:netclient": "npx vite-node tools/smoke-netclient.mjs",
     "smoke:endstats": "npx vite-node tools/smoke-endstats.mjs",
     "smoke:sandbox": "npx vite-node tools/smoke-sandbox.mjs",

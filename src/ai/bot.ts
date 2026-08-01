@@ -28,7 +28,10 @@ export const BOT_BUILD = {
   zaal: ['boots','arc','orb','scepter','vit','quick'],
   jarak:['boots','blade','quick','fang','scepter','plate'],
   stryg:['boots','quell','blade','quick','scepter','fang'],
-  vosk: ['boots','arc','orb','scepter','vit','quick']
+  vosk: ['boots','arc','orb','scepter','vit','quick'],
+  dorn: ['boots','vit','blade','plate','scepter','quick'],
+  timber:['boots','vit','arc','plate','scepter','orb'],
+  drift: ['boots','blade','quick','fang','scepter','reaver']
 };
 export const BOT_SKILL_DEFAULT = [0,1,2,0,0,3,0,1,1,3,1,2];
 export const BOT_SKILL = {};
@@ -106,6 +109,9 @@ export function botThink(S,p,dt){
   if (aggressive && Math.random()<.35){
     for (let i=3;i>=0;i--){
       if (p.heroId==='jarak' && i===1) continue;   // handled above, it is a stance not a nuke
+      // a deployed Chakram is already working — don't recall it out of reflex
+      if (p.heroId==='timber' && i===3 &&
+          S.zones.some(z=>(z.kind==='chakram'||z.kind==='chakret') && z.slot===p.slot)) continue;
       if (!canCast(S,p,i)) continue;
       const A = HEROES[p.heroId].abilities[i];
       const need = A.cast==='self' ? 260 : (A.range||400);
@@ -124,7 +130,7 @@ export function botThink(S,p,dt){
   let lastHit=null, deny=null, creepNear=false, lowFoe=null;
   const swing = e.dmg;
   for (const o of S.ents){
-    if (o.dead || o.type!=='creep') continue;
+    if (o.dead || o.type!=='creep' || o.neutral) continue;   // the classic bot stays out of the jungle
     const d = dist(e.x,e.y,o.x,o.y);
     const reach = e.range + o.r + e.r*0.4;
     const hit = swing*armorMult(o.armor);

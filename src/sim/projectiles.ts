@@ -3,6 +3,8 @@ import {
   clamp, clampToLane, dist, walkable
 } from '../data/world';
 import { addEmber, applyDot, applySilence, applySlow, applyStun, damage } from './combat';
+import { addZone } from './zones';
+import { addGold } from './stats';
 import { ent, fx } from './create';
 
 export function stepProjectiles(S,dt){
@@ -48,6 +50,23 @@ export function stepProjectiles(S,dt){
         if (pr.stun) applyStun(S, hitE, pr.stun);
         if (pr.sil)  applySilence(S, hitE, pr.sil);
         if (pr.dot)  applyDot(S, hitE, pr.dot.dps, pr.dot.t, pr.src, pr.dot.stack);
+        // Baggage Check — the suitcase clamps on; the recall is a delayed zone
+        if (pr.lug!==undefined && !hitE.dead && hitE.type!=='tower')
+          addZone(S,{kind:'yank', team:pr.team, x:hitE.x, y:hitE.y, r:0, t:0.9,
+            tid:hitE.id, slot:pr.lug, tag:pr.tag});
+        // Stickup — the Drifter's knife robs heroes on the way through
+        if (pr.steal && hitE.type==='hero'){
+          const vp = S.players.find(q=>q.hero===hitE);
+          const sp = S.players.find(q=>q.hero && q.hero.id===pr.src);
+          if (vp && sp){
+            const take = Math.min(vp.gold, pr.steal);
+            if (take>0){
+              vp.gold -= take;
+              addGold(sp, take);
+              if (sp.hero && !sp.hero.dead) fx(S,{t:'gold', x:sp.hero.x, y:sp.hero.y+40, v:take});
+            }
+          }
+        }
         if (pr.pull && src && !src.dead && !hitE.dead){
           const a = Math.atan2(hitE.y-src.y, hitE.x-src.x);
           const ox=hitE.x, oy=hitE.y;

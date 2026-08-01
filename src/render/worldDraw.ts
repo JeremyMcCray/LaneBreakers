@@ -2,9 +2,11 @@
 import {
   WORLD_W, WORLD_H, LANE_Y, BASE_X, TOWER_X, TEAM_COL, TEAM_COL_DK,
   CLEAVE_R, CLEAVE_ARC, SUDDEN_DEATH, MATCH_LIMIT, AUTO_ACQ,
+  CAMP_OPEN, CAMP_X, CAMP_R, campY,
   laneHalf, clamp, dist, rnd, lerp
 } from '../data/world';
 import { HEROES } from '../data/heroes';
+import { CAMP_VARIANTS } from '../data/camps';
 import { ITEMS } from '../data/items';
 import { previewHit, incomingDps, imminentHits } from '../sim/engine';
 import { G } from '../app/state';
@@ -27,6 +29,28 @@ export function drawTerrain(){
   g.addColorStop(0,'#141c2b'); g.addColorStop(.5,'#1a2434'); g.addColorStop(1,'#141c2b');
   ctx.fillStyle = g; ctx.fill();
   ctx.strokeStyle = '#2a3a4a'; ctx.lineWidth = 3; ctx.stroke();
+
+  // jungle camp pockets — walkable alcoves carved off the lane edge
+  for (let s=0;s<2;s++){
+    if (!CAMP_OPEN[s]) continue;
+    const cy = campY(s);
+    if (CAMP_X < x0-300 || CAMP_X > x1+300) continue;
+    ctx.beginPath(); ctx.arc(CAMP_X, cy, CAMP_R, 0, 7);
+    ctx.fillStyle = '#16241f'; ctx.fill();                       // mossier floor than the lane
+    ctx.strokeStyle = '#2a3a4a'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.strokeStyle = '#2f4a3a55'; ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.arc(CAMP_X, cy, CAMP_R-14, 0, 7); ctx.stroke();
+    // spawn totem at the anchor
+    ctx.fillStyle = '#3a4a3a'; ctx.beginPath(); ctx.arc(CAMP_X, cy, 12, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#5a7a5a'; ctx.lineWidth = 2;
+    for (let k=0;k<3;k++){
+      const a = k/3*Math.PI*2 - Math.PI/2;
+      ctx.beginPath();
+      ctx.moveTo(CAMP_X+Math.cos(a)*7,  cy+Math.sin(a)*7);
+      ctx.lineTo(CAMP_X+Math.cos(a)*17, cy+Math.sin(a)*17);
+      ctx.stroke();
+    }
+  }
 
   // centre path
   ctx.strokeStyle = '#22304a'; ctx.lineWidth = 66; ctx.lineCap='round';
@@ -129,6 +153,52 @@ export function drawZones(v){
       ctx.restore(); continue;
     }
     else if (z.kd==='omni'){ ctx.restore(); continue; }   // the slashes speak for themselves
+    else if (z.kd==='yank'){ ctx.restore(); continue; }   // the suitcase does its own talking
+    else if (z.kd==='chakram' || z.kd==='chakret'){       // Timbersaw's blade, out working
+      if (z.kd==='chakram'){                              // the kill zone it patrols
+        ctx.fillStyle='#d9886218'; ctx.strokeStyle='#d9886288';
+        ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(z.x,z.y,z.r,0,7); ctx.fill(); ctx.stroke();
+      }
+      ctx.save();
+      ctx.translate(z.x,z.y); ctx.rotate(G.time*14);
+      ctx.fillStyle='#5a2f1a'; ctx.strokeStyle='#ffd9b0'; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(0,0,17,0,7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#ffd9b0';
+      for (let k=0;k<8;k++){                              // saw teeth
+        const a=k/8*Math.PI*2;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a)*17, Math.sin(a)*17);
+        ctx.lineTo(Math.cos(a+0.18)*26, Math.sin(a+0.18)*26);
+        ctx.lineTo(Math.cos(a+0.42)*17, Math.sin(a+0.42)*17);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+      ctx.restore(); continue;
+    }
+    else if (z.kd==='doors'){                             // Dorn's Service Doors
+      // the corridor between them
+      ctx.strokeStyle='#f0e6d244'; ctx.lineWidth=2; ctx.setLineDash([4,11]);
+      ctx.lineDashOffset = -G.time*34;
+      ctx.beginPath(); ctx.moveTo(z.x,z.y); ctx.lineTo(z.tx,z.ty); ctx.stroke();
+      ctx.setLineDash([]);
+      for (const [dx3,dy3] of [[z.x,z.y],[z.tx,z.ty]]){
+        ctx.save();
+        ctx.translate(dx3,dy3);
+        // welcome mat
+        ctx.strokeStyle='#f0e6d266'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.ellipse(0,10,30,11,0,0,7); ctx.stroke();
+        // an upright doorway with a glowing opening
+        ctx.fillStyle='#7a2b3ad9'; ctx.strokeStyle='#f0e6d2'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.rect(-17,-42,34,48); ctx.fill(); ctx.stroke();
+        const gl = .40 + .28*Math.sin(G.time*5 + dx3*0.01);
+        ctx.fillStyle='rgba(240,230,210,'+gl.toFixed(2)+')';
+        ctx.fillRect(-11,-36,22,38);
+        ctx.fillStyle='#7a2b3a';                          // door knob
+        ctx.beginPath(); ctx.arc(6,-14,2.6,0,7); ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore(); continue;
+    }
     else if (z.kd==='hward'){
       ctx.fillStyle='#8affd416'; ctx.strokeStyle='#8affd470';
       ctx.lineWidth=2; ctx.beginPath(); ctx.arc(z.x,z.y,z.r,0,7); ctx.fill(); ctx.stroke();
@@ -347,6 +417,14 @@ export function heroPath(hi, r){
                          ctx.lineTo(-r*.35,r*.6); ctx.lineTo(-r*1.05,r*.25); ctx.lineTo(-r*.6,0);
                          ctx.lineTo(-r*1.05,-r*.25); ctx.lineTo(-r*.35,-r*.6); ctx.lineTo(r*.5,-r*1.1);
                          ctx.lineTo(r*.15,-r*.4); }
+  else if (hi==='dorn'){ ctx.moveTo(r*1.05,0); ctx.lineTo(r*.6,r*.85); ctx.lineTo(-r*.85,r*.85);
+                         ctx.lineTo(-r*.85,-r*.85); ctx.lineTo(r*.6,-r*.85); }   // a door, carried like a shield
+  else if (hi==='timber'){ for(let i=0;i<10;i++){const a=i/10*Math.PI*2;         // a sawblade on legs
+                             const rr2 = i%2 ? r*0.72 : r*1.1;
+                             const q=[Math.cos(a)*rr2, Math.sin(a)*rr2];
+                             i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);} }
+  else if (hi==='drift'){ ctx.moveTo(r*1.25,0); ctx.lineTo(r*.05,r*.5); ctx.lineTo(-r*.75,r*.85);
+                          ctx.lineTo(-r*.35,0); ctx.lineTo(-r*.75,-r*.85); ctx.lineTo(r*.05,-r*.5); }  // a long knife drifting forward
   else { for(let i=0;i<6;i++){const a=i/6*Math.PI*2; const q=[Math.cos(a)*r,Math.sin(a)*r];
           i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);} }
   ctx.closePath();
@@ -434,7 +512,8 @@ export function debuffBadges(e){
 }
 export function drawEntity(e, v, own){
   const mine = e.tm===G.myTeam;
-  const col = TEAM_COL[e.tm], dk = TEAM_COL_DK[e.tm];
+  // neutrals (team 2) wear jungle gold; converted jungle creeps keep team colors
+  const col = TEAM_COL[e.tm] || '#d8b45a', dk = TEAM_COL_DK[e.tm] || '#4a3d1d';
   ctx.save();
   if (e.ty===2){ // tower
     ctx.fillStyle='#00000055'; ctx.beginPath(); ctx.ellipse(e.x,e.y+16,e.r*1.1,e.r*.45,0,0,7); ctx.fill();
@@ -502,6 +581,45 @@ export function drawEntity(e, v, own){
       ctx.fillRect(-e.r*.62,-e.r*.22, e.r*1.24, e.r*.44);
       ctx.fillRect(-e.r*.22,-e.r*.62, e.r*.44, e.r*1.24);
       ctx.rotate(e.fa);                          // back onto the shared transform
+    } else if (e.jg && CAMP_VARIANTS[e.jg]){     // jungle creep — each variant its own body
+      const V = CAMP_VARIANTS[e.jg];
+      ctx.fillStyle = flash? '#fff' : V.col2;
+      ctx.strokeStyle = e.ng ? V.col : col;      // converted ones wear their team's outline
+      ctx.lineWidth = 3;
+      if (e.jg==='swarm'){                       // spiky darting wedge
+        ctx.beginPath();
+        ctx.moveTo(e.r,0); ctx.lineTo(-e.r*.5,e.r*.9); ctx.lineTo(-e.r*.9,0); ctx.lineTo(-e.r*.5,-e.r*.9);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else if (e.jg==='brute'){                // hulking slab with tusks
+        ctx.beginPath(); ctx.rect(-e.r*.75,-e.r*.75,e.r*1.5,e.r*1.5); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = V.col; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(e.r*.5,-e.r*.6); ctx.lineTo(e.r*1.15,-e.r*.25); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(e.r*.5, e.r*.6); ctx.lineTo(e.r*1.15, e.r*.25); ctx.stroke();
+      } else if (e.jg==='storm'){                // diamond with a live spark
+        ctx.beginPath();
+        ctx.moveTo(e.r,0); ctx.lineTo(0,e.r); ctx.lineTo(-e.r,0); ctx.lineTo(0,-e.r);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle='#dff4ff'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(-3,-6); ctx.lineTo(2,-1); ctx.lineTo(-2,1); ctx.lineTo(3,6); ctx.stroke();
+      } else if (e.jg==='mender'){               // ring of petals, upright
+        ctx.rotate(-e.fa);
+        ctx.beginPath(); ctx.arc(0,0,e.r*.8,0,7); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = V.col;
+        for (let k=0;k<5;k++){
+          const a = k/5*Math.PI*2 + G.time*.8;
+          ctx.beginPath(); ctx.arc(Math.cos(a)*e.r*.75, Math.sin(a)*e.r*.75, 3.4, 0, 7); ctx.fill();
+        }
+        ctx.rotate(e.fa);
+      } else {                                   // ram — plated shell, horn forward
+        ctx.beginPath();
+        for (let k=0;k<6;k++){ const a=k/6*Math.PI*2;
+          const px=Math.cos(a)*e.r*.85, py=Math.sin(a)*e.r*.85;
+          k?ctx.lineTo(px,py):ctx.moveTo(px,py); }
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = V.col;
+        ctx.beginPath(); ctx.moveTo(e.r*1.3,0); ctx.lineTo(e.r*.5,e.r*.35); ctx.lineTo(e.r*.5,-e.r*.35);
+        ctx.closePath(); ctx.fill();
+      }
     } else {
       ctx.beginPath();
       if (e.pet){ ctx.moveTo(e.r,0); ctx.lineTo(-e.r*.6,e.r*.9); ctx.lineTo(-e.r*.2,0); ctx.lineTo(-e.r*.6,-e.r*.9); }

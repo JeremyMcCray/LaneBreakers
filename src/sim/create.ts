@@ -1,6 +1,6 @@
 // @ts-nocheck
 import {
-  BASE_X, FIRST_WAVE, KILLS_TO_WIN, KILLS_TO_WIN_2V2, LANE_Y, START_GOLD, TOWER_X, clamp, clampToLane, dist, heal, rnd, setLaneMode
+  BASE_X, CAMP_FIRST, FIRST_WAVE, KILLS_TO_WIN, KILLS_TO_WIN_2V2, LANE_Y, START_GOLD, TOWER_X, clamp, clampToLane, dist, heal, rnd, setCampsOpen, setLaneMode
 } from '../data/world';
 import { HEROES } from '../data/heroes';
 import { updateHeroStats } from './stats';
@@ -14,8 +14,12 @@ export function newSim(picks, mode){
     t:0, tick:0, nextId:1, ents:[], projs:[], fx:[], zones:[], tag:null, seriesT:0,
     waveT:FIRST_WAVE, waveNum:0, winner:-1, over:false, aggro:[null,null], towerAggro:[null,null],
     mode:mode, big:big, teamKills:[0,0], winKills: big?KILLS_TO_WIN_2V2:KILLS_TO_WIN,
+    // jungle camps: both pockets in 2v2, one random side in 1v1
+    campT:CAMP_FIRST, campSides: big ? [0,1] : [Math.random()<.5 ? 0 : 1],
+    campCharges:[[],[]],
     players:[]
   };
+  setCampsOpen(S.campSides);
   picks.forEach((pk, slot)=>{
     S.players.push({
       slot:slot, team:pk.tm, heroId:pk.h, name: pk.nm || ('Player '+(slot+1)),
@@ -23,6 +27,7 @@ export function newSim(picks, mode){
       sk:[0,0,0,0], cds:[0,0,0,0], chg:[0,0,0,0], chgT:[0,0,0,0], chgM:[0,0,0,0],
       items:[], pending:[],
       kills:0, deaths:0, assists:0, cs:0, denies:0, respawn:0, hero:null,
+      trophies:0, stolenDmg:0,          // Drifter: his belt, and what Grand Larceny took from YOU
       dmgHero:0, dmgAll:0, healed:0, dmgTaken:0, goldEarned:START_GOLD,
       dmgBy:{}, dmgHeroBy:{}, takenBy:{}, series:[], events:[],
       order:{type:'stop', x:0, y:0, tid:0}, lastCastAt:-99

@@ -4,6 +4,7 @@ export * from './create';
 export * from './stats';
 export * from './combat';
 export * from './waves';
+export * from './camp';
 export * from './creep';
 export * from './tower';
 export * from './attack';

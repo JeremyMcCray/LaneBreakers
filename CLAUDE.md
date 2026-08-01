@@ -9,7 +9,7 @@ built with LLMs, and a stale brief costs more than a missing one.
 ## What this is
 
 A browser mid-lane MOBA: 1v1 or 2v2 on a single lane, creep waves, one tower per
-side, fountain bases, item shop, 21 heroes, classic + neural bots, practice /
+side, fountain bases, item shop, 24 heroes, classic + neural bots, practice /
 online (P2P, no server) / tournament. Vite + TypeScript, Canvas 2D for the world,
 light DOM for menus/shop. No React. Most files start with `// @ts-nocheck` — match
 that; don't start a typing crusade.
@@ -34,6 +34,11 @@ packaging), `PATCHNOTES.md` (player-facing change log — mandatory, see rule 7)
    first, same commit) for anything a player or a future agent would care about:
    new content, balance numbers, fixes, UI, netcode. Write it player-facing;
    implementation detail belongs in the commit message, not the note.
+8. **Every patch note gets a version bump.** Increment `version` in
+   `package.json` in the same commit (it feeds the main menu via
+   `__APP_VERSION__`): new mechanics/heroes/items bump the **minor**
+   (0.1.0 → 0.2.0), balance/fixes/UI bump the **patch** (0.2.0 → 0.2.1).
+   Head the new `PATCHNOTES.md` entry with that version.
 
 ## Commands
 
@@ -47,6 +52,7 @@ npm run desktop:dist     # Electron packages → dist-desktop/  (see DESKTOP.md)
 npm run smoke            # headless sim sanity
 npm run smoke:heroes     # per-hero kit assertions + roster completeness
 npm run smoke:scepter    # every hero's Ascendant Scepter upgrade, with/without
+npm run smoke:camps      # jungle camps: spawn cycle, leash, charges → wave allies
 npm run smoke:netclient  # a real 2v2 online client through match end (stub DOM)
 npm run smoke:endstats   # post-game stats panel
 npm run smoke:sandbox    # dev-sandbox live tuning against the real sim
@@ -59,9 +65,11 @@ npm run bake:brains      # refresh src/ai/neural/brains/baked.json
 
 ```
 src/
-  data/     world.ts (constants + live tunables), heroes.ts (21 kits + scepter upgrades), items.ts
+  data/     world.ts (constants + live tunables + camp geometry), heroes.ts
+            (24 kits + scepter upgrades), items.ts, camps.ts (jungle variants)
   sim/      headless rules: create, step, hero, creep, tower, attack, combat,
-            abilities, zones, projectiles, shop, stats, snapshot, commands, waves
+            abilities, zones, projectiles, shop, stats, snapshot, commands,
+            waves, camp (jungle camps: spawn cycle, neutral AI, charges)
   ai/       bot.ts (classic), neural/ (runtime, train UI, baked brains)
   app/      state.ts (G), shell.ts (loop/beginMatch), netplay.ts, lobbyUi.ts,
             tournament.ts, boot.ts, persistence.ts, online.ts (barrel)
@@ -76,7 +84,7 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
 
 ## Current game facts (verify here before quoting numbers)
 
-- 21 heroes (`HERO_IDS`), 4 abilities each (R = ult, ranks 3, others 4).
+- 24 heroes (`HERO_IDS`), 4 abilities each (R = ult, ranks 3, others 4).
   Ult unlock levels `ULT_REQ = [6,9,12]`, `MAX_LEVEL = 12`.
 - Win: **2 points in 1v1, 4 in 2v2** (hero kill = 1); the tower falling ends the
   match outright. 15-min cap (`MATCH_LIMIT`), then kills → net worth → last hits.
@@ -84,6 +92,14 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
   full refund within 10 s of purchase.
 - Items build component → upgrade (`from` + `recipe`); cost auto-derived.
   **Ascendant Scepter (2200 g)** is the capstone — see below.
+- **Jungle camps**: two walkable pockets off the lane at mid-map (`CAMP_X`,
+  `campY(side)` in world.ts; one random side in 1v1, both in 2v2). First spawn
+  `CAMP_FIRST` (120 s), refill check every `CAMP_RESPAWN` (120 s) **only when
+  empty**. Neutrals are `team:2` with `e.neutral` — every targeting loop that
+  iterates enemies must decide whether neutrals belong (lane creeps/bot: never;
+  hero auto-acquire: only near the camp). Last hit banks the variant id in
+  `S.campCharges[team]`; `spawnWave` cashes them in as team creeps. Variants
+  (5, pack sizes 1–8) live in `data/camps.ts`; behaviour in `sim/camp.ts`.
 - Most gameplay constants in `world.ts` are `export let` + `setWorldTunable` so
   the F4 sandbox can retune them live. Treat as constants when reading; don't
   convert them to `const`.
@@ -92,7 +108,8 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
 
 - `newSim(picks, mode)` → state `S`; `simStep(S, dt)` at 60 Hz. Step order:
   waves/gold/cooldowns/deliveries → `heroTimers` → non-hero timers/dots/embers →
-  `heroThink` → creep/tower think → projectiles → zones → collision separation → cull.
+  `heroThink` → creep/tower think → camps (`stepCamps`: spawn cycle + neutral
+  think + variant powers) → projectiles → zones → collision separation → cull.
 - Player commands go through `applyCmd(S, slot, cmd)` (`sim/commands.ts`) — both
   local input and net clients.
 - **`damage(S, src, tgt, amount, opt)`** is the only way to hurt things. It
@@ -216,7 +233,7 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
 
 | You touched…              | Run at minimum                                      |
 |---------------------------|-----------------------------------------------------|
-| `sim/` or `data/`         | `smoke`, `smoke:heroes`, `smoke:scepter`, `build`, `build:sim` |
+| `sim/` or `data/`         | `smoke`, `smoke:heroes`, `smoke:scepter`, `smoke:camps`, `build`, `build:sim` |
 | netplay / end-of-match    | `smoke:netclient`                                   |
 | stats panel / end card    | `smoke:endstats`                                    |
 | dev sandbox / tunables    | `smoke:sandbox`                                     |

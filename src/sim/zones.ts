@@ -7,12 +7,14 @@ import { addEmber, applyDot, applyRoot, applySilence, applySlow, applyStun, dama
 import { ent, fx, spawnBrood } from './create';
 
 export function addZone(S,o){ o.id=S.nextId++; S.zones.push(o); return o; }
-/* Shock and Awe — an explosion hurls whatever it catches away from its center. */
-function knockback(o, fx0, fy0, d){
+/* An explosion or a great door hurls whatever it catches away from a point.
+   Marks the target as freshly shoved — Dorn's scepter doors read that mark. */
+export function knockback(o, fx0, fy0, d){
   if (o.dead || o.type==='tower' || o.colT>0) return;
   let dx = o.x - fx0, dy = o.y - fy0, dd = Math.hypot(dx,dy);
   if (dd < 1){ const a = Math.random()*Math.PI*2; dx = Math.cos(a); dy = Math.sin(a); dd = 1; }
   o.x += dx/dd*d; o.y += dy/dd*d;
+  o.shovedT = 0.5;
   clampToLane(o);
 }
 export function aoe(S, srcTeam, x, y, r, dmgAmt, src, cb){
@@ -228,6 +230,87 @@ export function stepZones(S,dt){
             spawnBrood(S, q, h.x+Math.cos(a)*52, h.y+Math.sin(a)*52, 20);
             fx(S,{t:'raise', x:h.x, y:h.y});
           }
+        }
+      }
+    } else if (z.kind==='yank'){
+      // Baggage Check — the suitcase is recalled, dragging its holder to Dorn
+      if (z.t<=0){
+        const tg = ent(S, z.tid), q = S.players[z.slot], h = q && q.hero;
+        if (tg && !tg.dead && h && !h.dead){
+          const d = dist(tg.x,tg.y,h.x,h.y) || 1;
+          const pull = Math.min(320, Math.max(0, d - 60));
+          if (pull > 0){
+            const ox=tg.x, oy=tg.y;
+            tg.x += (h.x-tg.x)/d*pull; tg.y += (h.y-tg.y)/d*pull;
+            tg.shovedT = 0.5;
+            clampToLane(tg);
+            fx(S,{t:'dash', x:ox, y:oy, x2:tg.x, y2:tg.y, col:'#f0e6d2'});
+            fx(S,{t:'hit', x:tg.x, y:tg.y});
+          }
+        }
+      }
+    } else if (z.kind==='doors'){
+      // Service Door — step in one side, out the other
+      const port = (u, dx2, dy2, slow)=>{
+        const ox=u.x, oy=u.y;
+        u.x=dx2; u.y=dy2; clampToLane(u);
+        u.doorCd = 1.0;
+        disjoint(S, u);
+        if (slow) applySlow(u, .30, 1.5);
+        fx(S,{t:'dash', x:ox, y:oy, x2:u.x, y2:u.y, col:'#f0e6d2'});
+        fx(S,{t:'disjoint', x:u.x, y:u.y});
+      };
+      for (const q of S.players){
+        const u = q.hero;
+        if (q.team!==z.team || !u || u.dead) continue;
+        const onPad = dist(u.x,u.y,z.x,z.y) < z.r || dist(u.x,u.y,z.tx,z.ty) < z.r;
+        // standing on the mat does not bounce you back and forth — the trip
+        // only re-arms once you have stepped OFF a door for a beat
+        if (u.doorCd>0){ if (onPad) u.doorCd = Math.max(u.doorCd, 0.25); continue; }
+        if (u.rootT>0 || !onPad) continue;
+        if (dist(u.x,u.y,z.x,z.y) < z.r) port(u, z.tx, z.ty, false);
+        else port(u, z.x, z.y, false);
+      }
+      // Off the Guest List — enemies shoved into a door go through it too
+      if (z.aghs){
+        for (const o of S.ents){
+          if (o.dead || o.team===z.team || o.type==='tower') continue;
+          if (!(o.shovedT>0) || o.doorCd>0) continue;
+          if (dist(o.x,o.y,z.x,z.y) < z.r + o.r) port(o, z.tx, z.ty, true);
+          else if (dist(o.x,o.y,z.tx,z.ty) < z.r + o.r) port(o, z.x, z.y, true);
+        }
+      }
+    } else if (z.kind==='chakram'){
+      // Timbersaw's blade, parked and spinning — fed by his mana until recalled
+      const q = S.players[z.slot], h = q && q.hero;
+      if (!h || h.dead){ z.t = 0; if (q) q.cds[3] = z.cd; }
+      else {
+        h.mp -= z.drain*dt;
+        if (h.mp <= 0){ h.mp = 0; z.kind = 'chakret'; z.hits = []; }
+        for (const o of S.ents){
+          if (o.dead || o.team===z.team || o.type==='tower') continue;
+          if (dist(o.x,o.y,z.x,z.y) > z.r + o.r) continue;
+          damage(S, ent(S,z.src)||h, o, z.dps*dt, {ability:true, silent:true});
+          applySlow(o, .35, .3);
+        }
+        z.tickT -= dt;
+        if (z.tickT<=0){ z.tickT=.45; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r, col:'#d98862'}); }
+      }
+    } else if (z.kind==='chakret'){
+      // the blade coming home — it saws through everything on the way
+      const q = S.players[z.slot], h = q && q.hero;
+      if (!h || h.dead){ z.t = 0; if (q) q.cds[3] = z.cd; }
+      else {
+        const d = dist(z.x,z.y,h.x,h.y) || 1;
+        const step2 = 950*dt;
+        if (d <= step2 + 40){ z.t = 0; q.cds[3] = z.cd; fx(S,{t:'hit', x:h.x, y:h.y}); }
+        else { z.x += (h.x-z.x)/d*step2; z.y += (h.y-z.y)/d*step2; }
+        for (const o of S.ents){
+          if (o.dead || o.team===z.team || o.type==='tower') continue;
+          if (z.hits.indexOf(o.id)>=0) continue;
+          if (dist(o.x,o.y,z.x,z.y) > 110 + o.r) continue;
+          z.hits.push(o.id);
+          damage(S, h, o, z.dps*0.8, {ability:true});
         }
       }
     } else if (z.kind==='strike' && z.t<=0){

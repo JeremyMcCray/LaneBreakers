@@ -54,6 +54,18 @@ export function drawHUD(v, own){
     ctx.fillStyle='#8b9ab4'; ctx.font='600 11px Segoe UI';
     ctx.fillText('NEXT WAVE '+Math.ceil(v.wt)+'s', W/2, 42);
   }
+  // banked jungle charges — reinforcements riding out with the next wave
+  if (v.cc){
+    const my = (v.cc[G.myTeam]||[]).length, foe = (v.cc[1-G.myTeam]||[]).length;
+    if (my || foe){
+      ctx.font='700 11px Segoe UI';
+      if (my){ ctx.fillStyle='#9be15d'; ctx.textAlign='right';
+               ctx.fillText('⚑'+my, W/2-160, 42); }
+      if (foe){ ctx.fillStyle='#ff9b6b'; ctx.textAlign='left';
+                ctx.fillText('⚑'+foe, W/2+160, 42); }
+      ctx.textAlign='center';
+    }
+  }
   ctx.fillStyle='#dfe7f5'; ctx.font='800 20px Segoe UI'; ctx.fillText(fmtTime(v.t), W/2, 24);
   ctx.font='800 20px Segoe UI';
   ctx.fillStyle=TEAM_COL[G.myTeam]; ctx.textAlign='right'; ctx.fillText(myKills, W/2-40, 24);

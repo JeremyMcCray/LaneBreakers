@@ -6,6 +6,7 @@ import { HEROES } from '../data/heroes';
 import { releaseAttack } from './attack';
 import { tickDot, tickEmber } from './combat';
 import { fx } from './create';
+import { stepCamps } from './camp';
 import { creepThink } from './creep';
 import { heroThink, heroTimers } from './hero';
 import { stepProjectiles } from './projectiles';
@@ -61,6 +62,8 @@ export function simStep(S,dt){
     if (e.drT>0)   e.drT-=dt;
     if (e.fbT>0){ e.fbT-=dt; if (e.fbT<=0) e.fbN=0; }   // Frostbite thaws
     if (e.fbCd>0) e.fbCd-=dt;
+    if (e.doorCd>0) e.doorCd-=dt;
+    if (e.shovedT>0) e.shovedT-=dt;
     if (e.hitFlash>0) e.hitFlash-=dt;
     if (e.swing>0) e.swing-=dt;
     if (e.type!=='tower' && e.atkCd>0) e.atkCd = Math.max(0, e.atkCd - dt);
@@ -79,9 +82,10 @@ export function simStep(S,dt){
   for (const p of S.players) heroThink(S,p,dt);
   for (const e of S.ents){
     if (e.dead) continue;
-    if (e.type==='creep') creepThink(S,e,dt);
+    if (e.type==='creep'){ if (!e.neutral) creepThink(S,e,dt); }   // neutrals think in stepCamps
     else if (e.type==='tower') towerThink(S,e,dt);
   }
+  stepCamps(S,dt);
   stepProjectiles(S,dt);
   stepZones(S,dt);
   separate(S);

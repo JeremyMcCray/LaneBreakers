@@ -12,7 +12,7 @@ export { drawHUD, wrapText } from './hud';
 export { drawDevOverlay, drawDevBadge } from './devOverlay';
 
 import { G } from '../app/state';
-import { BASE_X, LANE_Y, WORLD_W, clamp, rnd, lerp } from '../data/world';
+import { BASE_X, LANE_Y, WORLD_W, clamp, rnd, lerp, setCampsOpen } from '../data/world';
 import { predictOwn } from '../app/shell';
 import {
   cv, ctx, ensureDecor, camScale, ownHeroView
@@ -31,6 +31,7 @@ export function render(dt){
     G.execMark = !!(me && me.hid==='shiv' && me.rage>=100 && me.sk[3]>0);
   }
   ensureDecor();
+  if (v.cs) setCampsOpen(v.cs);      // clients learn the open camp pockets from the wire
   const s = camScale();
 
   // ---- camera

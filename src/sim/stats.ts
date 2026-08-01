@@ -27,6 +27,7 @@ export function updateHeroStats(S,p,init){
   // half (Fervor) still grants its passive, so this keys off `grants`, not `passive`
   e.fervAs = 0; e.fervMax = 0; e.fervStep = 1; e.thirst = 0;
   e.thirstPct = 0; e.thirstMs = 0; e.rootChance = 0;
+  e.reactOn = false; e.raArm = 0; e.trophyDmg = 0;
   for (let i=0;i<4;i++){
     const A = H.abilities[i];
     if (!A.grants || p.sk[i]<=0) continue;
@@ -43,7 +44,23 @@ export function updateHeroStats(S,p,init){
       // the melee grip trades the extra reach for a chance to pin what he is chewing on
       if (!e.stanceR) e.rootChance = (A.val2 ? A.val2[p.sk[i]-1] : 0)/100;
     }
+    else if (A.grants==='reactive'){ e.reactOn = true; e.raArm = PV; }
+    else if (A.grants==='trophy'){ e.trophyDmg = PV; }
   }
+  // Grand Larceny — what the Drifter stole from this hero is simply gone
+  if (p.stolenDmg>0) e.dmg = Math.max(12, e.dmg - p.stolenDmg);
+  // Reactive Armor — being attacked plates Timbersaw up
+  if (H.id==='timber'){
+    if (!e.reactOn) e.raN = 0;
+    else { e.armor += (e.raN||0)*(e.raArm||0); e.hpr = (e.hpr||0) + (e.raN||0)*1.2; }
+  }
+  // Trophies — the Drifter's permanent belt, and the hunger before the first one
+  if (H.id==='drift'){
+    const n = p.trophies||0;
+    e.dmg += n * ((e.trophyDmg||0) + (e.aghs ? 8 : 0));
+    e.maxHp += n * 70;
+    e.hungry = (n===0);
+  } else e.hungry = false;
   // Jarak's Fervor stance: the ranged grip gives up reach for range, and cannot cleave
   if (e.stanceR){ e.ranged = true; e.range = 520; e.cleave = 0; }
   // Fervor: stacks earned on one target, doubled while Berserker's Rage is up
