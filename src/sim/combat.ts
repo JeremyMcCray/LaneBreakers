@@ -231,7 +231,10 @@ export function kill(S, src, tgt){
     if (p){
       p.cs++; addGold(p, V.bounty);
       fx(S,{t:'gold', x:tgt.x, y:tgt.y-40, v:V.bounty, pet: claimer.type!=='hero' ? 1:0});
-      for (const q of nearbyHeroes(S, p.team, tgt.x, tgt.y, XP_RADIUS)) addXp(S, q, V.xp);
+      for (const q of nearbyHeroes(S, p.team, tgt.x, tgt.y, XP_RADIUS)){
+        addXp(S, q, V.xp);
+        if (q!==p){ addGold(q, V.bounty); fx(S,{t:'gold', x:q.hero.x, y:q.hero.y-40, v:V.bounty, passive:1}); }
+      }
       S.campCharges[p.team].push(tgt.jungle);
       fx(S,{t:'jcharge', x:tgt.x, y:tgt.y-58, team:p.team, jg:tgt.jungle});
       if (claimer.type==='hero' && claimer.thirst>0 && !claimer.dead){
@@ -261,6 +264,13 @@ export function kill(S, src, tgt){
         const g = base + Math.round(rnd(-6,6));
         p.cs++; addGold(p, g);
         fx(S,{t:'gold', x:tgt.x, y:tgt.y-40, v:g, pet: src.type!=='hero' ? 1:0});
+        // like XP and kill bounties, the lane pays teammates in FULL — a 2v2
+        // player farms at 1v1 pace, and losing the CS race costs no gold
+        for (const q of nearbyHeroes(S, p.team, tgt.x, tgt.y, XP_RADIUS)){
+          if (q===p) continue;
+          addGold(q, g);
+          fx(S,{t:'gold', x:q.hero.x, y:q.hero.y-40, v:g, passive:1});
+        }
       }
       // Thirst: the lane itself keeps him standing — flat, plus a slice of the pool
       if (claimer.type==='hero' && claimer.thirst>0 && !claimer.dead){
@@ -292,7 +302,7 @@ export function kill(S, src, tgt){
   else if (tgt.type==='tower'){
     for (const q of foesOf(S, tgt.team)) addGold(q, 400);
     const kt = 1 - tgt.team;
-    const worth = S.big ? 4 : 2;              // it scores, and it also ends the match
+    const worth = S.winKills;                 // it scores, and it also ends the match
     S.teamKills[kt] += worth;
     fx(S,{t:'towerdown', x:tgt.x, y:tgt.y, team:kt, v:worth});
     endGame(S, kt, 'tower');
@@ -302,7 +312,7 @@ export function kill(S, src, tgt){
     if (!p) return;
     p.deaths++;
     p.respawn = 5 + p.lvl*1.2;
-    p.gold = Math.max(0, p.gold - Math.round(14 + p.lvl*6));
+    // dying costs time, never gold — a gold tax only digs the losing player deeper
     if (src){
       const kt = src.team!==undefined ? src.team : 1-p.team;
       S.teamKills[kt]++;

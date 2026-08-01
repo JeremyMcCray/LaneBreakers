@@ -47,8 +47,12 @@ export function pickTarget(px,py,grab){
   }
   return best;
 }
-cv.addEventListener('contextmenu', e=>e.preventDefault());
-document.getElementById('shop').addEventListener('contextmenu', e=>e.preventDefault());
+// no browser context menu anywhere (end card, menus, HUD...) — except text fields, where right-click paste matters
+document.addEventListener('contextmenu', e=>{
+  const t = e.target;
+  if (t && (t.tagName==='INPUT'||t.tagName==='TEXTAREA')) return;
+  e.preventDefault();
+});
 cv.addEventListener('mousemove', e=>{
   G.mouse.x=e.clientX; G.mouse.y=e.clientY;
   const [wx,wy]=s2w(e.clientX,e.clientY); G.mouse.wx=wx; G.mouse.wy=wy;

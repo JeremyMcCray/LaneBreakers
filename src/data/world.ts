@@ -4,11 +4,11 @@
 /* ---------------------------- constants ---------------------------- */
 export const WORLD_W = 3400, WORLD_H = 900;
 export const LANE_Y = 450;
-export let LANE_HALF = 175;            // half-height of the lane — 2v2 plays on a wider one
+export let LANE_HALF = 175;            // half-height of the lane — team modes play on wider ones
 export let LANE_FLARE = 300;           // how far it opens out at the fountains
 export function setLaneMode(m){
-  LANE_HALF  = m==='2v2' ? 258 : 175;
-  LANE_FLARE = m==='2v2' ? 380 : 300;
+  LANE_HALF  = m==='3v3' ? 310 : m==='2v2' ? 258 : 175;
+  LANE_FLARE = m==='3v3' ? 430 : m==='2v2' ? 380 : 300;
   /* decor invalidated by render when lane mode changes */
 }
 export const BASE_X = [180, WORLD_W - 180];          // fountains
@@ -54,8 +54,9 @@ export let PULL_TIME  = 3.0;          // how long attacking a hero drags creep a
 export let WAVE_INTERVAL = 25;        // seconds between creep waves
 export let FIRST_WAVE = 6;
 export let XP_RADIUS = 900;
-export let KILLS_TO_WIN = 2;        // 1v1 — two deaths and you lose; 2v2 uses KILLS_TO_WIN_2V2
+export let KILLS_TO_WIN = 2;        // 1v1 — two deaths and you lose; team modes use their own caps
 export let KILLS_TO_WIN_2V2 = 4;
+export let KILLS_TO_WIN_3V3 = 6;
 export let MATCH_LIMIT = 900;         // 15 min hard cap — decided on kills, then net worth
 export let SUDDEN_DEATH = 120;        // warning window before the cap
 export let MAX_LEVEL = 12;
@@ -144,6 +145,7 @@ export const WORLD_TUNABLES = [
   {k:'MAX_LEVEL',       label:'Max hero level',       min:1,   max:12,   step:1,   live:true},
   {k:'KILLS_TO_WIN',    label:'Kills to win (1v1)',   min:1,   max:30,   step:1,   live:false},
   {k:'KILLS_TO_WIN_2V2',label:'Kills to win (2v2)',   min:1,   max:30,   step:1,   live:false},
+  {k:'KILLS_TO_WIN_3V3',label:'Kills to win (3v3)',   min:1,   max:30,   step:1,   live:false},
   {k:'MATCH_LIMIT',     label:'Match time cap (s)',   min:60,  max:3600, step:30,  live:true},
   {k:'SUDDEN_DEATH',    label:'Sudden-death window',  min:0,   max:600,  step:10,  live:true},
   {k:'CREEP_ACQ',       label:'Creep acquire range',  min:50,  max:1600, step:10,  live:true},
@@ -161,7 +163,8 @@ const WORLD_READ = {
   CREEP_ACQ:()=>CREEP_ACQ, AUTO_ACQ:()=>AUTO_ACQ, CLEAVE_R:()=>CLEAVE_R, CLEAVE_ARC:()=>CLEAVE_ARC,
   CREEP_TICK:()=>CREEP_TICK, PULL_TIME:()=>PULL_TIME, WAVE_INTERVAL:()=>WAVE_INTERVAL,
   FIRST_WAVE:()=>FIRST_WAVE, XP_RADIUS:()=>XP_RADIUS, KILLS_TO_WIN:()=>KILLS_TO_WIN,
-  KILLS_TO_WIN_2V2:()=>KILLS_TO_WIN_2V2, MATCH_LIMIT:()=>MATCH_LIMIT, SUDDEN_DEATH:()=>SUDDEN_DEATH,
+  KILLS_TO_WIN_2V2:()=>KILLS_TO_WIN_2V2, KILLS_TO_WIN_3V3:()=>KILLS_TO_WIN_3V3,
+  MATCH_LIMIT:()=>MATCH_LIMIT, SUDDEN_DEATH:()=>SUDDEN_DEATH,
   MAX_LEVEL:()=>MAX_LEVEL, BUY_DELAY:()=>BUY_DELAY, SELL_FULL:()=>SELL_FULL,
   START_GOLD:()=>START_GOLD, GOLD_PER_SEC:()=>GOLD_PER_SEC,
   CAMP_FIRST:()=>CAMP_FIRST, CAMP_RESPAWN:()=>CAMP_RESPAWN
@@ -170,7 +173,8 @@ const WORLD_WRITE = {
   CREEP_ACQ:v=>CREEP_ACQ=v, AUTO_ACQ:v=>AUTO_ACQ=v, CLEAVE_R:v=>CLEAVE_R=v, CLEAVE_ARC:v=>CLEAVE_ARC=v,
   CREEP_TICK:v=>CREEP_TICK=v, PULL_TIME:v=>PULL_TIME=v, WAVE_INTERVAL:v=>WAVE_INTERVAL=v,
   FIRST_WAVE:v=>FIRST_WAVE=v, XP_RADIUS:v=>XP_RADIUS=v, KILLS_TO_WIN:v=>KILLS_TO_WIN=v,
-  KILLS_TO_WIN_2V2:v=>KILLS_TO_WIN_2V2=v, MATCH_LIMIT:v=>MATCH_LIMIT=v, SUDDEN_DEATH:v=>SUDDEN_DEATH=v,
+  KILLS_TO_WIN_2V2:v=>KILLS_TO_WIN_2V2=v, KILLS_TO_WIN_3V3:v=>KILLS_TO_WIN_3V3=v,
+  MATCH_LIMIT:v=>MATCH_LIMIT=v, SUDDEN_DEATH:v=>SUDDEN_DEATH=v,
   // MAX_LEVEL indexes XP_TABLE — never let it point past the end
   MAX_LEVEL:v=>MAX_LEVEL=clamp(Math.round(v), 1, XP_TABLE.length-1),
   BUY_DELAY:v=>BUY_DELAY=v, SELL_FULL:v=>SELL_FULL=v,

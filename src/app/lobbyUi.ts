@@ -16,7 +16,10 @@ import {
   tourDraftTeam, tourTaken, tourBench, tourNeedPick, tourPicksPerTeam
 } from './tournament';
 
-export function lobbyCap(){ return (G.lobby && G.lobby.mode==='2v2') ? 4 : 2; }
+export function lobbyCap(){
+  const m = G.lobby && G.lobby.mode;
+  return m==='3v3' ? 6 : m==='2v2' ? 4 : 2;
+}
 export function newLobby(mode){
   return {mode:mode||'1v1', slots:[{slot:0, team:0, hero:G.pick, name:G.name, ready:false, here:true}]};
 }
@@ -132,7 +135,7 @@ export function renderLobby(){
     : '';
   const modeBtns = Net.mode==='host'
     ? '<div class="modesel">'+
-      ['1v1','2v2'].map(m=>'<button class="'+(G.lobby.mode===m?'pri':'')+'" onclick="lobbySetMode(\''+m+'\')">'+m.toUpperCase()+'</button>').join('')+
+      ['1v1','2v2','3v3'].map(m=>'<button class="'+(G.lobby.mode===m?'pri':'')+'" onclick="lobbySetMode(\''+m+'\')">'+m.toUpperCase()+'</button>').join('')+
       '</div>'
     : '<div class="modesel"><span style="color:var(--dim);font-size:12px">Mode: <b>'+G.lobby.mode.toUpperCase()+'</b> (host decides)</span></div>';
   el.innerHTML = modeBtns + tourBtn + '<div class="roster">'+rows+'</div>' +
@@ -149,7 +152,8 @@ export function lobbySetMode(m){
   if (Net.mode!=='host' || !G.lobby) return;
   G.lobby.mode = m;
   // shrinking the lobby drops anyone who no longer has a seat
-  if (m==='1v1') G.lobby.slots = G.lobby.slots.filter(x=>x.slot<2);
+  const cap = lobbyCap();
+  G.lobby.slots = G.lobby.slots.filter(x=>x.slot<cap);
   for (const x of G.lobby.slots) x.ready = false;
   broadcastLobby(); renderLobby();
 }

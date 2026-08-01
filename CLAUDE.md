@@ -8,7 +8,7 @@ built with LLMs, and a stale brief costs more than a missing one.
 
 ## What this is
 
-A browser mid-lane MOBA: 1v1 or 2v2 on a single lane, creep waves, one tower per
+A browser mid-lane MOBA: 1v1, 2v2 or 3v3 on a single lane, creep waves, one tower per
 side, fountain bases, item shop, 24 heroes, classic + neural bots, practice /
 online (P2P, no server) / tournament. Vite + TypeScript, Canvas 2D for the world,
 light DOM for menus/shop. No React. Most files start with `// @ts-nocheck` — match
@@ -86,14 +86,16 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
 
 - 24 heroes (`HERO_IDS`), 4 abilities each (R = ult, ranks 3, others 4).
   Ult unlock levels `ULT_REQ = [6,9,12]`, `MAX_LEVEL = 12`.
-- Win: **2 points in 1v1, 4 in 2v2** (hero kill = 1); the tower falling ends the
+- Win: **2 points in 1v1, 4 in 2v2, 6 in 3v3** (hero kill = 1); the tower falling ends the
   match outright. 15-min cap (`MATCH_LIMIT`), then kills → net worth → last hits.
 - Economy: `START_GOLD 420`, passive 2.2 g/s, courier delay 5 s, 6 item slots,
-  full refund within 10 s of purchase.
+  full refund within 10 s of purchase. **Nothing splits by team size**: XP, kill
+  bounties, tower gold AND creep/jungle bounties all pay every nearby teammate
+  in full (last hits keep the `cs` credit). Death costs time, never gold.
 - Items build component → upgrade (`from` + `recipe`); cost auto-derived.
   **Ascendant Scepter (2200 g)** is the capstone — see below.
 - **Jungle camps**: two walkable pockets off the lane at mid-map (`CAMP_X`,
-  `campY(side)` in world.ts; one random side in 1v1, both in 2v2). First spawn
+  `campY(side)` in world.ts; one random side in 1v1, both in 2v2/3v3). First spawn
   `CAMP_FIRST` (120 s), refill check every `CAMP_RESPAWN` (120 s) **only when
   empty**. Neutrals are `team:2` with `e.neutral` — every targeting loop that
   iterates enemies must decide whether neutrals belong (lane creeps/bot: never;

@@ -7,6 +7,56 @@ looks, or connects, it belongs on this list.
 
 ---
 
+## 2026-07-31 · v0.3.0
+
+### New mode — 3v3
+- **3v3 is playable everywhere**: Practice (you + 5 bots), online quick-play
+  lobbies (6 seats), and tournaments (3 heroes fielded per side).
+- The 3v3 lane is wider than 2v2's, creep waves grow to 8 a side (3 ranged),
+  and both jungle pockets are open, just like 2v2.
+- **First to 6 points wins** (tower fall still ends the match outright). The
+  tower is tougher (3000 HP) and hits harder (165) to survive the bigger lane.
+- Teams spawn on three fountain rows so nobody stacks on top of a teammate.
+- The F4 sandbox gets a "Kills to win (3v3)" tunable.
+
+### Fixes
+- Tournament lives are now capped so the draft can never demand more heroes
+  than the roster holds (a 2v2 tournament at 7 lives used to deadlock the
+  draft board — it now quietly plays at 6).
+- Switching between lane widths between matches no longer leaves the old
+  mode's rocks and trees sitting inside (or floating outside) the new lane.
+
+---
+
+## 2026-07-31 · v0.2.2
+
+### UI
+- The browser right-click menu can no longer pop up anywhere in the game — the
+  end-of-match screen (and every other menu/overlay) now suppresses it like the
+  battlefield and shop already did. Text fields still allow it so you can
+  right-click-paste connection codes.
+
+---
+
+## 2026-07-31 · v0.2.1
+
+### Economy — 2v2 gold now pays like 1v1
+- **Creep bounties are shared**: the last hit still pays the killer in full, and
+  now every teammate standing nearby (same radius as XP) receives the same
+  bounty too. This was the one income stream that wasn't team-shared — XP, kill
+  bounties and tower gold already paid everyone — and it's why one player per
+  team always ended up much poorer. Losing the last-hit race to your own
+  teammate no longer costs you gold. Jungle camp bounties share the same way.
+- **Dying no longer costs gold.** Death already costs respawn time; the gold
+  tax only dug the losing player deeper.
+
+### Jungle camps
+- Sleeping camps no longer wake when a creep wave brushes past the pocket —
+  a pack only stirs when a hero actually steps into its camp (or hits it).
+  Once angered it still fights anything nearby until it leashes home.
+
+---
+
 ## 2026-07-31 · v0.2.0
 
 ### New mechanic — Jungle Camps

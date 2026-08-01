@@ -4,7 +4,7 @@ import {
 } from '../data/world';
 import { attackWith, autoNext, cancelWind, moveToward, releaseAttack } from './attack';
 import { clearEmber, damage, kill, tickDot, tickEmber, tickRupture } from './combat';
-import { ent, fx } from './create';
+import { ent, fx, heroHomeY } from './create';
 import { updateHeroStats } from './stats';
 
 export function heroThink(S,p,dt){
@@ -12,7 +12,7 @@ export function heroThink(S,p,dt){
   if (e.dead){
     p.respawn -= dt;
     if (p.respawn<=0){
-      e.dead=false; e.x=BASE_X[p.team]; e.y=LANE_Y + (p.slot>1 ? 60 : -60)*(S.players.length>2?1:0);
+      e.dead=false; e.x=BASE_X[p.team]; e.y=heroHomeY(S,p);
       e.stun=0; e.slowT=0; e.shieldT=0; e.colT=0; e.bonusHp=0; e.bonusDmg=0; e.windT=0; e.wTid=0;
       e.rootT=0; e.silT=0; e.barbT=0; e.defer=0; e.rage=0;
       e.spinT=0; e.invT=0; e.csT=0; e.brT=0; e.vulT=0; e.bzT=0;

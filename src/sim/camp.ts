@@ -14,7 +14,7 @@ import { attackWith, moveToward } from './attack';
 import { damage } from './combat';
 import { ent, fx, mkEnt } from './create';
 
-const CAMP_AGGRO = 250;    // an enemy this close to the pocket wakes the pack
+const CAMP_AGGRO = CAMP_R + 20;  // a HERO inside the pocket wakes the pack — waves passing on the lane never do
 const CAMP_CHASE = 560;    // once angry they hunt anything this close to home
 const CAMP_LEASH = 470;    // a target dragged past this from the anchor is dropped
 
@@ -88,11 +88,14 @@ function campThink(S, e, dt){
   e.acqT = (e.acqT||0) - dt;
   if (e.acqT<=0){
     e.acqT = 0.4;
-    // angry (already fighting or wounded) packs scan wider than sleeping ones
-    const wake = (e.tid || e.hp<e.maxHp) ? CAMP_CHASE : CAMP_AGGRO;
+    // angry (already fighting or wounded) packs scan wider than sleeping ones,
+    // and a SLEEPING pack only wakes for a hero — never for a passing wave
+    const angry = e.tid || e.hp<e.maxHp;
+    const wake = angry ? CAMP_CHASE : CAMP_AGGRO;
     let best=null, bd=1e9;
     for (const o of S.ents){
       if (o.dead || o.team===2 || o.type==='tower') continue;
+      if (!angry && o.type!=='hero') continue;
       const d = dist(o.x,o.y,CAMP_X,cy);
       if (d > wake) continue;
       const dd = dist(o.x,o.y,e.x,e.y);

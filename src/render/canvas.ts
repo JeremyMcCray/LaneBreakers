@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { G } from '../app/state';
-import { WORLD_W, LANE_Y, laneHalf } from '../data/world';
+import { WORLD_W, LANE_Y, LANE_HALF, laneHalf } from '../data/world';
 
 export const cv = document.getElementById('cv');
 export const ctx = cv.getContext('2d');
@@ -44,8 +44,9 @@ export function ownHeroView(v){
 export function allyViews(v){    // living teammates, excluding me
   return v.e.filter(e=>e.ty===0 && e.tm===G.myTeam && e.sl!==G.mySlot);
 }
+let decorHalf = 0;                 // lane width the decor was built for
 export function ensureDecor(){
-  if (!DECOR) DECOR = makeDecor();
+  if (!DECOR || decorHalf !== LANE_HALF){ DECOR = makeDecor(); decorHalf = LANE_HALF; }
   return DECOR;
 }
 

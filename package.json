@@ -1,7 +1,7 @@
 {
   "name": "lanebreakers",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Lanebreakers — mid-lane MOBA",
   "author": "Lanebreakers",
   "type": "module",

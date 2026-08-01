@@ -23,7 +23,7 @@ export function beginMatch(mode, picks, mySlot, gameMode){
   G.mode = mode;
   G.mySlot = mySlot||0;
   G.myTeam = (picks[G.mySlot] && picks[G.mySlot].tm!==undefined) ? picks[G.mySlot].tm : (G.mySlot % 2);
-  G.gameMode = gameMode || (picks.length>2 ? '2v2' : '1v1');
+  G.gameMode = gameMode || (picks.length>4 ? '3v3' : picks.length>2 ? '2v2' : '1v1');
   setLaneMode(G.gameMode);
   G.started = true;
   G.paused = false;
@@ -55,9 +55,9 @@ export function beginMatch(mode, picks, mySlot, gameMode){
 }
 export function otherHero(k){ return HERO_IDS[(HERO_IDS.indexOf(G.pick)+1+k)%HERO_IDS.length]; }
 export function startPractice(mode){
-  const picks = mode==='2v2'
-    ? [{h:G.pick,tm:0},{h:otherHero(0),tm:1},{h:otherHero(1),tm:0},{h:otherHero(2),tm:1}]
-    : [{h:G.pick,tm:0},{h:otherHero(0),tm:1}];
+  const perTeam = mode==='3v3' ? 3 : mode==='2v2' ? 2 : 1;
+  const picks = [{h:G.pick, tm:0}];
+  for (let i=1; i<perTeam*2; i++) picks.push({h:otherHero(i-1), tm:i%2});
   beginMatch('local', picks, 0, mode||'1v1');
 }
 

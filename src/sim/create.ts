@@ -1,20 +1,21 @@
 // @ts-nocheck
 import {
-  BASE_X, CAMP_FIRST, FIRST_WAVE, KILLS_TO_WIN, KILLS_TO_WIN_2V2, LANE_Y, START_GOLD, TOWER_X, clamp, clampToLane, dist, heal, rnd, setCampsOpen, setLaneMode
+  BASE_X, CAMP_FIRST, FIRST_WAVE, KILLS_TO_WIN, KILLS_TO_WIN_2V2, KILLS_TO_WIN_3V3, LANE_Y, START_GOLD, TOWER_X, clamp, clampToLane, dist, heal, rnd, setCampsOpen, setLaneMode
 } from '../data/world';
 import { HEROES } from '../data/heroes';
 import { updateHeroStats } from './stats';
 
 export function newSim(picks, mode){
   picks = picks.map((pk,i)=> typeof pk==='string' ? {h:pk, tm:i%2} : pk);
-  mode = mode || (picks.length>2 ? '2v2' : '1v1');
+  mode = mode || (picks.length>4 ? '3v3' : picks.length>2 ? '2v2' : '1v1');
   setLaneMode(mode);
-  const big = mode==='2v2';
+  const big = mode!=='1v1';
   const S = {
     t:0, tick:0, nextId:1, ents:[], projs:[], fx:[], zones:[], tag:null, seriesT:0,
     waveT:FIRST_WAVE, waveNum:0, winner:-1, over:false, aggro:[null,null], towerAggro:[null,null],
-    mode:mode, big:big, teamKills:[0,0], winKills: big?KILLS_TO_WIN_2V2:KILLS_TO_WIN,
-    // jungle camps: both pockets in 2v2, one random side in 1v1
+    mode:mode, big:big, teamKills:[0,0],
+    winKills: mode==='3v3' ? KILLS_TO_WIN_3V3 : big ? KILLS_TO_WIN_2V2 : KILLS_TO_WIN,
+    // jungle camps: both pockets in team modes, one random side in 1v1
     campT:CAMP_FIRST, campSides: big ? [0,1] : [Math.random()<.5 ? 0 : 1],
     campCharges:[[],[]],
     players:[]
@@ -33,10 +34,11 @@ export function newSim(picks, mode){
       order:{type:'stop', x:0, y:0, tid:0}, lastCastAt:-99
     });
   });
-  const twrHp = big ? 2300 : 1500;
+  const twrHp = mode==='3v3' ? 3000 : big ? 2300 : 1500;
+  const twrDmg = mode==='3v3' ? 165 : big ? 150 : 135;
   for (let tm=0; tm<2; tm++){
     mkEnt(S,{type:'tower', team:tm, x:TOWER_X[tm], y:LANE_Y, r:46,
-      hp:twrHp, maxHp:twrHp, armor:9, dmg: big?150:135, range:576, bat:0.95, atkCd:0, ramp:0, tid:0, lockT:0, lockId:0, heroThreatLockT:0});
+      hp:twrHp, maxHp:twrHp, armor:9, dmg:twrDmg, range:576, bat:0.95, atkCd:0, ramp:0, tid:0, lockT:0, lockId:0, heroThreatLockT:0});
   }
   for (const p of S.players) spawnHero(S, p);
   return S;
@@ -60,11 +62,19 @@ export function mkEnt(S,o){
 export function ent(S,id){ if(!id) return null; for(const e of S.ents) if(e.id===id) return e; return null; }
 export function fx(S,o){ if (S.noFx) return; S.fx.push(o); }   /* headless trainers set noFx */
 
+/* Fountain row for a hero: 1v1 spawns on the lane centre; team modes fan the
+   pairs of slots out vertically (2v2: ±60, 3v3: -120/0/+120). */
+export function heroHomeY(S, p){
+  if (S.players.length<=2) return LANE_Y;
+  const teamSize = S.players.length/2;
+  return LANE_Y + (p.slot>>1)*120 - (teamSize-1)*60;
+}
+
 export function spawnHero(S,p){
   const H = HEROES[p.heroId];
   const e = mkEnt(S,{
     type:'hero', team:p.team, slot:p.slot, heroId:p.heroId,
-    x:BASE_X[p.team], y:LANE_Y + (p.slot>1 ? 60 : -60)*(S.players.length>2?1:0), r:26,
+    x:BASE_X[p.team], y:heroHomeY(S,p), r:26,
     hp:1, maxHp:1, mp:1, maxMp:1, atkCd:0, windT:0, wTid:0, castLock:0, facing:p.team?Math.PI:0,
     shield:0, shieldT:0, shieldRef:0, asT:0, asP:0, lsT:0, lsP:0, msT:0, msP:0,
     armT:0, armB:0, regT:0, regP:0, bonusHp:0, bonusDmg:0, colT:0, towerAgroDropCd:0,

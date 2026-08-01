@@ -3,7 +3,10 @@
 import { HEROES } from '../data/heroes';
 
 export function tourNew(mode, lives){
-  const teamSize = mode==='2v2' ? 2 : 1;
+  const teamSize = mode==='3v3' ? 3 : mode==='2v2' ? 2 : 1;
+  // both teams draft lives×teamSize heroes from one shared pool — cap lives so
+  // the draft can never ask for more heroes than the roster holds
+  lives = Math.min(lives, Math.floor(Object.keys(HEROES).length / (teamSize*2)));
   return {on:true, mode:mode, teamSize:teamSize, lives:lives,
           pool:[[],[]], dead:[[],[]], cur:[[],[]], score:[0,0],
           first: Math.random()<0.5 ? 0 : 1,          // coin toss for first pick

@@ -8,9 +8,12 @@ import { fx, mkEnt } from './create';
 export function spawnWave(S){
   S.waveNum++;
   const scale = 1 + S.waveNum*0.045;   // waves out-scale the tower late, so games always resolve
-  const n = S.big ? 6 : 4;             // a 2v2 lane needs a bigger wave to feel like a lane
-  const OFF = S.big ? [-150, -90, -30, 40, 100, 160] : [-72, 0, 72, -36];
-  const RNG = S.big ? [3,5] : [3];
+  // a wider lane needs a bigger wave to feel like a lane
+  const three = S.mode==='3v3';
+  const n = three ? 8 : S.big ? 6 : 4;
+  const OFF = three ? [-210, -150, -90, -30, 40, 100, 160, 220]
+            : S.big ? [-150, -90, -30, 40, 100, 160] : [-72, 0, 72, -36];
+  const RNG = three ? [3,5,7] : S.big ? [3,5] : [3];
   for (let tm=0; tm<2; tm++){
     for (let i=0;i<n;i++){
       const ranged = RNG.indexOf(i)>=0;

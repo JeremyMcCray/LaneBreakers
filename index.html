@@ -112,6 +112,7 @@ Right-click is always just move — or a single attack, if you click directly on
         <button class="pri" onclick="showScreen('scrQuick')">Play Online</button>
         <button onclick="startPractice('1v1')">Practice 1v1</button>
         <button onclick="startPractice('2v2')">Practice 2v2</button>
+        <button onclick="startPractice('3v3')">Practice 3v3</button>
         <select id="aiTier" class="modedd"
                 style="width:180px;min-width:180px;flex:0 0 180px;margin:0;padding:9px 10px"
                 onchange="lbSetAiTier(this.value)" title="Which AI you practise against"></select>
@@ -258,6 +259,7 @@ Right-click is always just move — or a single attack, if you click directly on
           <select id="modeSel" class="modedd">
             <option value="1v1">1v1 &mdash; 2 players</option>
             <option value="2v2">2v2 &mdash; 4 players</option>
+            <option value="3v3">3v3 &mdash; 6 players</option>
           </select>
           <div id="roomCode" class="code hide">-----</div>
           <div class="row" style="margin-top:8px">
