@@ -3,20 +3,24 @@ import {
   BASE_X, CAMP_FIRST, FIRST_WAVE, KILLS_TO_WIN, KILLS_TO_WIN_2V2, KILLS_TO_WIN_3V3, LANE_Y, START_GOLD, TOWER_X, clamp, clampToLane, dist, heal, rnd, setCampsOpen, setLaneMode
 } from '../data/world';
 import { HEROES } from '../data/heroes';
+import { setupHideout } from './hideout';
 import { updateHeroStats } from './stats';
 
 export function newSim(picks, mode){
   picks = picks.map((pk,i)=> typeof pk==='string' ? {h:pk, tm:i%2} : pk);
   mode = mode || (picks.length>4 ? '3v3' : picks.length>2 ? '2v2' : '1v1');
-  setLaneMode(mode);
-  const big = mode!=='1v1';
+  // 'hideout' — the pre-game warm-up room: 1v1 lane, no waves, no way to end
+  const hid = mode==='hideout';
+  setLaneMode(hid ? '1v1' : mode);
+  const big = !hid && mode!=='1v1';
   const S = {
     t:0, tick:0, nextId:1, ents:[], projs:[], fx:[], zones:[], tag:null, seriesT:0,
     waveT:FIRST_WAVE, waveNum:0, winner:-1, over:false, aggro:[null,null], towerAggro:[null,null],
-    mode:mode, big:big, teamKills:[0,0],
-    winKills: mode==='3v3' ? KILLS_TO_WIN_3V3 : big ? KILLS_TO_WIN_2V2 : KILLS_TO_WIN,
-    // jungle camps: both pockets in team modes, one random side in 1v1
-    campT:CAMP_FIRST, campSides: big ? [0,1] : [Math.random()<.5 ? 0 : 1],
+    mode:mode, big:big, hideout:hid, teamKills:[0,0],
+    winKills: hid ? 9999 : mode==='3v3' ? KILLS_TO_WIN_3V3 : big ? KILLS_TO_WIN_2V2 : KILLS_TO_WIN,
+    // jungle camps: both pockets in team modes (and the hideout, on a fast
+    // first spawn so there is something to practice on), one random side in 1v1
+    campT: hid ? 10 : CAMP_FIRST, campSides: (big || hid) ? [0,1] : [Math.random()<.5 ? 0 : 1],
     campCharges:[[],[]],
     players:[]
   };
@@ -28,19 +32,21 @@ export function newSim(picks, mode){
       sk:[0,0,0,0], cds:[0,0,0,0], chg:[0,0,0,0], chgT:[0,0,0,0], chgM:[0,0,0,0],
       items:[], pending:[],
       kills:0, deaths:0, assists:0, cs:0, denies:0, respawn:0, hero:null,
-      trophies:0, stolenDmg:0,          // Drifter: his belt, and what Grand Larceny took from YOU
       dmgHero:0, dmgAll:0, healed:0, dmgTaken:0, goldEarned:START_GOLD,
       dmgBy:{}, dmgHeroBy:{}, takenBy:{}, series:[], events:[],
       order:{type:'stop', x:0, y:0, tid:0}, lastCastAt:-99
     });
   });
-  const twrHp = mode==='3v3' ? 3000 : big ? 2300 : 1500;
-  const twrDmg = mode==='3v3' ? 165 : big ? 150 : 135;
-  for (let tm=0; tm<2; tm++){
-    mkEnt(S,{type:'tower', team:tm, x:TOWER_X[tm], y:LANE_Y, r:46,
-      hp:twrHp, maxHp:twrHp, armor:9, dmg:twrDmg, range:576, bat:0.95, atkCd:0, ramp:0, tid:0, lockT:0, lockId:0, heroThreatLockT:0});
+  if (!hid){
+    const twrHp = mode==='3v3' ? 3300 : big ? 2300 : 1500;
+    const twrDmg = mode==='3v3' ? 175 : big ? 150 : 135;
+    for (let tm=0; tm<2; tm++){
+      mkEnt(S,{type:'tower', team:tm, x:TOWER_X[tm], y:LANE_Y, r:46,
+        hp:twrHp, maxHp:twrHp, armor:9, dmg:twrDmg, range:576, bat:0.95, atkCd:0, ramp:0, tid:0, lockT:0, lockId:0, heroThreatLockT:0});
+    }
   }
   for (const p of S.players) spawnHero(S, p);
+  if (hid) setupHideout(S);       // dummies, movers and the practice tower
   return S;
 }
 export function teamOf(S, t){ return S.players.filter(p=>p.team===t); }

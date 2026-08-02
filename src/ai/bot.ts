@@ -22,7 +22,7 @@ export const BOT_BUILD = {
   krell:['boots','arc','orb','scepter','blade','quick'],
   shiv: ['boots','quell','blade','quick','scepter','vit'],
   svaar:['boots','vit','blade','cleaver','scepter','quick'],
-  liora:['boots','arc','vit','orb','scepter','quick'],
+  geist:['boots','arc','weave','orb','scepter','vit'],   // Soulweave doubles down on her drain
   drex: ['boots','arc','orb','scepter','vit','quick'],
   ronin:['boots','blade','quick','fang','scepter','reaver'],
   zaal: ['boots','arc','orb','scepter','vit','quick'],

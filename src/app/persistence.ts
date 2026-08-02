@@ -61,6 +61,11 @@ export function fmtDate(ts){
   return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+
          d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
 }
+/* History outlives the roster — records can hold hero ids that were since
+   renamed or retired (and imports can carry ids from other versions). */
+function heroRef(id){
+  return HEROES[id] || {name:(id||'?').toUpperCase()+' (retired)', col:'#9aa4b8'};
+}
 export function renderStats(){
   const box = document.getElementById('statsBody');
   const hist = history().slice().sort((a,b)=>b.ts-a.ts);
@@ -87,7 +92,7 @@ export function renderStats(){
     '</div>';
 
   const heroRows = Object.entries(S2.heroes).sort((a,b)=>b[1].g-a[1].g).map(([h,v])=>
-    '<tr><td style="color:'+HEROES[h].col+';font-weight:800">'+HEROES[h].name+'</td>'+
+    '<tr><td style="color:'+heroRef(h).col+';font-weight:800">'+heroRef(h).name+'</td>'+
     '<td>'+v.g+'</td><td>'+v.w+' – '+(v.g-v.w)+'</td><td>'+pct(v.w,v.g)+'</td>'+
     '<td>'+(v.k/v.g).toFixed(1)+' / '+(v.d/v.g).toFixed(1)+' / '+(v.a/v.g).toFixed(1)+'</td>'+
     '<td>'+(v.cs/v.g).toFixed(0)+'</td></tr>').join('');
@@ -113,10 +118,10 @@ export function renderStats(){
       const won = mine.tm===r.win;
       const line = r.ps.filter(q=>q.sl!==mine.sl)
                       .map(q=>'<span style="color:'+(q.tm===mine.tm?'var(--acc)':'var(--red)')+'">'+
-                              q.nm+' ('+HEROES[q.h].name+')</span>').join(', ');
+                              q.nm+' ('+heroRef(q.h).name+')</span>').join(', ');
       return '<tr><td>'+fmtDate(r.ts)+'</td><td>'+r.mode.toUpperCase()+'</td>'+
              '<td style="color:'+(won?'var(--acc)':'var(--red)')+';font-weight:800">'+(won?'WIN':'LOSS')+'</td>'+
-             '<td style="color:'+HEROES[mine.h].col+'">'+HEROES[mine.h].name+'</td>'+
+             '<td style="color:'+heroRef(mine.h).col+'">'+heroRef(mine.h).name+'</td>'+
              '<td>'+mine.k+'/'+mine.d+'/'+mine.a+'</td><td>'+mine.cs+'</td><td>'+line+'</td></tr>';
     }).join('')+'</table>';
   box.innerHTML = html;

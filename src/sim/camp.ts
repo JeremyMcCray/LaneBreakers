@@ -23,7 +23,7 @@ function mkJungle(S, o, V){
     type:'creep', kind: V.ranged?'ranged':'melee',
     hp:V.hp, maxHp:V.hp, dmg:V.dmg, armor:V.armor, ms:V.ms,
     range:V.range, bat:V.bat, r:V.r, ranged:V.ranged,
-    cleave:V.cleave||0, siege:V.siege||0,
+    cleave:V.cleave||0, siege:V.siege||0, chill:V.chill||0, venom:V.venom||0,
     atkCd:rnd(0,.5), tid:0, jT:rnd(0.5,2)
   }, o));
 }
@@ -69,7 +69,7 @@ export function stepCamps(S, dt){
   if (S.campT===undefined) return;             // old saves / trainer states without camps
   S.campT -= dt;
   if (S.campT<=0){
-    S.campT = CAMP_RESPAWN;
+    S.campT = S.hideout ? 30 : CAMP_RESPAWN;   // warm-up camps come back quickly
     for (const s of S.campSides) if (!campAlive(S, s)) spawnCamp(S, s);
   }
   for (const e of S.ents){
@@ -83,6 +83,7 @@ export function stepCamps(S, dt){
 function campThink(S, e, dt){
   if (e.stun>0 || e.windT>0) return;
   const cy = campY(e.camp);
+  if (CAMP_VARIANTS[e.jungle].timid) return timidThink(S, e, dt, cy);
   let tgt = ent(S, e.tid);
   if (tgt && (tgt.dead || dist(tgt.x,tgt.y,CAMP_X,cy) > CAMP_LEASH)){ tgt=null; e.tid=0; }
   e.acqT = (e.acqT||0) - dt;
@@ -109,6 +110,28 @@ function campThink(S, e, dt){
     else moveToward(S,e,tgt.x,tgt.y,dt);
   } else {
     // trot home and shake the fight off — an abandoned camp resets to full
+    if (dist(e.x,e.y,CAMP_X,cy) > 30+e.r) moveToward(S,e,CAMP_X,cy,dt);
+    else if (e.hp < e.maxHp) heal(S, e, e.maxHp*0.25*dt);
+  }
+}
+
+/* A timid creature never swings back — once wounded it skitters around the
+   pocket rim away from whoever is closest, so catching it takes a slow, a
+   ranged hit, or a corner. Left alone at home it heals like any camp. */
+function timidThink(S, e, dt, cy){
+  let threat=null, bd=1e9;
+  if (e.hp < e.maxHp){
+    for (const o of S.ents){
+      if (o.dead || o.team===2 || o.type==='tower') continue;
+      const d = dist(o.x,o.y,e.x,e.y);
+      if (d < CAMP_CHASE && d < bd){ bd=d; threat=o; }
+    }
+  }
+  if (threat){
+    // flee point: the spot on the pocket rim directly opposite the threat
+    const dx=e.x-threat.x, dy=e.y-threat.y, d=Math.hypot(dx,dy)||1;
+    moveToward(S, e, CAMP_X + dx/d*CAMP_R*0.8, cy + dy/d*CAMP_R*0.8, dt);
+  } else {
     if (dist(e.x,e.y,CAMP_X,cy) > 30+e.r) moveToward(S,e,CAMP_X,cy,dt);
     else if (e.hp < e.maxHp) heal(S, e, e.maxHp*0.25*dt);
   }

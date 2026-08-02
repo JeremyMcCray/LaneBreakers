@@ -19,6 +19,7 @@ export function heroThink(S,p,dt){
       e.rupT=0; e.rupV=0; e.rupBank=0; e.rupLx=undefined; e.rupLy=undefined;
       e.fervN=0; e.fervTid=0; e.fervT=0; e.hiveT=0; e.stanceR=false;
       e.fbN=0; e.fbT=0; e.fbCd=0; e.raN=0; e.raT=0;
+      e.blindT=0; e.btT=0; e.btId=0; e.drainT=0; e.drainId=0;
       clearEmber(e);
       updateHeroStats(S,p);
       e.hp=e.maxHp; e.mp=e.maxMp;
@@ -99,12 +100,28 @@ export function heroTimers(S,p,dt){
    'castLock','hitFlash','swing','drT','markT','rendT','hcT','shredT',
    'rootT','silT','barbT','bleedT','gsT','csT','banT',
    'spinT','invT','brT','vulT','bzT','fervT','wardFxT','hiveT',
-   'undyCd','fbT','fbCd','doorCd','shovedT','raT'].forEach(dec);
+   'undyCd','fbT','fbCd','doorCd','shovedT','raT','blindT','btT','drainT'].forEach(dec);
   if (e.fbT<=0) e.fbN = 0;                       // Frostbite thaws if Ilva lets up
   if (e.raT<=0) e.raN = 0;                       // Reactive Armor plates fall off together
   tickDot(S,e,dt);
   tickEmber(S,e,dt);
   tickRupture(S,e,dt);
+  // Life Drain — Geist's tether pays out in half-second sips, healed straight back
+  if (e.drainT>0 && !e.dead){
+    const tg = ent(S, e.drainId);
+    if (!tg || tg.dead || dist(e.x,e.y,tg.x,tg.y) > 700){ e.drainT = 0; }
+    else {
+      e.drainTick -= dt;
+      if (e.drainTick<=0){
+        e.drainTick += .5;
+        const prev = S.tag; S.tag = e.drainTag || 'a1';
+        const got = damage(S, e, tg, e.drainDps*.5, {ability:true});
+        S.tag = prev;
+        if (got>0) heal(S, e, got);
+        fx(S,{t:'chain', x:tg.x, y:tg.y-8, x2:e.x, y2:e.y-8, col:'#d8a6ff'});
+      }
+    }
+  }
   if (!(e.fervT>0)){ e.fervN=0; e.fervTid=0; }   // stacks fall off once he stops swinging
   if (e.colT>0){ e.colT-=dt; if (e.colT<=0){ e.bonusHp=0; e.bonusDmg=0; } }
   if (e.towerAgroDropCd>0) e.towerAgroDropCd = Math.max(0, e.towerAgroDropCd-dt);

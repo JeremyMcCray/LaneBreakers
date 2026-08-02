@@ -6,7 +6,7 @@ import { HEROES } from '../data/heroes';
 import { CAMP_VARIANTS } from '../data/camps';
 import { cancelWind } from './attack';
 import { ent, foesOf, fx, nearbyHeroes, playerOf, spawnBrood, teamOf } from './create';
-import { addGold, addXp, endGame, logEvent, updateHeroStats } from './stats';
+import { addGold, addXp, endGame, logEvent } from './stats';
 import { towerShielded } from './tower';
 
 /* ---------------------- damage attribution ------------------------- */
@@ -58,9 +58,15 @@ export function damage(S, src, tgt, amount, opt){
   let dmg = amount;
   if (opt.ability && src && src.amp>0) dmg *= (1 + src.amp);
   if (src && src.brT>0) dmg *= (1 + src.brP);               // Bloodrage — everything hits harder
-  if (src && src.hungry) dmg *= 0.88;                       // the Drifter before his first trophy
+  // Lacerate — the Drifter tears harder into what is already bleeding from Bloodtrail
+  if (src && src.lacer>0 && tgt.dotT>0 && tgt.dotSrc===src.id) dmg *= (1 + src.lacer);
+  // Pitch Black — a night-blind victim never sees the claws coming
+  if (src && src.heroId==='drift' && src.aghs && tgt.blindT>0) dmg *= 1.2;
+  // creeps shrug off 30% of ability damage (pure cuts through; player summons are hero extensions)
+  if (opt.ability && !opt.pure && tgt.type==='creep' && !tgt.pet) dmg *= 0.70;
   if (!opt.pure) dmg *= armorMult(effArmor(tgt));
-  if (opt.attack && tgt.block>0) dmg = Math.max(0, dmg - tgt.block);   // Stout Shield
+  if (opt.attack && tgt.block>0 && Math.random()<0.6)                  // Stout Shield — 60% proc
+    dmg = Math.max(0, dmg - tgt.block);
   if (tgt.type==='tower' && towerShielded(S, tgt)) dmg *= 0.15;   // backdoor protection
   if (tgt.illu)     dmg *= (src && src.type==='tower') ? 5 : (tgt.illuTake||1.6);
   if (src && src.illu && tgt.type==='tower') dmg *= (src.illuTower||0.2);  // no backdoor by copy
@@ -75,7 +81,7 @@ export function damage(S, src, tgt, amount, opt){
   }
   // Reactive Armor — every attack that lands on Timbersaw plates him further
   if (opt.attack && tgt.reactOn && src && src.team!==tgt.team){
-    tgt.raN = Math.min(10, (tgt.raN||0) + 1);
+    tgt.raN = Math.min(8, (tgt.raN||0) + 1);
     tgt.raT = 12;
   }
   // shield
@@ -169,6 +175,11 @@ export function damage(S, src, tgt, amount, opt){
     heal(S, src, dmg*src.ls);
     fx(S,{t:'heal', x:src.x, y:src.y});
   }
+  // spell lifesteal (Soulweave) — ability damage feeds the caster; creeps are thin blood
+  if (opt.ability && tgt.type!=='tower' && src && src.sls>0 && !src.dead && src.team!==tgt.team){
+    heal(S, src, dmg*src.sls*(tgt.type==='hero' ? 1 : 1/3));
+    if (tgt.type==='hero') fx(S,{t:'heal', x:src.x, y:src.y});
+  }
   // creep pull — only ATTACKING an enemy hero drags their creeps onto you, as in Dota
   if (opt.attack && src && src.type==='hero' && tgt.type==='hero')
     S.aggro[tgt.team] = {t:PULL_TIME, id:src.id};
@@ -190,6 +201,14 @@ export function kill(S, src, tgt){
   tgt.dead = true;
   fx(S,{t:'die', x:tgt.x, y:tgt.y, team:tgt.team, big: tgt.type!=='creep'});
   spreadEmber(S, tgt);            // Wildfire jumps off the corpse before anything else
+  // Lacerate — anything that dies still bleeding from Bloodtrail feeds the Drifter
+  if (tgt.dotT>0 && tgt.dotSrc){
+    const ds = ent(S, tgt.dotSrc);
+    if (ds && !ds.dead && ds.lacer>0){
+      heal(S, ds, 90);
+      fx(S,{t:'thirst', x:ds.x, y:ds.y, v:90});
+    }
+  }
   // From the Ashes — a hero that dies still burning erupts into a free Firestorm
   if (tgt.type==='hero' && tgt.embN>0){
     const asrc = ent(S, tgt.embSrc);
@@ -246,13 +265,15 @@ export function kill(S, src, tgt){
   }
   else if (tgt.type==='creep'){
     const deny = src && src.team===tgt.team;
-    const enemies = foesOf(S, tgt.team);
     // XP goes in FULL to every enemy hero standing nearby — never split,
-    // so a 2v2 lane levels at the same pace as a 1v1 lane
-    const xpAmt = tgt.kind==='ranged' ? 90 : 70;
+    // so a 2v2 lane levels at the same pace as a 1v1 lane; the 3v3 wave is
+    // twice the creeps, so per-creep XP is trimmed like the bounty below
+    const xpAmt = (tgt.kind==='ranged' ? 90 : 70) * (S.mode==='3v3' ? 0.65 : 1);
     const share = nearbyHeroes(S, 1-tgt.team, tgt.x, tgt.y, XP_RADIUS);
     for (const q of share) addXp(S, q, deny ? xpAmt*.5 : xpAmt);
-    const base = tgt.kind==='ranged' ? 62 : 48;
+    // the 3v3 lane spawns twice the creeps of 1v1 — the bounty is trimmed so
+    // total farm income doesn't run away with the bigger wave
+    const base = (tgt.kind==='ranged' ? 62 : 48) * (S.mode==='3v3' ? 0.65 : 1);
     // a killing blow from a hero OR from that hero's summon pays the full bounty —
     // credited to the player who actually landed it, not to a team index
     const claimer = src && (src.type==='hero' || (src.type==='creep' && src.pet)) ? src : null;
@@ -261,7 +282,7 @@ export function kill(S, src, tgt){
               : (claimer.oslot!==undefined ? S.players[claimer.oslot] : teamOf(S, claimer.team)[0]);
       if (p && deny){ p.denies++; addGold(p, 22); fx(S,{t:'deny', x:tgt.x, y:tgt.y-40}); }
       else if (p){
-        const g = base + Math.round(rnd(-6,6));
+        const g = Math.round(base + rnd(-6,6));
         p.cs++; addGold(p, g);
         fx(S,{t:'gold', x:tgt.x, y:tgt.y-40, v:g, pet: src.type!=='hero' ? 1:0});
         // like XP and kill bounties, the lane pays teammates in FULL — a 2v2
@@ -279,9 +300,10 @@ export function kill(S, src, tgt){
       }
     } else {
       // nobody last hit it and nobody denied it — the lane still pays out at half
-      // rate, in FULL to everyone who could have taken it (no splitting)
+      // rate, in FULL to everyone who could have taken it (no splitting). "Could
+      // have taken it" means standing in XP range — not idling at the fountain
       const g = Math.round(base*0.5);
-      for (const q of enemies) addGold(q, g);
+      for (const q of nearbyHeroes(S, 1-tgt.team, tgt.x, tgt.y, XP_RADIUS)) addGold(q, g);
       fx(S,{t:'gold', x:tgt.x, y:tgt.y-40, v:g, passive:1});
     }
     // Hive Ascendant: a corpse inside the hive gets straight back up on her side
@@ -302,6 +324,11 @@ export function kill(S, src, tgt){
   else if (tgt.type==='tower'){
     for (const q of foesOf(S, tgt.team)) addGold(q, 400);
     const kt = 1 - tgt.team;
+    if (S.hideout){
+      // practice tower — pays the bounty, scores nothing, and stepHideout rebuilds it
+      fx(S,{t:'towerdown', x:tgt.x, y:tgt.y, team:kt, v:0});
+      return;
+    }
     const worth = S.winKills;                 // it scores, and it also ends the match
     S.teamKills[kt] += worth;
     fx(S,{t:'towerdown', x:tgt.x, y:tgt.y, team:kt, v:worth});
@@ -333,16 +360,6 @@ export function kill(S, src, tgt){
       if (src.type==='hero' && src.thirst>0 && !src.dead){
         const got = heal(S, src, thirstAmount(src)*5);
         if (got>0) fx(S,{t:'thirst', x:src.x, y:src.y, v:Math.round(got)});
-      }
-      // Trophies — a Drifter kill goes on the belt forever; Cash Out counts twice,
-      // and with the scepter the victim permanently loses what he took
-      if (killer && killer.heroId==='drift'){
-        killer.trophies = (killer.trophies||0) + (S.tag==='a3' ? 2 : 1);
-        if (killer.hero && killer.hero.aghs) p.stolenDmg = (p.stolenDmg||0) + 8;
-        if (killer.hero && !killer.hero.dead){
-          fx(S,{t:'lvlup', x:killer.hero.x, y:killer.hero.y});
-          updateHeroStats(S, killer);
-        }
       }
       fx(S,{t:'kill', x:tgt.x, y:tgt.y, team:kt});
       if (S.teamKills[kt] >= S.winKills) endGame(S, kt, 'kills');
@@ -424,7 +441,7 @@ export function tickDot(S, e, dt){
   }
   if (e.dotT<=0){ e.dotDps=0; e.dotTick=0; }
 }
-/* Rupture: Damage is charged per 100 units
+/* Rupture: Damage is charged per 80 units
    travelled and banked so the floating numbers do not turn into a stream. */
 export function tickRupture(S, e, dt){
   if (!(e.rupT>0)) return;
@@ -434,10 +451,10 @@ export function tickRupture(S, e, dt){
   const moved = dist(e.x, e.y, lx, ly);
   e.rupLx = e.x; e.rupLy = e.y;
   if (moved > 1 && !e.dead){
-    const amt = moved/100 * (e.rupV||0);
+    const amt = moved/80 * (e.rupV||0);
     damage(S, ent(S,e.rupSrc), e, amt, {pure:true, silent:true, tag:'a3'});
     e.rupBank = (e.rupBank||0) + amt;
-    if (e.rupBank >= 24){
+    if (e.rupBank >= 18){
       fx(S,{t:'dmg', x:e.x, y:e.y+2, r:e.r, v:Math.round(e.rupBank), ab:1});
       fx(S,{t:'bleed', x:e.x, y:e.y});
       e.rupBank = 0;

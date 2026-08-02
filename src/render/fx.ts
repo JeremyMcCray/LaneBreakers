@@ -55,8 +55,8 @@ export function spawnFx(f){
       }
       ring(f.x,f.y,CLEAVE_R*0.75,'#ffffff66',.22,2);
       break; }
-    case 'slash':{const a=f.a; line(f.x+Math.cos(a)*18,f.y+Math.sin(a)*18,
-                   f.x+Math.cos(a)*70,f.y+Math.sin(a)*70, f.team?'#ffb0b0':'#b6dcff', .13); break;}
+    case 'slash':{const a=f.a, reach=f.r||70; line(f.x+Math.cos(a)*18,f.y+Math.sin(a)*18,
+                   f.x+Math.cos(a)*reach,f.y+Math.sin(a)*reach, f.team?'#ffb0b0':'#b6dcff', .13); break;}
     case 'hit':  part(f.x,f.y-8,'#ffffff',4,110,.28,2.6); break;
     case 'disjoint': ring(f.x,f.y,26,'#9fe6ff',.3,2); part(f.x,f.y,'#9fe6ff',5,90,.3,2.2); break;
     case 'counter': ring(f.x,f.y,54,'#ffd166',.45,4); part(f.x,f.y,'#ffd166',10,140,.5,3); break;
@@ -122,6 +122,10 @@ export function spawnFx(f){
     case 'nova': ring(f.x,f.y,f.r,'#ff7ae0',.5,6); ring(f.x,f.y,f.r*.6,'#ffd6f4',.32,3);
                  part(f.x,f.y,'#ff7ae0',12,300,.4,3);
                  G.shake=Math.max(G.shake,5); break;
+    case 'blackout':                                // Drift's ult — the dark rolls out of him
+      G.shake=Math.max(G.shake,12);
+      ring(f.x,f.y,f.r||520,'#0a0d18',.8,10); ring(f.x,f.y,(f.r||520)*.6,'#b0b8d8',.5,4);
+      part(f.x,f.y,'#20263c',26,f.r||520,.7,4.4); break;
     case 'rupture': ring(f.x,f.y,100,'#ff2f4f',.6,5); part(f.x,f.y,'#ff2f4f',16,180,.6,3.4);
                     G.shake=Math.max(G.shake,10); break;
     case 'bleed': part(f.x,f.y+6,'#ff2f4f',3,70,.45,2.6); break;

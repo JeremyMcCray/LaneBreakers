@@ -15,10 +15,10 @@ import { G } from '../app/state';
 import { BASE_X, LANE_Y, WORLD_W, clamp, rnd, lerp, setCampsOpen } from '../data/world';
 import { predictOwn } from '../app/shell';
 import {
-  cv, ctx, ensureDecor, camScale, ownHeroView
+  cv, ctx, ensureDecor, camScale, ownHeroView, w2s
 } from './canvas';
 import {
-  drawTerrain, drawZones, drawEntity, drawProjectiles, drawFxWorld,
+  drawTerrain, drawHideout, drawZones, drawEntity, drawProjectiles, drawFxWorld,
   drawTowerAim, drawTargetReticle, drawOrderMarker
 } from './worldDraw';
 import { drawHUD } from './hud';
@@ -53,6 +53,7 @@ export function render(dt){
   ctx.translate(-G.cam.x, -G.cam.y);
 
   drawTerrain();
+  if (v.md==='hideout') drawHideout();   // cozy warm-up dressing under the action
   drawZones(v);
   drawTargetReticle(v, own);
   drawTowerAim(v);
@@ -65,6 +66,26 @@ export function render(dt){
   if (own) drawOrderMarker();
   drawDevOverlay(v, own);
   ctx.restore();
+  // Blackout — while MY hero is night-blind, the world past 180 units is simply gone.
+  // Drawn in screen space over the world, under the HUD, so the interface stays usable.
+  if (own && (own.st & 16777216)){
+    const [px, py] = w2s(own.x, own.y);
+    const r = 180*s;
+    ctx.save();
+    ctx.fillStyle = 'rgba(3,5,10,0.94)';
+    ctx.beginPath();
+    ctx.rect(0, 0, G.cw, G.ch);
+    ctx.arc(px, py, r, 0, 7);
+    ctx.fill('evenodd');
+    const grad = ctx.createRadialGradient(px, py, r*0.55, px, py, r);
+    grad.addColorStop(0, 'rgba(3,5,10,0)');
+    grad.addColorStop(1, 'rgba(3,5,10,0.94)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#b0b8d833'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
   drawHUD(v, own);
   drawDevBadge();
 }

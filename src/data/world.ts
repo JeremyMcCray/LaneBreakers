@@ -38,6 +38,21 @@ export function nearCamp(x, y, pad){
   }
   return false;
 }
+/* ------------------------------ hideout ----------------------------- */
+/* The pre-game warm-up room (sim mode 'hideout') — players hang out here
+   while an online lobby fills. The sim fixtures (sim/hideout.ts) and the
+   cozy render dressing (render/worldDraw.ts drawHideout) both anchor to
+   these coordinates, so keep them in one place. */
+export const HIDEOUT = {
+  FIRE:   {x:470,  y:LANE_Y+168},                     // campfire nook by the fountain
+  SIGN:   {x:578,  y:LANE_Y+88},                      // wooden 'THE HIDEOUT' sign
+  DUMMIES:[{x:640, y:LANE_Y-118},{x:764, y:LANE_Y-144},{x:886, y:LANE_Y-112}],
+  MOVERS: [{y:LANE_Y+82,  x1:600, x2:1080, ms:170},   // patrolling dummies — skillshot practice
+           {y:LANE_Y+148, x1:650, x2:1190, ms:255}],
+  TOWER:  {x:2520, y:LANE_Y+92},                      // practice tower, moved farther from the camp cluster
+  LIGHTS: {x1:360, x2:1010, y:LANE_Y-198}             // lantern string over the dummy range
+};
+
 export const TICK = 1 / 60;
 export const SNAP_HZ = 20;
 export const INTERP_MS = 90;
@@ -65,7 +80,7 @@ export let SELL_FULL = 10;            // seconds an item can be sold back at ful
 export let START_GOLD = 420;
 export let GOLD_PER_SEC = 2.2;
 export let CAMP_FIRST = 120;          // first jungle camp spawn (s)
-export let CAMP_RESPAWN = 120;        // respawn check cadence — only refills an EMPTY camp
+export let CAMP_RESPAWN = 90;         // respawn check cadence — only refills an EMPTY camp
 
 export const XP_TABLE = [0,0,180,420,700,1040,1450,1930,2490,3120,3830,4630,5520];
 export const ULT_REQ  = [6,9,12];

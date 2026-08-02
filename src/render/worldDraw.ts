@@ -2,7 +2,7 @@
 import {
   WORLD_W, WORLD_H, LANE_Y, BASE_X, TOWER_X, TEAM_COL, TEAM_COL_DK,
   CLEAVE_R, CLEAVE_ARC, SUDDEN_DEATH, MATCH_LIMIT, AUTO_ACQ,
-  CAMP_OPEN, CAMP_X, CAMP_R, campY,
+  CAMP_OPEN, CAMP_X, CAMP_R, campY, HIDEOUT,
   laneHalf, clamp, dist, rnd, lerp
 } from '../data/world';
 import { HEROES } from '../data/heroes';
@@ -85,6 +85,129 @@ export function drawTerrain(){
     ctx.fillStyle=TEAM_COL[tm]; ctx.globalAlpha=.6+.25*Math.sin(G.time*3);
     ctx.beginPath(); ctx.arc(bx,LANE_Y,26,0,7); ctx.fill(); ctx.globalAlpha=1;
   }
+}
+
+/* ------------- the pre-game hideout — cozy set dressing --------------- */
+/* Pure decoration in world space (mode 'hideout' only): a campfire nook with
+   log seats, a lantern string over the dummy range, drifting fireflies and a
+   wooden sign. Anchored to data/world.ts HIDEOUT so it hugs the sim fixtures. */
+export function drawHideout(){
+  const t = G.time;
+  const F = HIDEOUT.FIRE, L = HIDEOUT.LIGHTS, SG = HIDEOUT.SIGN;
+
+  // ---- rug + log seats around the fire
+  ctx.save();
+  ctx.fillStyle='#33202a'; ctx.strokeStyle='#553646'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.ellipse(F.x, F.y, 96, 58, 0, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle='#482e3c'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.ellipse(F.x, F.y, 72, 42, 0, 0, 7); ctx.stroke();
+  for (let k=0;k<3;k++){
+    const a = -0.55 + k*1.15, lx = F.x + Math.cos(a)*78, ly = F.y + Math.sin(a)*48;
+    ctx.save(); ctx.translate(lx, ly); ctx.rotate(a + Math.PI/2);
+    ctx.fillStyle='#4a3423'; ctx.strokeStyle='#6a4a2c'; ctx.lineWidth=2;
+    rr(-17, -6, 34, 12, 5); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  // ---- stone ring + flames
+  ctx.fillStyle='#3d4450';
+  for (let k=0;k<7;k++){
+    const a = k/7*Math.PI*2;
+    ctx.beginPath(); ctx.arc(F.x+Math.cos(a)*20, F.y+Math.sin(a)*13, 4.6, 0, 7); ctx.fill();
+  }
+  const flick = 1 + 0.13*Math.sin(t*11) + 0.07*Math.sin(t*23+1.7);
+  ctx.globalCompositeOperation='lighter';
+  const glow = ctx.createRadialGradient(F.x, F.y-6, 6, F.x, F.y-6, 300*flick);
+  glow.addColorStop(0, 'rgba(255,170,80,0.32)');
+  glow.addColorStop(0.4, 'rgba(255,140,60,0.10)');
+  glow.addColorStop(1, 'rgba(255,120,50,0)');
+  ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(F.x, F.y-6, 300*flick, 0, 7); ctx.fill();
+  for (let k=0;k<3;k++){                                  // three licking tongues of flame
+    const w = (11-k*3)*flick, h = (26-k*6)*flick, sway = Math.sin(t*(6+k*2.3)+k)*3;
+    ctx.fillStyle = ['#ff8c3a','#ffb35a','#ffe9a8'][k];
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.moveTo(F.x-w, F.y);
+    ctx.quadraticCurveTo(F.x-w*0.6, F.y-h*0.55, F.x+sway, F.y-h);
+    ctx.quadraticCurveTo(F.x+w*0.6, F.y-h*0.55, F.x+w, F.y);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  for (let k=0;k<6;k++){                                  // sparks drifting up
+    const ph = (t*0.55 + k*0.167) % 1;
+    const sx = F.x + Math.sin(t*1.8 + k*2.6)*(6+ph*16), sy = F.y - 8 - ph*64;
+    ctx.globalAlpha = (1-ph)*0.7;
+    ctx.fillStyle = k%2 ? '#ffd9a0' : '#ff9b4a';
+    ctx.beginPath(); ctx.arc(sx, sy, 1.6+(1-ph), 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation='source-over';
+
+  // ---- lantern string over the dummy range
+  const poles = [ {x:L.x1, y:L.y}, {x:L.x2, y:L.y} ];
+  ctx.strokeStyle='#4a3a28'; ctx.lineWidth=5; ctx.lineCap='round';
+  for (const p of poles){
+    ctx.beginPath(); ctx.moveTo(p.x, p.y+64); ctx.lineTo(p.x, p.y); ctx.stroke();
+  }
+  ctx.strokeStyle='#2c2620'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(L.x1, L.y);
+  ctx.quadraticCurveTo((L.x1+L.x2)/2, L.y+34, L.x2, L.y);
+  ctx.stroke();
+  const N = 7;
+  for (let k=1;k<N;k++){
+    const s = k/N, omt = 1-s;
+    // point on the quadratic + a light sway
+    const bx = omt*omt*L.x1 + 2*omt*s*(L.x1+L.x2)/2 + s*s*L.x2;
+    const by = omt*omt*L.y + 2*omt*s*(L.y+34) + s*s*L.y + 7 + Math.sin(t*1.4+k)*1.5;
+    const pulse = 0.72 + 0.28*Math.sin(t*2.1 + k*1.9);
+    ctx.strokeStyle='#2c2620'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(bx, by-7); ctx.lineTo(bx, by); ctx.stroke();
+    ctx.globalCompositeOperation='lighter';
+    const lg = ctx.createRadialGradient(bx, by, 1, bx, by, 26);
+    lg.addColorStop(0, 'rgba(255,205,120,'+(0.5*pulse).toFixed(3)+')');
+    lg.addColorStop(1, 'rgba(255,180,90,0)');
+    ctx.fillStyle=lg; ctx.beginPath(); ctx.arc(bx, by, 26, 0, 7); ctx.fill();
+    ctx.globalCompositeOperation='source-over';
+    ctx.fillStyle='#ffd9a0'; ctx.beginPath(); ctx.arc(bx, by, 3.2, 0, 7); ctx.fill();
+    ctx.strokeStyle='#6a5430'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(bx, by, 4.6, 0, 7); ctx.stroke();
+  }
+
+  // ---- painted target rings under the static dummies
+  for (const d of HIDEOUT.DUMMIES){
+    ctx.strokeStyle='#ffffff14'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.ellipse(d.x, d.y+12, 34, 15, 0, 0, 7); ctx.stroke();
+    ctx.strokeStyle='#ffffff0a';
+    ctx.beginPath(); ctx.ellipse(d.x, d.y+12, 52, 23, 0, 0, 7); ctx.stroke();
+  }
+
+  // ---- fireflies wandering the nook
+  ctx.globalCompositeOperation='lighter';
+  for (let k=0;k<12;k++){
+    const fx0 = 330 + ((k*173)%1250) + Math.sin(t*0.31+k*1.7)*66;
+    const fy0 = LANE_Y + Math.cos(t*0.24+k*2.3)*140 + Math.sin(k*5.1)*30;
+    const tw = 0.22 + 0.26*(0.5+0.5*Math.sin(t*1.6+k*4.9));
+    ctx.globalAlpha = tw;
+    ctx.fillStyle='#d8ffb0';
+    ctx.beginPath(); ctx.arc(fx0, fy0, 2, 0, 7); ctx.fill();
+    const fg = ctx.createRadialGradient(fx0, fy0, 0.5, fx0, fy0, 11);
+    fg.addColorStop(0, 'rgba(200,255,170,0.5)'); fg.addColorStop(1, 'rgba(200,255,170,0)');
+    ctx.fillStyle=fg; ctx.beginPath(); ctx.arc(fx0, fy0, 11, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation='source-over';
+
+  // ---- the sign
+  ctx.save();
+  ctx.translate(SG.x, SG.y); ctx.rotate(-0.045);
+  ctx.strokeStyle='#5a3f26'; ctx.lineWidth=5; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(0, -6); ctx.stroke();
+  ctx.fillStyle='#6a4a2c'; ctx.strokeStyle='#3d2a18'; ctx.lineWidth=2;
+  rr(-46, -30, 92, 26, 5); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#ffd9a0'; ctx.font='800 11px Segoe UI'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('THE HIDEOUT', 0, -17);
+  ctx.restore();
+
+  ctx.restore();
 }
 
 export function drawZones(v){
@@ -269,7 +392,6 @@ export function drawZones(v){
       ctx.restore(); continue;
     }
     else if (z.kd==='strike'){ ctx.fillStyle=(z.c||'#bfe9ff')+'22'; ctx.strokeStyle=(z.c||'#bfe9ff')+'cc'; }
-    else if (z.kd==='sanct'){ ctx.fillStyle='#8affd41c'; ctx.strokeStyle='#8affd480'; }
     else if (z.kd==='bomb' || z.kd==='blastoff'){ ctx.fillStyle='#ff7a3c26'; ctx.strokeStyle='#ff7a3caa'; }
     else if (z.kd==='light'){ ctx.fillStyle='#ffe9a81e'; ctx.strokeStyle='#ffe9a880'; }
     else { ctx.fillStyle='#bfe9ff26'; ctx.strokeStyle='#bfe9ffaa'; }
@@ -398,8 +520,8 @@ export function heroPath(hi, r){
   else if (hi==='vhal'){ for(let i=0;i<3;i++){const a=i/3*Math.PI*2;
                           const q=[Math.cos(a)*r*1.05, Math.sin(a)*r*1.05];
                           i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);} }
-  else if (hi==='liora'){ ctx.moveTo(r*1.1,0); ctx.lineTo(r*.2,r*.55); ctx.lineTo(-r*.4,r*.95);
-                          ctx.lineTo(-r*.75,0); ctx.lineTo(-r*.4,-r*.95); ctx.lineTo(r*.2,-r*.55); }
+  else if (hi==='geist'){ ctx.moveTo(r*1.05,0); ctx.lineTo(r*.15,r*.5); ctx.lineTo(-r*.55,r*.9);
+                          ctx.lineTo(-r*.85,0); ctx.lineTo(-r*.55,-r*.9); ctx.lineTo(r*.15,-r*.5); }  // a hooded countess, trailing her shroud
   else if (hi==='drex'){ ctx.moveTo(r*1.05,0); ctx.lineTo(r*.45,r*.8); ctx.lineTo(-r*.7,r*.75);
                          ctx.lineTo(-r*.95,0); ctx.lineTo(-r*.7,-r*.75); ctx.lineTo(r*.45,-r*.8); }
   else if (hi==='ronin'){ ctx.moveTo(r*1.3,0); ctx.lineTo(r*.15,r*.5); ctx.lineTo(-r*.75,r*.7);
@@ -459,10 +581,11 @@ export function debuffBadges(e){
   if ((e.st&2) && !(e.st&1)) list.push('slow');   // a stunned unit is not "slowed"
   if (e.st&2048)             list.push('root');
   if (e.st&8388608)          list.push('rup');
+  if (e.st&16777216)         list.push('blind');
   if (!list.length) return;
   const y = e.y - e.r - (e.ty===0 ? 76 : 44);
   const w = 21, x0 = e.x - ((list.length-1)*w)/2;
-  const RING = {stun:'#ffe066', sil:'#6ce0e8', slow:'#9fdcff', root:'#7fdc6a', rup:'#ff2f4f'};
+  const RING = {stun:'#ffe066', sil:'#6ce0e8', slow:'#9fdcff', root:'#7fdc6a', rup:'#ff2f4f', blind:'#b0b8d8'};
   ctx.save();
   ctx.lineCap = 'round';
   list.forEach((k, i)=>{
@@ -506,6 +629,15 @@ export function debuffBadges(e){
       ctx.quadraticCurveTo(cx+4.6, y+1.5, cx, y+5.6);
       ctx.quadraticCurveTo(cx-4.6, y+1.5, cx, y-6);
       ctx.fill();
+    } else if (k==='blind'){                      // a struck-through eye
+      ctx.strokeStyle = '#b0b8d8';
+      ctx.beginPath();
+      ctx.moveTo(cx-6, y); ctx.quadraticCurveTo(cx, y-5.5, cx+6, y);
+      ctx.quadraticCurveTo(cx, y+5.5, cx-6, y);
+      ctx.stroke();
+      ctx.fillStyle = '#b0b8d8';
+      ctx.beginPath(); ctx.arc(cx, y, 1.9, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx-6.5, y+6.5); ctx.lineTo(cx+6.5, y-6.5); ctx.stroke();
     }
   });
   ctx.restore();
@@ -569,6 +701,18 @@ export function drawEntity(e, v, own){
       ctx.fillStyle = flash? '#fff' : HI.col2; ctx.strokeStyle = HI.col;
       heroPath(e.hi, e.r); ctx.fill(); ctx.stroke();
       ctx.globalAlpha = 1;
+    } else if (e.dm){                            // training dummy — straw man on a post
+      ctx.rotate(-e.fa);                         // it stands upright whichever way it "faces"
+      ctx.strokeStyle='#6a4a2c'; ctx.lineWidth=5; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(0, e.r*1.05); ctx.lineTo(0, -e.r*0.45); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-e.r*0.95, -e.r*0.12); ctx.lineTo(e.r*0.95, -e.r*0.12); ctx.stroke();
+      ctx.fillStyle = flash? '#fff' : '#c9a86a'; ctx.strokeStyle='#8a6a3c'; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.ellipse(0, e.r*0.18, e.r*0.55, e.r*0.72, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, -e.r*0.72, e.r*0.38, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle='#7a2626'; ctx.lineWidth=2;    // stitched target cross on the chest
+      ctx.beginPath(); ctx.moveTo(-5, e.r*0.02); ctx.lineTo(5, e.r*0.34);
+      ctx.moveTo(5, e.r*0.02); ctx.lineTo(-5, e.r*0.34); ctx.stroke();
+      ctx.rotate(e.fa);
     } else if (e.tu){                            // turret
       ctx.beginPath(); ctx.rect(-e.r*.7,-e.r*.7,e.r*1.4,e.r*1.4); ctx.closePath();
       ctx.fill(); ctx.stroke();
@@ -610,6 +754,28 @@ export function drawEntity(e, v, own){
           ctx.beginPath(); ctx.arc(Math.cos(a)*e.r*.75, Math.sin(a)*e.r*.75, 3.4, 0, 7); ctx.fill();
         }
         ctx.rotate(e.fa);
+      } else if (e.jg==='howler'){               // lean crescent wolf, frost-fanged
+        ctx.beginPath();
+        ctx.moveTo(e.r,0); ctx.quadraticCurveTo(-e.r*.2, e.r*1.0, -e.r, e.r*.45);
+        ctx.quadraticCurveTo(-e.r*.35, 0, -e.r, -e.r*.45);
+        ctx.quadraticCurveTo(-e.r*.2, -e.r*1.0, e.r, 0);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = V.col; ctx.lineWidth = 2;    // frosted fangs
+        ctx.beginPath(); ctx.moveTo(e.r*.55,-4); ctx.lineTo(e.r*.95,-2);
+        ctx.moveTo(e.r*.55, 4); ctx.lineTo(e.r*.95, 2); ctx.stroke();
+      } else if (e.jg==='spitter'){              // squat blob with a dripping nozzle
+        ctx.beginPath(); ctx.ellipse(-e.r*.15, 0, e.r*.85, e.r*.7, 0, 0, 7);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = V.col;
+        ctx.beginPath(); ctx.rect(e.r*.4, -3.5, e.r*.75, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(e.r*1.2, 3+2*Math.sin(G.time*5), 2.4, 0, 7); ctx.fill();
+      } else if (e.jg==='scarab'){               // round gilded beetle, shell agleam
+        ctx.beginPath(); ctx.arc(0, 0, e.r*.9, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = V.col; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-e.r*.9, 0); ctx.lineTo(e.r*.9, 0); ctx.stroke();
+        ctx.fillStyle = V.col; ctx.globalAlpha = .55+.35*Math.sin(G.time*4);
+        ctx.beginPath(); ctx.arc(-e.r*.25, -e.r*.3, 3, 0, 7); ctx.fill();
+        ctx.globalAlpha = 1;
       } else {                                   // ram — plated shell, horn forward
         ctx.beginPath();
         for (let k=0;k<6;k++){ const a=k/6*Math.PI*2;

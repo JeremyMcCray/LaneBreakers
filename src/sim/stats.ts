@@ -19,6 +19,7 @@ export function updateHeroStats(S,p,init){
   e.range = H.range; e.ranged = H.ranged;
   let asB = it.as + (e.asT>0 ? e.asP : 0);      // attack speed is finished after the passives
   e.ls    = it.ls + (e.lsT>0 ? e.lsP : 0);
+  e.sls   = it.sls;                             // Soulweave — abilities feed the caster
   e.thorns= it.thorns; e.cdr = it.cdr; e.hpr = it.hpr; e.mpr = it.mpr;
   e.crit = it.crit; e.chill = it.chill; e.amp = it.amp;
   e.block = it.block; e.hcut = it.hcut; e.hcutM = it.hcutM; e.shredOn = it.shred;
@@ -27,7 +28,7 @@ export function updateHeroStats(S,p,init){
   // half (Fervor) still grants its passive, so this keys off `grants`, not `passive`
   e.fervAs = 0; e.fervMax = 0; e.fervStep = 1; e.thirst = 0;
   e.thirstPct = 0; e.thirstMs = 0; e.rootChance = 0;
-  e.reactOn = false; e.raArm = 0; e.trophyDmg = 0;
+  e.reactOn = false; e.raArm = 0; e.lacer = 0;
   for (let i=0;i<4;i++){
     const A = H.abilities[i];
     if (!A.grants || p.sk[i]<=0) continue;
@@ -45,24 +46,17 @@ export function updateHeroStats(S,p,init){
       if (!e.stanceR) e.rootChance = (A.val2 ? A.val2[p.sk[i]-1] : 0)/100;
     }
     else if (A.grants==='reactive'){ e.reactOn = true; e.raArm = PV; }
-    else if (A.grants==='trophy'){ e.trophyDmg = PV; }
+    else if (A.grants==='lacerate'){ e.lacer = PV/100; }   // Drift tears open the bleeding
   }
-  // Grand Larceny — what the Drifter stole from this hero is simply gone
-  if (p.stolenDmg>0) e.dmg = Math.max(12, e.dmg - p.stolenDmg);
   // Reactive Armor — being attacked plates Timbersaw up
   if (H.id==='timber'){
     if (!e.reactOn) e.raN = 0;
-    else { e.armor += (e.raN||0)*(e.raArm||0); e.hpr = (e.hpr||0) + (e.raN||0)*1.2; }
+    else { e.armor += (e.raN||0)*(e.raArm||0); e.hpr = (e.hpr||0) + (e.raN||0)*1.0; }
   }
-  // Trophies — the Drifter's permanent belt, and the hunger before the first one
-  if (H.id==='drift'){
-    const n = p.trophies||0;
-    e.dmg += n * ((e.trophyDmg||0) + (e.aghs ? 8 : 0));
-    e.maxHp += n * 70;
-    e.hungry = (n===0);
-  } else e.hungry = false;
   // Jarak's Fervor stance: the ranged grip gives up reach for range, and cannot cleave
   if (e.stanceR){ e.ranged = true; e.range = 520; e.cleave = 0; }
+  // he traded 20 attack speed away; only the blade grip pays 35 of it back
+  if (H.id==='jarak') asB += (e.stanceR ? 0 : 35) - 20;
   // Fervor: stacks earned on one target, doubled while Berserker's Rage is up
   if (e.fervMax>0){
     if (e.bzT>0){ e.fervMax = 8; e.fervStep = 2; }

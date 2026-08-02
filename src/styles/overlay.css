@@ -1,3 +1,25 @@
+/* ---------- hideout warm-up panel ---------- */
+  #hideoutPanel{position:absolute;right:14px;top:64px;width:296px;z-index:28;
+    background:#141017f0;border:1px solid #6b5420;border-radius:12px;padding:12px;
+    box-shadow:0 6px 24px #00000088}
+  #hideoutPanel .hdhead{font-size:13px;letter-spacing:2px;font-weight:800;color:#ffd9a0;
+    margin-bottom:8px;display:flex;align-items:baseline;gap:8px}
+  #hideoutPanel .hdhead span{font-size:9.5px;letter-spacing:1.4px;color:#8a7458;
+    font-weight:600;text-transform:uppercase}
+  #hideoutPanel .hdcode{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);
+    background:#0d1320;border:1px dashed #6b5420;border-radius:8px;padding:6px 10px;margin-bottom:8px}
+  #hideoutPanel .hdcode b{font-family:ui-monospace,Consolas,monospace;font-size:17px;
+    letter-spacing:4px;color:var(--gold)}
+  #hideoutPanel .hdcode button{margin-left:auto;padding:3px 10px;font-size:10px;border-radius:5px}
+  #hideoutPanel .hdmode{font-size:10px;letter-spacing:1.6px;color:#8a7458;font-weight:800;
+    margin-bottom:2px}
+  #hideoutPanel .hdstat{margin-top:8px;font-size:11.5px;line-height:1.5;color:var(--dim)}
+  #hideoutPanel .roster{margin-top:6px}
+  #hideoutPanel .seat{padding:5px 8px;font-size:11px}
+  #hideoutPanel .seat .wh{width:74px}
+  #hideoutPanel .row{margin:0}
+  #hideoutPanel .row button{padding:7px 10px;font-size:11.5px}
+
 /* ---------- help ---------- */
   #debug{position:absolute;left:14px;top:96px;width:270px;background:#0d1320f2;border:1px solid #6b5420;
     border-radius:12px;padding:12px;z-index:30}

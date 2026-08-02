@@ -1,5 +1,5 @@
-// @ts-nocheck
-/* The Ascendant Scepter — one focused check per hero, asserting the unique
+﻿// @ts-nocheck
+/* The Ascendant Scepter â€” one focused check per hero, asserting the unique
    upgrade actually fires, plus a roster-wide crash fuzz with the item held. */
 import { newSim, simStep, castAbility, mkEnt, damage } from "../src/sim/engine.ts";
 import { HEROES, HERO_IDS } from "../src/data/heroes.ts";
@@ -8,6 +8,7 @@ import { BOT_BUILD } from "../src/ai/bot.ts";
 import { LANE_Y } from "../src/data/world.ts";
 
 const TICK = 1 / 60;
+const CREEP_RESIST = 0.70;   // creeps shrug off 30% of ability damage (dummies are creeps)
 let fails = 0;
 const ok = (name, cond, detail) => {
   if (!cond) fails++;
@@ -46,7 +47,7 @@ function dummy(S, team, x, y, hp) {
   });
 }
 
-console.log("\n== ITEM — the Scepter itself is wired ==");
+console.log("\n== ITEM â€” the Scepter itself is wired ==");
 {
   ok("scepter exists and is the priciest item in the shop",
      ITEMS.scepter && Object.keys(ITEMS).every(id => ITEMS[id].cost <= ITEMS.scepter.cost),
@@ -59,7 +60,7 @@ console.log("\n== ITEM — the Scepter itself is wired ==");
   ok("not holding it does not", !S.players[1].hero.aghs, "");
 }
 
-console.log("\n== VEX — Encore: an Execute kill refunds and resets ==");
+console.log("\n== VEX â€” Encore: an Execute kill refunds and resets ==");
 {
   const S = sim("vex", "ilva");
   const p = S.players[0], h = p.hero;
@@ -71,14 +72,14 @@ console.log("\n== VEX — Encore: an Execute kill refunds and resets ==");
   ok("Execute came straight back", p.cds[3] === 0, `cd=${p.cds[3]}`);
   ok("Blink Slash reset too", p.cds[0] === 0, `cd=${p.cds[0]}`);
   ok("the mana came back", h.mp >= mp0 - 1, `${Math.round(mp0)} -> ${Math.round(h.mp)}`);
-  const S2 = sim("vex", "ilva", true);             // no scepter — no encore
+  const S2 = sim("vex", "ilva", true);             // no scepter â€” no encore
   const p2 = S2.players[0];
   const d2 = dummy(S2, 1, p2.hero.x + 150, LANE_Y, 1);
   castAbility(S2, p2, 3, d2.x, d2.y);
   ok("without the scepter the cooldown stays spent", p2.cds[3] > 0, `cd=${p2.cds[3].toFixed(1)}`);
 }
 
-console.log("\n== ILVA — Deep Freeze: the fourth touch freezes solid ==");
+console.log("\n== ILVA â€” Deep Freeze: the fourth touch freezes solid ==");
 {
   const S = sim("ilva", "vex");
   const p = S.players[0], h = p.hero;
@@ -92,7 +93,7 @@ console.log("\n== ILVA — Deep Freeze: the fourth touch freezes solid ==");
   ok("a thawed target cannot restack yet", d.fbN === 0, `fbN=${d.fbN}`);
 }
 
-console.log("\n== GRUK — Walking Mountain: Colossus carries Quake ==");
+console.log("\n== GRUK â€” Walking Mountain: Colossus carries Quake ==");
 {
   const S = sim("gruk", "vex");
   const p = S.players[0], h = p.hero;
@@ -110,7 +111,7 @@ console.log("\n== GRUK — Walking Mountain: Colossus carries Quake ==");
      `cd=${p.cds[0].toFixed(2)} base=${qcd}`);
 }
 
-console.log("\n== BRANN — Over the Shoulder: hooked heroes land BEHIND him ==");
+console.log("\n== BRANN â€” Over the Shoulder: hooked heroes land BEHIND him ==");
 {
   const S = sim("brann", "vex");
   const p = S.players[0], h = p.hero;
@@ -125,7 +126,7 @@ console.log("\n== BRANN — Over the Shoulder: hooked heroes land BEHIND him =="
   ok("and stunned on impact", foe.stun > 0, `stun=${foe.stun.toFixed(2)}`);
 }
 
-console.log("\n== SABLE — Killshot: kills feed the shot ==");
+console.log("\n== SABLE â€” Killshot: kills feed the shot ==");
 {
   const S = sim("sable", "vex");
   const p = S.players[0], h = p.hero;
@@ -149,7 +150,7 @@ console.log("\n== SABLE — Killshot: kills feed the shot ==");
   ok("without the scepter it still stops at the first body", behind.hp === b0 && first.dead, "");
 }
 
-console.log("\n== VHAL — Virulent Brood: spawnlings burst on death ==");
+console.log("\n== VHAL â€” Virulent Brood: spawnlings burst on death ==");
 {
   const S = sim("vhal", "vex");
   const p = S.players[0], h = p.hero;
@@ -169,7 +170,7 @@ console.log("\n== VHAL — Virulent Brood: spawnlings burst on death ==");
      `armor=${h.armor.toFixed(1)} bare=${bare.toFixed(1)} alive=${alive}`);
 }
 
-console.log("\n== ASH — From the Ashes: eight embers, and heroes erupt ==");
+console.log("\n== ASH â€” From the Ashes: eight embers, and heroes erupt ==");
 {
   const S = sim("ash", "vex");
   const p = S.players[0], h = p.hero;
@@ -186,7 +187,7 @@ console.log("\n== ASH — From the Ashes: eight embers, and heroes erupt ==");
      S.zones.some(z => z.kind === "firestorm" && z.tag === "i:scepter"), "");
 }
 
-console.log("\n== MARA — Undying Light: the killing blow leaves her at 1 ==");
+console.log("\n== MARA â€” Undying Light: the killing blow leaves her at 1 ==");
 {
   const S = sim("mara", "vex");
   const p = S.players[0], h = p.hero;
@@ -203,11 +204,11 @@ console.log("\n== MARA — Undying Light: the killing blow leaves her at 1 ==");
   ok("a second blow inside the minute kills her", h.dead, "");
 }
 
-console.log("\n== ORRIN — Legs for the Guns: turrets march ==");
+console.log("\n== ORRIN â€” Legs for the Guns: turrets march ==");
 {
   const S = sim("orrin", "vex");
   const p = S.players[0], h = p.hero;
-  S.players[1].hero.x = 3200;                      // nothing in range — the turret has to march
+  S.players[1].hero.x = 3200;                      // nothing in range â€” the turret has to march
   castAbility(S, p, 2, h.x + 200, LANE_Y);
   const t = S.ents.find(o => o.turret && !o.dead);
   ok("the turret has legs", !!t && !t.static && t.ms > 0, t ? `ms=${t.ms}` : "none");
@@ -221,7 +222,7 @@ console.log("\n== ORRIN — Legs for the Guns: turrets march ==");
   ok("without the scepter it stays put", !!t2 && t2.static && t2.ms === 0, "");
 }
 
-console.log("\n== NIX — Hall of Mirrors: blinks leave an illusion behind ==");
+console.log("\n== NIX â€” Hall of Mirrors: blinks leave an illusion behind ==");
 {
   const S = sim("nix", "vex");
   const p = S.players[0], h = p.hero;
@@ -236,7 +237,7 @@ console.log("\n== NIX — Hall of Mirrors: blinks leave an illusion behind ==");
   ok("Phantom Strike left another", ill.length >= 2, `${ill.length} illusions`);
 }
 
-console.log("\n== THORNE — Wild Growth: thickets spread, traps regrow ==");
+console.log("\n== THORNE â€” Wild Growth: thickets spread, traps regrow ==");
 {
   const S = sim("thorne", "vex");
   const p = S.players[0], h = p.hero;
@@ -254,7 +255,7 @@ console.log("\n== THORNE — Wild Growth: thickets spread, traps regrow ==");
   ok("the sprung trap grew back on its own", !!regrown && regrown.arm > 1, regrown ? `arm=${regrown.arm.toFixed(1)}` : "gone");
 }
 
-console.log("\n== KRELL — Void Feedback: enemy casts feed his clock ==");
+console.log("\n== KRELL â€” Void Feedback: enemy casts feed his clock ==");
 {
   const S = sim("krell", "vex");
   const kp = S.players[0], vp = S.players[1];
@@ -270,7 +271,7 @@ console.log("\n== KRELL — Void Feedback: enemy casts feed his clock ==");
      kp.cds.map(c => c.toFixed(1)).join("/"));
 }
 
-console.log("\n== SHIV — Bad Blood: bleeds heal him, rage attacks cut ==");
+console.log("\n== SHIV â€” Bad Blood: bleeds heal him, rage attacks cut ==");
 {
   const S = sim("shiv", "vex");
   const p = S.players[0], h = p.hero;
@@ -289,7 +290,7 @@ console.log("\n== SHIV — Bad Blood: bleeds heal him, rage attacks cut ==");
   ok("the wound healed him as it bled", h.hp > hp0, `${Math.round(hp0)} -> ${Math.round(h.hp)}`);
 }
 
-console.log("\n== SVAAR — Worldbreaker: full-circle cleave under the ult ==");
+console.log("\n== SVAAR â€” Worldbreaker: full-circle cleave under the ult ==");
 {
   const S = sim("svaar", "vex");
   const p = S.players[0], h = p.hero;
@@ -312,21 +313,28 @@ console.log("\n== SVAAR — Worldbreaker: full-circle cleave under the ult ==");
   ok("without the scepter the cone stays a cone", behind2.hp === c0, "");
 }
 
-console.log("\n== LIORA — Overflow: spare healing becomes a shield ==");
+console.log("\n== GEIST â€” Blood Dividend: a bomb that finds heroes repays the flesh ==");
 {
-  const S = sim("liora", "vex");
+  const S = sim("geist", "vex");
   const p = S.players[0], h = p.hero;
-  castAbility(S, p, 1, h.x, h.y);                  // Mending Wave on a full health bar
-  const V = HEROES.liora.abilities[1].val[3];
-  ok("the whole heal spilled into a shield", Math.abs(h.shield - V) < 2 && h.shieldT > 3,
-     `shield=${Math.round(h.shield)} want ~${V}`);
-  ok("capped at 30% of max health", h.shield <= h.maxHp * 0.3 + 1, `cap=${Math.round(h.maxHp*0.3)}`);
-  const S2 = sim("liora", "vex", true);
-  castAbility(S2, S2.players[0], 1, S2.players[0].hero.x, S2.players[0].hero.y);
-  ok("without the scepter it just evaporates", !(S2.players[0].hero.shield > 0), "");
+  const foe = S.players[1].hero;
+  foe.x = h.x + 300; foe.y = LANE_Y;
+  h.hp = h.maxHp;
+  const hp0 = h.hp;
+  castAbility(S, p, 0, foe.x, foe.y);              // Essence Bomb dead on a hero
+  ok("the health cost came straight back (plus 60 a head)", h.hp >= hp0 - 1,
+     `${Math.round(hp0)} -> ${Math.round(h.hp)}`);
+  const S2 = sim("geist", "vex", true);
+  const p2 = S2.players[0], h2 = p2.hero, foe2 = S2.players[1].hero;
+  foe2.x = h2.x + 300; foe2.y = LANE_Y;
+  h2.hp = h2.maxHp;
+  const hp2 = h2.hp;
+  castAbility(S2, p2, 0, foe2.x, foe2.y);
+  ok("without the scepter the flesh stays spent", h2.hp <= hp2 - h2.maxHp * 0.07 + 1,
+     `${Math.round(hp2)} -> ${Math.round(h2.hp)}`);
 }
 
-console.log("\n== DREX — Shock and Awe: explosions throw people ==");
+console.log("\n== DREX â€” Shock and Awe: explosions throw people ==");
 {
   const S = sim("drex", "vex");
   const p = S.players[0], h = p.hero;
@@ -337,7 +345,7 @@ console.log("\n== DREX — Shock and Awe: explosions throw people ==");
   ok("the blast hurled the target away", thrown > 100, `thrown ${Math.round(thrown)} units`);
 }
 
-console.log("\n== RONIN — Dance of Death: crits extend the ult ==");
+console.log("\n== RONIN â€” Dance of Death: crits extend the ult ==");
 {
   const S = sim("ronin", "vex");
   const p = S.players[0], h = p.hero;
@@ -350,7 +358,7 @@ console.log("\n== RONIN — Dance of Death: crits extend the ult ==");
   step(S, 240);
   Math.random = realRandom;
   // the scepter's own +10% ability amp rides on every cut
-  const per = (HEROES.ronin.abilities[3].val[2] + h.dmg) * (1 + h.amp);
+  const per = (HEROES.ronin.abilities[3].val[2] + h.dmg) * (1 + h.amp) * CREEP_RESIST;
   const cuts = (hp0 - d.hp) / (per * 1.9);
   ok("all four bonus cuts were earned", Math.abs(cuts - 10) < 0.2, `~${cuts.toFixed(1)} crit cuts`);
   const S2 = sim("ronin", "vex", true);
@@ -362,12 +370,12 @@ console.log("\n== RONIN — Dance of Death: crits extend the ult ==");
   castAbility(S2, p2, 3, d2.x, d2.y);
   step(S2, 240);
   Math.random = realRandom;
-  const base = HEROES.ronin.abilities[3].val[2] + p2.hero.dmg;
+  const base = (HEROES.ronin.abilities[3].val[2] + p2.hero.dmg) * CREEP_RESIST;
   ok("without the scepter it is six plain cuts", Math.abs((h20 - d2.hp) - base * 6) < 2,
      `took ${Math.round(h20 - d2.hp)} want ${Math.round(base*6)}`);
 }
 
-console.log("\n== ZAAL — The Sky Remembers: a second bolt follows the ult ==");
+console.log("\n== ZAAL â€” The Sky Remembers: a second bolt follows the ult ==");
 {
   const S = sim("zaal", "vex");
   const p = S.players[0], h = p.hero;
@@ -381,7 +389,7 @@ console.log("\n== ZAAL — The Sky Remembers: a second bolt follows the ult ==")
   ok("it landed on whoever stood still", foe.hp < hp1, `${Math.round(hp1)} -> ${Math.round(foe.hp)}`);
 }
 
-console.log("\n== JARAK — Rip and Tear: max Fervor lands twice ==");
+console.log("\n== JARAK â€” Rip and Tear: max Fervor lands twice ==");
 {
   const bench = withScepter => {
     const S = sim("jarak", "vex", !withScepter);
@@ -398,7 +406,7 @@ console.log("\n== JARAK — Rip and Tear: max Fervor lands twice ==");
      `${Math.round(plain)} -> ${Math.round(torn)} over 4s`);
 }
 
-console.log("\n== STRYG — Open Wounds: attacks tear a Rupture ==");
+console.log("\n== STRYG â€” Open Wounds: attacks tear a Rupture ==");
 {
   const S = sim("stryg", "vex");
   const p = S.players[0], h = p.hero;
@@ -418,7 +426,7 @@ console.log("\n== STRYG — Open Wounds: attacks tear a Rupture ==");
      `${Math.round(plainLoss)} -> ${Math.round(tornLoss)} over 2s`);
 }
 
-console.log("\n== VOSK — Perpetual Torment: pulses pay for themselves ==");
+console.log("\n== VOSK â€” Perpetual Torment: pulses pay for themselves ==");
 {
   const S = sim("vosk", "vex");
   const p = S.players[0], h = p.hero;
@@ -442,19 +450,19 @@ console.log("\n== VOSK — Perpetual Torment: pulses pay for themselves ==");
      `mp ${Math.round(m20)} -> ${Math.round(h2.mp)}`);
 }
 
-console.log("\n== DORN — Off the Guest List: the shoved go through his doors ==");
+console.log("\n== DORN â€” Off the Guest List: the shoved go through his doors ==");
 {
   const S = sim("dorn", "vex");
   const p = S.players[0], h = p.hero;
-  const ax = h.x;                                  // door A stands here — Dorn himself may travel
+  const ax = h.x;                                  // door A stands here â€” Dorn himself may travel
   castAbility(S, p, 2, ax + 340, LANE_Y);          // far door at +340
-  const d = dummy(S, 1, ax + 80, LANE_Y);          // in front — Q shoves it ~260 onto the far door
+  const d = dummy(S, 1, ax + 80, LANE_Y);          // in front â€” Q shoves it ~260 onto the far door
   castAbility(S, p, 0, d.x, d.y);
   step(S, 5);
   ok("the shoved enemy was pulled through the door", Math.abs(d.x - ax) < 70,
      `landed at ${Math.round(d.x)}, near-side door at ${Math.round(ax)}`);
   ok("and dumped out slowed", d.slowT > 0, `slowT=${(d.slowT||0).toFixed(1)}`);
-  const S2 = sim("dorn", "vex", true);             // no scepter — doors check the guest list
+  const S2 = sim("dorn", "vex", true);             // no scepter â€” doors check the guest list
   const p2 = S2.players[0], h2 = p2.hero;
   const ax2 = h2.x;
   castAbility(S2, p2, 2, ax2 + 340, LANE_Y);
@@ -465,7 +473,7 @@ console.log("\n== DORN — Off the Guest List: the shoved go through his doors =
      `stayed at ${Math.round(d2.x)}, far door at ${Math.round(ax2 + 340)}`);
 }
 
-console.log("\n== TIMBER — Second Chakram: two blades in the field ==");
+console.log("\n== TIMBER â€” Second Chakram: two blades in the field ==");
 {
   const S = sim("timber", "vex");
   const p = S.players[0], h = p.hero;
@@ -478,7 +486,7 @@ console.log("\n== TIMBER — Second Chakram: two blades in the field ==");
   step(S, 90);
   ok("both came home and the cooldown started",
      !S.zones.some(z => z.kind === "chakram" || z.kind === "chakret") && p.cds[3] > 5, `cd=${p.cds[3].toFixed(1)}`);
-  const S2 = sim("timber", "vex", true);           // no scepter — one blade only
+  const S2 = sim("timber", "vex", true);           // no scepter â€” one blade only
   const p2 = S2.players[0], h2 = p2.hero;
   castAbility(S2, p2, 3, h2.x - 400, LANE_Y);
   h2.mp = h2.maxMp;
@@ -487,23 +495,26 @@ console.log("\n== TIMBER — Second Chakram: two blades in the field ==");
      !S2.zones.some(z => z.kind === "chakram"), "");
 }
 
-console.log("\n== DRIFT — Grand Larceny: the victim loses what he takes ==");
+console.log("\n== DRIFT â€” Pitch Black: the dark gets teeth ==");
 {
   const S = sim("drift", "vex");
-  const p = S.players[0], h = p.hero;
-  const foeP = S.players[1];
-  const d0 = foeP.hero.dmg;
-  damage(S, h, foeP.hero, 99999, { pure: true });
-  foeP.respawn = 0.05;
-  step(S, 10);
-  ok("the takedown siphoned 8 damage", foeP.stolenDmg === 8, `stolen=${foeP.stolenDmg}`);
-  ok("the victim respawned permanently weaker", foeP.hero.dmg <= d0 - 7,
-     `${Math.round(d0)} -> ${Math.round(foeP.hero.dmg)}`);
-  ok("and the Drifter swings it instead (16+8 per trophy)", h.dmg >= 45 + 24,
-     `dmg=${Math.round(h.dmg)}`);
+  const p = S.players[0], foe = S.players[1].hero;
+  castAbility(S, p, 3, p.hero.x, p.hero.y);        // Blackout
+  ok("the enemy is night-blind", foe.blindT > 4, `blindT=${(foe.blindT||0).toFixed(1)}`);
+  ok("and slowed for the whole duration", foe.slowT > 4 && foe.slowP >= 0.25,
+     `slowT=${(foe.slowT||0).toFixed(1)} slowP=${foe.slowP}`);
+  const hp0 = foe.hp;
+  damage(S, p.hero, foe, 100, { pure: true });
+  ok("his blows land 20% harder on the night-blind", Math.abs((hp0 - foe.hp) - 120) < 2,
+     `dealt ${Math.round(hp0 - foe.hp)}/120`);
+  const S2 = sim("drift", "vex", true);
+  const foe2 = S2.players[1].hero;
+  castAbility(S2, S2.players[0], 3, S2.players[0].hero.x, S2.players[0].hero.y);
+  ok("without the scepter the dark blinds but does not slow", foe2.blindT > 4 && !(foe2.slowT > 0),
+     `blindT=${(foe2.blindT||0).toFixed(1)} slowT=${(foe2.slowT||0).toFixed(1)}`);
 }
 
-console.log("\n== ROSTER — every hero can rampage with the scepter and nothing breaks ==");
+console.log("\n== ROSTER â€” every hero can rampage with the scepter and nothing breaks ==");
 {
   let crashed = "";
   for (const id of HERO_IDS) {

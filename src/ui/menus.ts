@@ -42,11 +42,11 @@ export function buildHeroMenu(){
       '<div class="ds">'+h.desc+'</div>'+
       '<div class="ab">'+abs+'</div>';
     d.onclick=()=>{
-      G.pick=id;
+      G.pick=id; G.randomLocked=false;
       for (const el of box.children) el.classList.toggle('sel', el.dataset.id===id);
       if (Net.open && G.lobby){                 // tell the room what you switched to
         const seat = lobbySeat(G.mySlot);
-        if (seat) seat.hero = id;
+        if (seat){ seat.hero = id; seat.rand = 0; }
         if (Net.mode==='host') broadcastLobby(); else netSendCmd({k:'hello', h:id, nm:G.name});
         renderLobby();
       }
@@ -54,11 +54,20 @@ export function buildHeroMenu(){
     box.appendChild(d);
   }
 }
+/* Random is a mystery box — the roll happens now, but nobody at the pick screen
+   (you included) learns which hero it is until the match actually starts. */
 export function randomHero(){
   let id = G.pick;
   while (id===G.pick && HERO_IDS.length>1) id = HERO_IDS[Math.floor(Math.random()*HERO_IDS.length)];
-  const card = document.querySelector('#heroList .hero[data-id="'+id+'"]');
-  if (card) card.click(); else G.pick = id;
-  addToast('Random hero: '+HEROES[id].name);
+  G.pick = id; G.randomLocked = true;
+  const box = document.getElementById('heroList');
+  if (box) for (const el of box.children) el.classList.remove('sel');
+  if (Net.open && G.lobby){
+    const seat = lobbySeat(G.mySlot);
+    if (seat){ seat.hero = id; seat.rand = 1; }
+    if (Net.mode==='host') broadcastLobby(); else netSendCmd({k:'hello', h:id, nm:G.name, r:1});
+    renderLobby();
+  }
+  addToast('Random hero locked in — you\'ll meet them when the match starts');
 }
 

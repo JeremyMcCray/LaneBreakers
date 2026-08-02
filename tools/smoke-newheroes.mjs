@@ -4,9 +4,10 @@
 import { newSim, simStep, castAbility, mkEnt, kill, damage } from "../src/sim/engine.ts";
 import { HEROES, HERO_IDS } from "../src/data/heroes.ts";
 import { BOT_BUILD } from "../src/ai/bot.ts";
-import { LANE_Y } from "../src/data/world.ts";
+import { LANE_Y, armorMult } from "../src/data/world.ts";
 
 const TICK = 1 / 60;
+const CREEP_RESIST = 0.70;   // creeps shrug off 30% of ability damage (dummies are creeps)
 let fails = 0;
 const ok = (name, cond, detail) => {
   if (!cond) fails++;
@@ -55,8 +56,9 @@ console.log("\n== JARAK — Fervor stacks on one target, resets on a switch ==")
   const stacked = h.fervN, apsUp = h.aps;
   ok("stacks reach the cap of 4", stacked === 4, `fervN=${stacked}`);
   ok("attack speed actually rose", apsUp > base + 0.4, `${base.toFixed(2)} -> ${apsUp.toFixed(2)}`);
-  const want = (1 + (4 * HEROES.jarak.abilities[1].val[3]) / 100) / HEROES.jarak.bat;
-  ok("aps matches 4 x 32% at rank 4", Math.abs(apsUp - want) < 0.01, `got ${apsUp.toFixed(3)} want ${want.toFixed(3)}`);
+  // melee grip nets +15 AS on top of the stacks (-20 base, +35 from the blade)
+  const want = (1 + (15 + 4 * HEROES.jarak.abilities[1].val[3]) / 100) / HEROES.jarak.bat;
+  ok("aps matches melee grip + 4 stacks at rank 4", Math.abs(apsUp - want) < 0.01, `got ${apsUp.toFixed(3)} want ${want.toFixed(3)}`);
   p.order = { type: "attack", tid: b.id };
   step(S, 40);
   ok("switching target wipes the stacks", h.fervN < 4, `fervN=${h.fervN}`);
@@ -201,7 +203,7 @@ console.log("\n== RONIN — Omnislash strikes repeatedly and is untouchable ==")
   step(S, 150);
   const total = ds.reduce((a, d, i) => a + (hp0[i] - d.hp), 0);
   // every cut is the flat rank value PLUS a full right click
-  const per = HEROES.ronin.abilities[3].val[2] + h.dmg;
+  const per = (HEROES.ronin.abilities[3].val[2] + h.dmg) * CREEP_RESIST;
   ok("all six cuts landed", Math.abs(total - per * 6) < 1, `total=${total.toFixed(0)} want=${(per * 6).toFixed(0)}`);
   ok("the cuts were spread across both bodies",
      ds.every((d, i) => hp0[i] - d.hp > 0), ds.map((d, i) => Math.round(hp0[i] - d.hp)).join("+"));
@@ -286,10 +288,10 @@ console.log("\n== ASH — embers stack, burn, detonate and spread ==");
   ok("a bolt lit 2 embers", d.embN === 2, `embN=${d.embN}`);
   const hp0 = d.hp;
   step(S, 60);                                     // 1s of burning
-  const perStack = HEROES.ash.abilities[1].val[3];
+  const perStack = HEROES.ash.abilities[1].val[3] * CREEP_RESIST;
   const burned = hp0 - d.hp;
   ok("they burn for stacks x rank each second", Math.abs(burned - 2 * perStack) < perStack * 0.6,
-     `took ${burned.toFixed(0)}/s, expected ~${2 * perStack}`);
+     `took ${burned.toFixed(0)}/s, expected ~${(2 * perStack).toFixed(0)}`);
   // charges let him prime to the cap fast
   p.chg[0] = 3;
   for (let k = 0; k < 3; k++) { castAbility(S, p, 0, d.x, d.y); step(S, 25); }
@@ -297,10 +299,10 @@ console.log("\n== ASH — embers stack, burn, detonate and spread ==");
   // detonate
   const preDet = d.hp;
   castAbility(S, p, 2, d.x, d.y);                  // Conflagrate
-  const perStackDet = HEROES.ash.abilities[2].val[3];
+  const perStackDet = HEROES.ash.abilities[2].val[3] * CREEP_RESIST;
   ok("conflagrate consumed every stack", d.embN === 0, `embN=${d.embN}`);
   ok("and paid out per stack consumed", Math.abs((preDet - d.hp) - perStackDet * 6) < 2,
-     `burst=${(preDet - d.hp).toFixed(0)} want=${perStackDet * 6}`);
+     `burst=${(preDet - d.hp).toFixed(0)} want=${(perStackDet * 6).toFixed(0)}`);
   // an unburnt target gets lit instead of whiffing
   const fresh = dummy(S, 1, h.x + 320, LANE_Y + 20);
   S.players[0].cds[2] = 0;
@@ -313,7 +315,7 @@ console.log("\n== ASH — Wildfire throws embers off a corpse ==");
   const S = sim("ash", "vex");
   const p = S.players[0], h = p.hero;
   // enough HP to survive the bolt but not the burn it leaves behind
-  const dying = dummy(S, 1, h.x + 300, LANE_Y, 200);
+  const dying = dummy(S, 1, h.x + 300, LANE_Y, 140);
   const neighbour = dummy(S, 1, h.x + 340, LANE_Y + 30);
   castAbility(S, p, 0, dying.x, dying.y);
   step(S, 30);
@@ -507,7 +509,7 @@ console.log("\n== TIMBER — spin, chain, plates ==");
   for (let k = 0; k < 5; k++) damage(S, foe, h, 10, { attack: true });
   step(S, 2);
   ok("five landed attacks are five armor plates", h.raN === 5, `raN=${h.raN}`);
-  ok("and his armor actually rose", h.armor > arm0 + 5*1.5, `${arm0.toFixed(1)} -> ${h.armor.toFixed(1)}`);
+  ok("and his armor actually rose", h.armor > arm0 + 5*1.3, `${arm0.toFixed(1)} -> ${h.armor.toFixed(1)}`);
   step(S, 60 * 13);                                // let the plates lapse
   ok("the plates fall off after 12s", !(h.raN > 0), `raN=${h.raN}`);
 }
@@ -533,48 +535,149 @@ console.log("\n== TIMBER — the Chakram parks, drains, and comes home ==");
      `cd=${p.cds[3].toFixed(1)}`);
 }
 
-console.log("\n== DRIFT — hungry until the first trophy, then the belt ==");
+console.log("\n== DRIFT — Twin Rakes: magic at the tips, steel up close ==");
 {
   const S = sim("drift", "vex");
   const p = S.players[0], h = p.hero;
-  const foeP = S.players[1], foe = foeP.hero;
-  step(S, 2);
-  ok("before his first kill he is HUNGRY", h.hungry === true, "");
-  const d = dummy(S, 1, h.x + 200, LANE_Y - 120);  // off the knife's firing line
-  const hd0 = d.hp;
-  damage(S, h, d, 100, { pure: true });
-  ok("and the hunger bites his damage", Math.abs((hd0 - d.hp) - 88) < 2, `dealt ${Math.round(hd0 - d.hp)}/100`);
-  foeP.gold = 500;
-  const g0 = p.gold;
-  castAbility(S, p, 0, foe.x, foe.y);              // Stickup
-  step(S, 30);
-  ok("the knife robbed them", foeP.gold < 500 && p.gold > g0,
-     `victim 500 -> ${Math.round(foeP.gold)}, his ${Math.round(g0)} -> ${Math.round(p.gold)}`);
-  const dmg0 = h.dmg;
-  damage(S, h, foe, 99999, { pure: true });        // the first kill
-  step(S, 2);
-  ok("the kill went on the belt", p.trophies === 1, `trophies=${p.trophies}`);
-  ok("the hunger is over", h.hungry === false, "");
-  ok("and the trophy is permanent damage", h.dmg >= dmg0 + 15, `${Math.round(dmg0)} -> ${Math.round(h.dmg)}`);
-  castAbility(S, p, 1, h.x, h.y);                  // Slip
-  ok("Slip makes him untouchable for a beat", h.invT > 0.5, `invT=${h.invT.toFixed(2)}`);
+  step(S, 2);                                      // settle the lvl-12 stat pass
+  const V = HEROES.drift.abilities[0].val[3];
+  const near = dummy(S, 1, h.x + 70, LANE_Y);      // inside the closest 30% of 320
+  const far  = dummy(S, 1, h.x + 290, LANE_Y);     // out at the tips
+  const behind = dummy(S, 1, h.x - 150, LANE_Y);   // outside the arc entirely
+  castAbility(S, p, 0, h.x + 300, LANE_Y);
+  const magic = V * CREEP_RESIST;
+  const steel = h.dmg * HEROES.drift.abilities[0].val2[3] / 100;
+  ok("the far target took the magic only", Math.abs((4000 - far.hp) - magic) < 3,
+     `took ${Math.round(4000 - far.hp)} want ~${Math.round(magic)}`);
+  ok("the near target took magic AND steel", Math.abs((4000 - near.hp) - (magic + steel)) < steel * 0.3,
+     `took ${Math.round(4000 - near.hp)} want ~${Math.round(magic + steel)}`);
+  ok("nothing behind him was touched", behind.hp === 4000, "");
 }
 
-console.log("\n== DRIFT — Cash Out scales with the belt ==");
+console.log("\n== DRIFT — Bloodtrail: the wound bleeds, and he steps through the blood ==");
 {
-  const lossWith = trophies => {
-    const S = sim("drift", "vex");
-    const p = S.players[0], foe = S.players[1].hero;
-    p.trophies = trophies;
-    step(S, 2);
-    foe.x = p.hero.x + 300; foe.y = LANE_Y;
-    const hp0 = foe.hp;
-    castAbility(S, p, 3, foe.x, foe.y);
-    return hp0 - foe.hp;
-  };
-  const broke = lossWith(0), loaded = lossWith(4);
-  ok("four trophies roughly double the payout", loaded > broke * 1.7,
-     `${Math.round(broke)} -> ${Math.round(loaded)}`);
+  const S = sim("drift", "vex");
+  const p = S.players[0], h = p.hero;
+  const d = dummy(S, 1, h.x + 500, LANE_Y - 160);  // off the enemy hero's body
+  castAbility(S, p, 1, d.x, d.y);
+  step(S, 40);                                     // the knife flies and lands
+  ok("the wound is open and bleeding", d.dotT > 0 && d.dotSrc === h.id, `dotT=${(d.dotT||0).toFixed(1)}`);
+  const perSec = 4000 * (HEROES.drift.abilities[1].val[3] / 100) / 5 * CREEP_RESIST;
+  const hp1 = d.hp;
+  step(S, 120);                                    // two seconds of bleeding
+  ok("it bleeds a fixed slice of max health", Math.abs((hp1 - d.hp) - perSec * 2) < 70,
+     `bled ${Math.round(hp1 - d.hp)} want ~${Math.round(perSec * 2)}`);
+  const hpL = d.hp;
+  damage(S, h, d, 100, { pure: true });
+  ok("Lacerate tears 24% harder into the bleeding", Math.abs((hpL - d.hp) - 124) < 2,
+     `dealt ${Math.round(hpL - d.hp)}/124`);
+  const mp0 = h.mp, cd0 = p.cds[1];
+  castAbility(S, p, 1, h.x, h.y);                  // the recast — step to the wound
+  const gap = Math.hypot(h.x - d.x, h.y - d.y);
+  ok("the recast stepped him to the wound", gap < 60, `landed ${Math.round(gap)} away`);
+  ok("and it was free", h.mp === mp0 && p.cds[1] === cd0, `mp ${Math.round(mp0)} cd ${cd0.toFixed(1)}`);
+  h.hp = 500;
+  const hp2 = h.hp;
+  damage(S, h, d, 99999, { pure: true });          // kill it while it bleeds
+  ok("a bleeding kill feeds him 90 health", h.hp >= hp2 + 80, `${hp2} -> ${Math.round(h.hp)}`);
+}
+
+console.log("\n== DRIFT — Blackout: the other side goes night-blind ==");
+{
+  const S = sim("drift", "vex");
+  const p = S.players[0], foe = S.players[1].hero;
+  castAbility(S, p, 3, p.hero.x, p.hero.y);
+  ok("the enemy hero is night-blind for 8s", Math.abs(foe.blindT - 8) < 0.1, `blindT=${(foe.blindT||0).toFixed(1)}`);
+  ok("his own side keeps its eyes", !(p.hero.blindT > 0), "");
+  step(S, 60 * 9);
+  ok("the lights come back on", !(foe.blindT > 0), `blindT=${(foe.blindT||0).toFixed(1)}`);
+}
+
+console.log("\n== GEIST — blood in, blood out ==");
+{
+  const S = sim("geist", "vex");
+  const p = S.players[0], h = p.hero;
+  step(S, 2);                                      // settle the lvl-12 stat pass
+  h.hp = h.maxHp;
+  const d = dummy(S, 1, h.x + 400, LANE_Y - 140);  // clear of the enemy hero
+  const V = HEROES.geist.abilities[0].val[3];
+  const hp0 = h.hp;
+  castAbility(S, p, 0, d.x, d.y);                  // Essence Bomb
+  ok("Essence Bomb cost her 7% of herself", Math.abs((hp0 - h.hp) - h.maxHp * 0.07) < 2,
+     `paid ${Math.round(hp0 - h.hp)}`);
+  ok("and the blast landed", Math.abs((4000 - d.hp) - V * CREEP_RESIST) < 3,
+     `took ${Math.round(4000 - d.hp)} want ~${Math.round(V * CREEP_RESIST)}`);
+  h.hp = 500;
+  const d1 = d.hp, mine = h.hp;
+  castAbility(S, p, 1, d.x, d.y);                  // Life Drain
+  step(S, 130);                                    // ~2s on the tether
+  ok("the tether drains the victim", d.hp < d1 - 80, `${Math.round(d1)} -> ${Math.round(d.hp)}`);
+  ok("and every drop comes back to her", h.hp > mine + 80, `${mine} -> ${Math.round(h.hp)}`);
+  const d3 = dummy(S, 1, h.x + 300, LANE_Y + 80);
+  castAbility(S, p, 2, d3.x, d3.y);                // Malice
+  step(S, 30);
+  ok("Malice cursed the victim", d3.markT > 0 && Math.abs(d3.markP - 0.24) < 0.001,
+     `markT=${(d3.markT||0).toFixed(1)} markP=${d3.markP}`);
+  const m0 = d3.hp;
+  damage(S, h, d3, 100, { pure: true });
+  ok("and everything hits them 24% harder", Math.abs((m0 - d3.hp) - 124) < 2, `dealt ${Math.round(m0 - d3.hp)}/124`);
+}
+
+console.log("\n== GEIST — Soul Exchange trades health bars ==");
+{
+  const S = sim("geist", "vex");
+  const p = S.players[0], h = p.hero;
+  const foe = S.players[1].hero;
+  foe.x = h.x + 300; foe.y = LANE_Y;
+  step(S, 2);
+  h.hp = h.maxHp * 0.15; foe.hp = foe.maxHp * 0.90;
+  castAbility(S, p, 3, foe.x, foe.y);
+  ok("she walked away with their 90%", Math.abs(h.hp / h.maxHp - 0.90) < 0.02,
+     `now at ${Math.round(h.hp / h.maxHp * 100)}%`);
+  ok("they got her 15% — floored at 20%", Math.abs(foe.hp / foe.maxHp - 0.20) < 0.02,
+     `now at ${Math.round(foe.hp / foe.maxHp * 100)}%`);
+}
+
+console.log("\n== ORRIN — Siege Bolt mends the wave, hurls theirs into their heroes ==");
+{
+  const S = sim("orrin", "vex");
+  const p = S.players[0], h = p.hero;
+  const V = HEROES.orrin.abilities[0].val[3];
+  // an allied creep in the flight path, wounded
+  const ally = dummy(S, 0, h.x + 150, LANE_Y, 4000);
+  ally.hp = 1000;
+  // an enemy creep further along, with the enemy hero parked right behind it
+  const foe = dummy(S, 1, h.x + 300, LANE_Y, 4000);
+  const vex = S.players[1].hero;
+  vex.x = h.x + 400; vex.y = LANE_Y;
+  step(S, 1);                                       // let the lvl-12 stat pass settle hp first
+  const vexHp = vex.hp, foeX = foe.x;
+  castAbility(S, p, 0, h.x + 500, LANE_Y);
+  step(S, 30);
+  ok("the allied creep was mended for half", Math.abs(ally.hp - (1000 + V / 2)) < 2,
+     `1000 -> ${Math.round(ally.hp)} (half of ${V})`);
+  ok("the enemy creep took the bolt (less 30% spell resist)",
+     Math.abs(foe.hp - (4000 - V * CREEP_RESIST)) < 2, `4000 -> ${Math.round(foe.hp)}`);
+  ok("and was hurled backward", foe.x > foeX + 40, `${foeX} -> ${Math.round(foe.x)}`);
+  ok("it slammed into the hero behind it", foe.x < vex.x, `stopped at ${Math.round(foe.x)}, hero at ${Math.round(vex.x)}`);
+  // the hero stands in the flight line too, so they eat the bolt AND the slam —
+  // the slam lands at full V/2, then the creep saps the bolt 30% before the
+  // direct hit (both mitigated by armor — same formula the sim uses)
+  const want = (V * 0.5 + V * 0.7) * armorMult(vex.armor);
+  ok("who took the slam plus the sapped bolt", Math.abs((vexHp - vex.hp) - want) < 25,
+     `took ${Math.round(vexHp - vex.hp)} want ~${Math.round(want)}`);
+  // no hero behind: the creep just flies the full shove distance
+  const S2 = sim("orrin", "vex");
+  const p2 = S2.players[0], h2 = p2.hero;
+  S2.players[1].hero.y = LANE_Y - 200;              // out of the corridor
+  const foe2 = dummy(S2, 1, h2.x + 300, LANE_Y, 4000);
+  const foe2X = foe2.x;
+  castAbility(S2, p2, 0, h2.x + 500, LANE_Y);
+  step(S2, 30);
+  ok("with nobody behind it the creep flies the full 170", Math.abs(foe2.x - (foe2X + 170)) < 8,
+     `${foe2X} -> ${Math.round(foe2.x)}`);
+  ok("the bolt pierced on through (still flying or spent down-lane)", !S2.projs.some(pr => pr.siege && pr.x < foe2X),
+     "no bolt died on the creep");
 }
 
 console.log("\n== ROSTER — nothing on the new heroes is half-wired ==");

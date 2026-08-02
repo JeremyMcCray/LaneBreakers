@@ -45,6 +45,12 @@ export function drawHUD(v, own){
   ctx.fillStyle='#0b111ccc'; rr(W/2-152, 8, 304, 44, 10); ctx.fill();
   ctx.strokeStyle='#233049'; ctx.lineWidth=1; ctx.stroke();
   ctx.textAlign='center';
+  if (v.md==='hideout'){
+    // the warm-up room has no score and no clock — just say what this place is
+    ctx.fillStyle='#ffd9a0'; ctx.font='800 15px Segoe UI'; ctx.fillText('⛺ THE HIDEOUT', W/2, 22);
+    ctx.fillStyle='#8b9ab4'; ctx.font='600 10.5px Segoe UI';
+    ctx.fillText('warm up — the match starts when everyone is ready', W/2, 42);
+  } else {
   const left = MATCH_LIMIT - v.t;
   if (left < SUDDEN_DEATH){
     ctx.fillStyle = Math.floor(G.time*2)%2 ? '#ff5f5f' : '#ff9b4a';
@@ -72,6 +78,7 @@ export function drawHUD(v, own){
   ctx.fillStyle=TEAM_COL[1-G.myTeam]; ctx.textAlign='left'; ctx.fillText(foeKills, W/2+40, 24);
   ctx.fillStyle='#5a6885'; ctx.textAlign='center'; ctx.font='700 12px Segoe UI';
   ctx.fillText('SCORE / '+(v.wk||KILLS_TO_WIN), W/2, 24);
+  }
 
   /* ---------- top-left stats ---------- */
   ctx.textAlign='left';
@@ -79,8 +86,8 @@ export function drawHUD(v, own){
   ctx.fillStyle='#ffcc55'; ctx.font='800 20px Segoe UI'; ctx.fillText(me.gold+'g', 24, 28);
   ctx.fillStyle='#8b9ab4'; ctx.font='600 12px Segoe UI';
   ctx.fillText('LAST HITS '+me.cs+'   DENIES '+me.dn, 24, 50);
-  ctx.fillText('K/D/A  '+me.k+' / '+me.d+' / '+(me.as||0)+'     vs '+
-               foes.map(q=>HEROES[q.hid].name+' L'+q.lvl).join(', '), 24, 68);
+  ctx.fillText('K/D/A  '+me.k+' / '+me.d+' / '+(me.as||0)+
+               (foes.length ? '     vs '+foes.map(q=>HEROES[q.hid].name+' L'+q.lvl).join(', ') : ''), 24, 68);
 
   /* ---------- bottom bar ---------- */
   const BY = H-96;
@@ -344,7 +351,7 @@ export function drawHUD(v, own){
   }
 
   /* ---------- what the enemy is carrying ---------- */
-  {
+  if (foes.length){
     const ew=34, eg=4, tot=ITEM_SLOTS*(ew+eg)-eg, ex=W-14-tot;
     let ey=60;
     ctx.textAlign='right'; ctx.fillStyle='#5a6885'; ctx.font='700 9px Segoe UI';

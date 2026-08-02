@@ -52,7 +52,7 @@ export function releaseAttack(S,e){
   const bonus = e.rendT>0 ? e.rendV : 0;
   let amt = e.dmg + bonus, crit = false;
   if (e.type==='creep' && tgt.type==='creep') amt *= 0.7;   // creeps whittle each other slowly
-  if (e.quell>0 && tgt.type==='creep') amt += e.quell;      // Quelling Blade
+  if (e.quell>0 && tgt.type==='creep' && tgt.team!==e.team) amt += e.quell;  // Quelling Blade — never on a deny
   if (e.siege>0 && tgt.type==='tower') amt *= e.siege;      // Barrow Ram — born to break gates
   if (e.crit>0 && Math.random() < e.crit){ amt *= 1.9; crit = true; }
   if (e.ranged){
@@ -60,7 +60,7 @@ export function releaseAttack(S,e){
     S.projs.push({id:S.nextId++, kind:'atk', team:e.team, x:e.x, y:e.y-10,
       tid:tgt.id, dmg:amt, src:e.id, speed:sp, r:7,
       ps: e.type==='hero' ? e.slot : (e.oslot!==undefined ? e.oslot : -1),
-      rend:e.rendT>0, chill:e.chill>0, crit:crit,
+      rend:e.rendT>0, chill:e.chill>0, ven:e.venom||0, crit:crit,
       // Rip and Tear rides the shot out — resolved when it lands
       twin: (e.aghs && e.heroId==='jarak' && e.fervMax>0 && e.fervN>=e.fervMax) ? .5 : 0});
   } else {
@@ -73,6 +73,8 @@ export function releaseAttack(S,e){
         e.aghs && e.heroId==='svaar' && e.gsT>0);          // Worldbreaker
     if (e.rendT>0)  applySlow(tgt, .25, 1.5);
     if (e.chill>0)  applySlow(tgt, .20, 1.5);
+    if (e.venom>0 && tgt.team!==e.team && !tgt.dead && tgt.type!=='tower')
+      applyDot(S, tgt, e.venom, 3, e.id);      // Bogfang venom smear
     // Fervor's melee grip: every so often the blade pins whatever it lands on
     if (e.rootChance>0 && tgt.team!==e.team && !tgt.dead && Math.random() < e.rootChance)
       applyRoot(S, tgt, 0.6);
@@ -92,7 +94,7 @@ export function releaseAttack(S,e){
       }
       // Open Wounds — every blow on a Ruptured target counts as 50 units run
       if (e.heroId==='stryg' && tgt.rupT>0){
-        damage(S, ent(S,tgt.rupSrc)||e, tgt, 0.5*(tgt.rupV||0), {pure:true, tag:'a3'});
+        damage(S, ent(S,tgt.rupSrc)||e, tgt, 50/80*(tgt.rupV||0), {pure:true, tag:'a3'});
         fx(S,{t:'bleed', x:tgt.x, y:tgt.y});
       }
     }
@@ -139,7 +141,7 @@ export function cleaveHit(S, src, tgt, raw, pct, wb){
 export function previewHit(e, tgt){
   if (tgt.ward) return 1;                        // a ward takes one point per right click
   const bonus = e.rendT>0 ? e.rendV : 0;
-  let raw = e.dmg + bonus + (e.quell>0 && tgt.type==='creep' ? e.quell : 0);
+  let raw = e.dmg + bonus + (e.quell>0 && tgt.type==='creep' && tgt.team!==e.team ? e.quell : 0);
   if (e.brT>0)     raw *= (1 + e.brP);           // Bloodrage
   let d = raw * armorMult(effArmor(tgt));
   if (tgt.block>0) d = Math.max(0, d - tgt.block);

@@ -9,6 +9,7 @@ import { fx } from './create';
 import { stepCamps } from './camp';
 import { creepThink } from './creep';
 import { heroThink, heroTimers } from './hero';
+import { stepHideout } from './hideout';
 import { stepProjectiles } from './projectiles';
 import { deliver } from './shop';
 import { SERIES_TICK, addGold, endGame, sampleSeries, timeWinner } from './stats';
@@ -19,11 +20,14 @@ import { stepZones } from './zones';
 export function simStep(S,dt){
   S.t += dt; S.tick++;
   if (S.over) return;
-  if (S.t >= MATCH_LIMIT){ endGame(S, timeWinner(S), 'time'); return; }
+  // the hideout has no clock and no waves — it lasts until the real match starts
+  if (!S.hideout && S.t >= MATCH_LIMIT){ endGame(S, timeWinner(S), 'time'); return; }
   for (let i=0;i<2;i++){ const a=S.aggro[i]; if (a){ a.t-=dt; if (a.t<=0) S.aggro[i]=null; } }
   for (let i=0;i<2;i++){ const a=S.towerAggro[i]; if (a){ a.t-=dt; if (a.t<=0) S.towerAggro[i]=null; } }
-  S.waveT -= dt;
-  if (S.waveT<=0){ spawnWave(S); S.waveT = WAVE_INTERVAL; }
+  if (!S.hideout){
+    S.waveT -= dt;
+    if (S.waveT<=0){ spawnWave(S); S.waveT = WAVE_INTERVAL; }
+  }
 
   S.seriesT -= dt;
   if (S.seriesT<=0){ S.seriesT += SERIES_TICK; sampleSeries(S); }
@@ -86,6 +90,7 @@ export function simStep(S,dt){
     else if (e.type==='tower') towerThink(S,e,dt);
   }
   stepCamps(S,dt);
+  if (S.hideout) stepHideout(S,dt);
   stepProjectiles(S,dt);
   stepZones(S,dt);
   separate(S);

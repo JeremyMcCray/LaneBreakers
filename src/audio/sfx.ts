@@ -285,6 +285,7 @@ export function fxSound(f){
     case 'detonate': sfxAt('blast', f.x, f.y, {vol: Math.min(1, .5 + (f.v || 1)*.15)}); break;
     case 'quake':    sfxAt('quake', f.x, f.y); break;
     case 'rupture':  sfxAt('rupture', f.x, f.y); break;
+    case 'blackout': sfxAt('nova', f.x, f.y, {vol:1.4}); break;   // Drift's lights-out
     case 'stun':     sfxAt('stun', f.x, f.y); break;
     case 'root':     sfxAt('root', f.x, f.y); break;
     case 'silence':  sfxAt('silence', f.x, f.y); break;

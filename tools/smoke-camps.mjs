@@ -110,9 +110,12 @@ console.log("\n== every variant spawns clean and its members carry their kit =="
     spawnCamp(S, S.campSides[0], vid);
     const pack = neutrals(S);
     let good = pack.length === V.n && V.n >= 1 && V.n <= 8;
-    if (vid === "brute") good = good && pack[0].cleave > 0;
-    if (vid === "ram")   good = good && pack[0].siege > 1;
-    if (vid === "storm") good = good && pack[0].ranged;
+    if (vid === "brute")   good = good && pack[0].cleave > 0;
+    if (vid === "ram")     good = good && pack[0].siege > 1;
+    if (vid === "storm")   good = good && pack[0].ranged;
+    if (vid === "howler")  good = good && pack[0].chill > 0;
+    if (vid === "spitter") good = good && pack[0].venom > 0 && pack[0].ranged;
+    if (vid === "scarab")  good = good && V.timid && pack.length === 1;
     step(S, 600);                                    // 10s idle — nothing crashes, nobody dies
     good = good && neutrals(S).length === V.n;
     ok(`${vid} (${V.name}, n=${V.n})`, good);
@@ -143,6 +146,48 @@ console.log("\n== storm shaman bolts its attacker; mender pulse heals its pack =
   step(S, Math.floor(4 / TICK));
   ok("mender pulse healed the pack", pack[1].hp > pack[1].maxHp * 0.4 + 30,
      `hp=${Math.round(pack[1].hp)}/${pack[1].maxHp}`);
+}
+
+console.log("\n== bogfang spitter smears its venom dot on an attacker ==");
+{
+  const S = newSim([{ h: "vex", tm: 0 }, { h: "gruk", tm: 1 }], "1v1");
+  S.noFx = true;
+  const side = S.campSides[0];
+  spawnCamp(S, side, "spitter");
+  const spit = neutrals(S)[0];
+  const p = S.players[0];
+  p.hero.x = CAMP_X; p.hero.y = campY(side) + 80; p.god = false;
+  damage(S, p.hero, spit, 10, { attack: true });     // wake the pack
+  const hp0 = p.hero.hp;
+  let poisoned = false;
+  for (let i = 0; i < Math.floor(6 / TICK); i++){ simStep(S, TICK); if (p.hero.dotT > 0) poisoned = true; }
+  ok("spitter hits poisoned the hero", poisoned || p.hero.dead, `dotT=${p.hero.dotT}`);
+  ok("the venom (and shots) actually hurt", p.hero.hp < hp0 || p.hero.dead,
+     `hp ${Math.round(hp0)} -> ${Math.round(p.hero.hp)}`);
+}
+
+console.log("\n== gilded scarab flees instead of fighting, pays a fat bounty ==");
+{
+  const S = newSim([{ h: "vex", tm: 0 }, { h: "gruk", tm: 1 }], "1v1");
+  S.noFx = true;
+  const side = S.campSides[0];
+  spawnCamp(S, side, "scarab");
+  const bug = neutrals(S)[0];
+  const p = S.players[0];
+  p.hero.x = CAMP_X; p.hero.y = campY(side) + 40; p.god = false;
+  const hp0 = p.hero.hp;
+  damage(S, p.hero, bug, 60, { attack: true });      // wound it — it should bolt
+  const d0 = Math.hypot(bug.x - p.hero.x, bug.y - p.hero.y);
+  step(S, Math.floor(2 / TICK));
+  const d1 = Math.hypot(bug.x - p.hero.x, bug.y - p.hero.y);
+  ok("wounded scarab ran from the hero", d1 > d0 + 40, `${Math.round(d0)} -> ${Math.round(d1)}`);
+  ok("it never swung back", p.hero.hp >= hp0, `hp ${Math.round(hp0)} -> ${Math.round(p.hero.hp)}`);
+  const gold0 = p.gold;
+  damage(S, p.hero, bug, 99999, { attack: true });
+  ok("scarab died and paid its bounty", bug.dead && p.gold - gold0 >= CAMP_VARIANTS.scarab.bounty,
+     `+${Math.round(p.gold - gold0)}g`);
+  ok("scarab charge banked for the wave", S.campCharges[0].includes("scarab"),
+     JSON.stringify(S.campCharges));
 }
 
 console.log(fails ? `\n${fails} FAILURE(S)` : "\nALL CAMP CHECKS PASSED");

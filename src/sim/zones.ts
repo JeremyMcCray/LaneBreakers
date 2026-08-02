@@ -2,7 +2,7 @@
 import {
   clamp, clampToLane, dist, heal, now
 } from '../data/world';
-import { overheal, sliceAndDice } from './abilities';
+import { sliceAndDice } from './abilities';
 import { addEmber, applyDot, applyRoot, applySilence, applySlow, applyStun, damage, disjoint } from './combat';
 import { ent, fx, spawnBrood } from './create';
 
@@ -339,17 +339,6 @@ export function stepZones(S,dt){
       if (z.tickT<=0){ z.tickT=.5; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r,
         col: z.kind==='light' ? '#ffe9a8' : (z.kind==='thicket' ? '#7fdc6a' :
              (z.kind==='spin' ? '#ff9ec4' : '#c8945a'))}); }
-    } else if (z.kind==='sanct'){
-      for (const q of S.players){                       // Liora's ground heals her side
-        if (q.team!==z.team || !q.hero || q.hero.dead) continue;
-        if (dist(q.hero.x,q.hero.y,z.x,z.y) < z.r) overheal(S, q.hero, z.hps*dt, z.aghs);
-      }
-      for (const o of S.ents){
-        if (o.dead || o.team===z.team || o.type==='tower') continue;
-        if (dist(o.x,o.y,z.x,z.y) < z.r) applySlow(o, .30, .3);
-      }
-      z.tickT -= dt;
-      if (z.tickT<=0){ z.tickT=.5; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r, col:'#8affd4'}); }
     } else if (z.kind==='mine'){
       z.arm -= dt;
       if (z.arm<=0){

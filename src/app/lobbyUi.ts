@@ -13,7 +13,7 @@ import {
 } from './netplay';
 import {
   tourNew, tourDraft, tourField, tourPicks, tourResult,
-  tourDraftTeam, tourTaken, tourBench, tourNeedPick, tourPicksPerTeam
+  tourDraftTeam, tourTaken, tourBench, tourNeedPick, tourPicksPerTeam, tourSlotPicked
 } from './tournament';
 
 export function lobbyCap(){
@@ -26,6 +26,11 @@ export function newLobby(mode){
 export function lobbySeat(sl){
   if (!G.lobby) return null;
   return G.lobby.slots.find(x=>x.slot===sl) || null;
+}
+/* my REAL lobby seat — while the hideout warm-up runs, G.mySlot is the local
+   sim's slot 0, and the lobby seat is parked in G.hideout */
+export function myLobbySlot(){
+  return G.hideout ? G.hideout.slot : G.mySlot;
 }
 export function lobbyFreeSlot(){
   for (let i=1;i<lobbyCap();i++) if (!lobbySeat(i)) return i;
@@ -41,7 +46,7 @@ export function lobbyBalanced(){
 }
 export function lobbySwitchTeam(){
   if (!Net.open || !G.lobby) return;
-  const seat = lobbySeat(G.mySlot);
+  const seat = lobbySeat(myLobbySlot());
   if (!seat) return;
   seat.team = 1 - (seat.team!==undefined ? seat.team : SLOT_TEAM(seat.slot));
   seat.ready = false;
@@ -75,8 +80,8 @@ export function tourClick(hero){
     if (Net.mode==='host'){ if (tourDraft(G.tour, team, hero)){ broadcastTour(); renderTour(); } }
     else netSendCmd({k:'tpick', h:hero});
   } else if (G.tour.phase==='pick'){
-    if (!tourNeedPick(G.tour, team)) return;
-    if (Net.mode==='host'){ if (tourField(G.tour, team, hero)){ broadcastTour(); renderTour(); } }
+    if (!tourNeedPick(G.tour, team) || tourSlotPicked(G.tour, team, G.mySlot)) return;
+    if (Net.mode==='host'){ if (tourField(G.tour, team, hero, G.mySlot)){ broadcastTour(); renderTour(); } }
     else netSendCmd({k:'tpick', h:hero});
   }
 }
@@ -103,28 +108,46 @@ export function broadcastLobby(){
   if (Net.mode!=='host' || !G.lobby) return;
   netBroadcast({k:'lobby', mode:G.lobby.mode, slots:G.lobby.slots});
 }
-/* the roster panel that both sides look at while waiting */
-export function renderLobby(){
-  const el = document.getElementById('lobbyStatus');
-  if (!el) return;
-  if (!G.lobby){ el.innerHTML=''; return; }
+/* one roster row per seat — shared by the menu panel and the hideout panel */
+export function lobbyRows(){
   const cap = lobbyCap();
+  const my = myLobbySlot();
   let rows = '';
   for (let i=0;i<cap;i++){
     const seat = lobbySeat(i);
     const tm = seat && seat.team!==undefined ? seat.team : SLOT_TEAM(i);
     const col = TEAM_COL[tm];
-    const who = seat ? (i===G.mySlot ? (G.name||'YOU') : (seat.name || 'Player '+(i+1))) : 'waiting…';
-    const hero = seat ? HEROES[seat.hero].name : '—';
+    const who = seat ? (i===my ? (G.name||'YOU') : (seat.name || 'Player '+(i+1))) : 'waiting…';
+    const mystery = seat && (seat.rand || (i===my && G.randomLocked));
+    const hero = !seat ? '—' : mystery ? '??? (random)' : HEROES[seat.hero].name;
     const rdy = seat && seat.ready ? '<b style="color:var(--acc)">READY</b>' : '<span style="color:#4a5670">not ready</span>';
-    rows += '<div class="seat'+(seat?'':' empty')+(i===G.mySlot?' me':'')+'">'+
+    rows += '<div class="seat'+(seat?'':' empty')+(i===my?' me':'')+'">'+
               '<span class="tm" style="background:'+col+'"></span>'+
               '<span class="wh">'+who+'</span>'+
-              '<span class="hr" style="color:'+(seat?HEROES[seat.hero].col:'#3d4863')+'">'+hero+'</span>'+
+              '<span class="hr" style="color:'+(seat && !mystery ? HEROES[seat.hero].col : '#3d4863')+'">'+hero+'</span>'+
               '<span class="rd">'+rdy+'</span>'+
-              (i===G.mySlot ? '<button class="swap" onclick="lobbySwitchTeam()">Switch side</button>' : '')+
+              (i===my ? '<button class="swap" onclick="lobbySwitchTeam()">Switch side</button>' : '')+
             '</div>';
   }
+  return rows;
+}
+/* the one-line answer to "why hasn't it started yet?" — shared by both panels */
+export function lobbyStatusLine(){
+  const cap = lobbyCap();
+  return !lobbyFull()
+    ? 'Waiting for '+(cap-G.lobby.slots.length)+' more player(s). Share your code.'
+    : !lobbyBalanced()
+      ? '<b style="color:var(--red)">Uneven sides — '+lobbyTeamCount(0)+' v '+lobbyTeamCount(1)+
+        '. Somebody has to switch before the match can start.</b>'
+      : lobbyReadyCount()+' / '+cap+' ready — the match starts when everyone is.';
+}
+/* the roster panel that both sides look at while waiting */
+export function renderLobby(){
+  renderHideoutPanel();
+  const el = document.getElementById('lobbyStatus');
+  if (!el) return;
+  if (!G.lobby){ el.innerHTML=''; return; }
+  const rows = lobbyRows();
   const tourBtn = Net.mode==='host'
     ? '<div class="modesel" style="margin-top:6px">'+
       '<span style="color:var(--dim);font-size:12px">Tournament &mdash; heroes drafted, losers eliminated:</span>'+
@@ -139,14 +162,30 @@ export function renderLobby(){
       '</div>'
     : '<div class="modesel"><span style="color:var(--dim);font-size:12px">Mode: <b>'+G.lobby.mode.toUpperCase()+'</b> (host decides)</span></div>';
   el.innerHTML = modeBtns + tourBtn + '<div class="roster">'+rows+'</div>' +
-    '<div style="margin-top:8px;color:var(--dim)">'+
-      (!lobbyFull()
-        ? 'Waiting for '+(cap-G.lobby.slots.length)+' more player(s). Share your code.'
-        : !lobbyBalanced()
-          ? '<b style="color:var(--red)">Uneven sides — '+lobbyTeamCount(0)+' v '+lobbyTeamCount(1)+
-            '. Somebody has to switch before the match can start.</b>'
-          : lobbyReadyCount()+' / '+cap+' ready — the match starts when everyone is.')+
-    '</div>';
+    '<div style="margin-top:8px;color:var(--dim)">'+lobbyStatusLine()+'</div>';
+}
+/* the floating panel that rides on top of the hideout warm-up room */
+export function renderHideoutPanel(){
+  const el = document.getElementById('hdLobby');
+  if (!el || !G.hideout) return;
+  let html = '';
+  if (Net.mode==='host' && Net.code)
+    html += '<div class="hdcode">CODE&nbsp;<b>'+Net.code+'</b>'+
+            '<button onclick="copyCode()">Copy</button></div>';
+  if (G.lobby){
+    html += '<div class="hdmode">'+G.lobby.mode.toUpperCase()+
+            (G.tour && G.tour.on ? ' · tournament' : '')+'</div>';
+    html += '<div class="roster">'+lobbyRows()+'</div>';
+    html += '<div class="hdstat">'+lobbyStatusLine()+'</div>';
+  } else {
+    html += '<div class="hdstat">Not in a lobby.</div>';
+  }
+  el.innerHTML = html;
+  const rb = document.getElementById('hdReady');
+  if (rb){
+    const seat = lobbySeat(myLobbySlot());
+    rb.disabled = !Net.open || !G.lobby || !!(seat && seat.ready);
+  }
 }
 export function lobbySetMode(m){
   if (Net.mode!=='host' || !G.lobby) return;
@@ -187,7 +226,7 @@ export function returnToLobby(){
 }
 export function lobbyReady(){
   if (!Net.open || !G.lobby) return;
-  const seat = lobbySeat(G.mySlot);
+  const seat = lobbySeat(myLobbySlot());
   if (seat){ seat.hero = G.pick; seat.ready = true; }
   document.getElementById('btnReady').disabled = true;
   if (Net.mode==='client') netSendCmd({k:'ready', h:G.pick, nm:G.name});
@@ -212,7 +251,7 @@ export function tryStartMatch(){
   const mid = 'm'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e6).toString(36);
   G.matchId = mid;
   for (const c of Net.peers) netSendTo(c, {k:'start', picks:picks, mode:mode, slot:c.slot, mid:mid});
-  for (const x of G.lobby.slots) x.ready = false;
+  for (const x of G.lobby.slots){ x.ready = false; x.rand = 0; }   // secret's out once the match starts
   beginMatch('host', picks, 0, mode);
 }
 
@@ -275,11 +314,14 @@ export function renderTour(){
     for (const h of HERO_IDS) mkCard(h, taken.indexOf(h)>=0 || !mine, ()=>tourClick(h));
   }
   else if (T.phase==='pick'){
-    const need = tourNeedPick(T, myT);
+    const iPicked = tourSlotPicked(T, myT, G.mySlot);
+    const need = tourNeedPick(T, myT) && !iPicked;
     prompt.innerHTML = need
-      ? '<b style="color:var(--acc)">Choose the hero you are bringing out.</b>'+
+      ? '<b style="color:var(--acc)">Choose the hero YOU are playing.</b>'+
         (T.teamSize>1 ? ' Your side needs '+(T.teamSize-T.cur[myT].length)+' more.' : '')
-      : 'Locked in. Waiting for the other side&hellip;';
+      : iPicked && tourNeedPick(T, myT)
+        ? 'Locked in. Waiting for your teammate'+(T.teamSize>2?'s':'')+'&hellip;'
+        : 'Locked in. Waiting for the other side&hellip;';
     for (const h of tourBench(T, myT)) mkCard(h, !need, ()=>tourClick(h));
     if (!tourBench(T, myT).length) prompt.innerHTML = 'Your heroes are all committed.';
   }

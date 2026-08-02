@@ -70,6 +70,17 @@ Right-click is always just move — or a single attack, if you click directly on
   <b>TIP</b> — gold only comes from the <b>killing blow</b>. Deny your own creeps below 50% HP to halve enemy XP.
 </div>
 
+<!-- ============ HIDEOUT — pre-game warm-up lobby panel ============ -->
+<div id="hideoutPanel" class="hide">
+  <div class="hdhead">⛺ THE HIDEOUT <span>warm-up room</span></div>
+  <div id="hdLobby"></div>
+  <div class="row" style="margin:9px 0 0">
+    <button class="pri" id="hdReady" onclick="lobbyReady()">Ready</button>
+    <button onclick="exitHideout()" title="Back to the menu — change hero, mode or start a tournament">Hero &amp; lobby</button>
+    <button onclick="location.reload()">Leave</button>
+  </div>
+</div>
+
 <!-- ================= END CARD ================= -->
 <div id="endcard" class="hide">
   <div class="card">
@@ -78,7 +89,7 @@ Right-click is always just move — or a single attack, if you click directly on
     <div id="endStats"></div>
     <div class="row" style="justify-content:center">
       <button class="pri" id="btnContinue" onclick="returnToLobby()">Continue</button>
-      <button id="btnHistory" onclick="showScreen('scrStats');returnToLobby()">History</button>
+      <button id="btnHistory" onclick="returnToLobby();showScreen('scrStats')">History</button>
       <button id="btnLeave" onclick="location.reload()">Leave</button>
     </div>
   </div>
@@ -120,6 +131,7 @@ Right-click is always just move — or a single attack, if you click directly on
       <div class="note" id="aiTierDesc" style="margin-top:6px"></div>
       <div class="row hide" id="rowLobby">
         <button class="pri" id="btnReady" onclick="lobbyReady()">Ready</button>
+        <button onclick="enterHideout()">⛺ Warm-up Hideout</button>
         <button onclick="location.reload()">Leave Lobby</button>
       </div>
       <div class="note" id="lobbyStatus"></div>

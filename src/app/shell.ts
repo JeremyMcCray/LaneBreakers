@@ -6,20 +6,23 @@ import { HERO_IDS } from '../data/heroes';
 import { newSim, simStep, applyCmd, buildSnapshot } from '../sim/engine';
 import { aiThink, lbCurrentAiSpec } from '../ai/neural/runtime';
 import { G, SLOT_TEAM } from './state';
+import { exitHideout } from './hideout';
 import { netSendCmd, netBroadcast, lobbySeat, netSendStateAll } from './online';
 import { spawnFx } from '../render/fx';
 import { render } from '../render/view';
 import { toggleShop, buildShopUI } from '../ui/panels';
 import { showEnd } from '../ui/panels';
 
-/* A seat can be moved to the other side, so always ask rather than assuming. */
+/* A seat can be moved to the other side, so always ask rather than assuming.
+   The hideout warm-up sim doesn't count — its slot 0 is not the lobby's. */
 export function teamOfSlot(sl){
-  if (G.S && G.S.players[sl]) return G.S.players[sl].team;
+  if (G.S && !G.S.hideout && G.S.players[sl]) return G.S.players[sl].team;
   const seat = lobbySeat(sl);
   return seat && seat.team!==undefined ? seat.team : SLOT_TEAM(sl);
 }
 
 export function beginMatch(mode, picks, mySlot, gameMode){
+  if (G.hideout) exitHideout(true);   // warm-up over — the real thing is starting
   G.mode = mode;
   G.mySlot = mySlot||0;
   G.myTeam = (picks[G.mySlot] && picks[G.mySlot].tm!==undefined) ? picks[G.mySlot].tm : (G.mySlot % 2);
@@ -27,6 +30,7 @@ export function beginMatch(mode, picks, mySlot, gameMode){
   setLaneMode(G.gameMode);
   G.started = true;
   G.paused = false;
+  G.randomLocked = false;      // the mystery box opens — the hero is public now
   G.matchCount = (G.matchCount||0) + 1;
   G.endShown = false; G.overMsg = false; G.endHadDetail = false;
   G.view = null; G.latest = null; G.buf = []; G.netFx = [];

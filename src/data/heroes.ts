@@ -50,9 +50,10 @@ gruk:{
     {key:'Q', name:'Boulder Toss', cast:'point', range:760, mana:[55,60,65,70], cd:[10,9,8,7],
      desc:'Hurl a boulder for %d damage and a 1.2s stun.', val:[110,170,230,290]},
     {key:'W', name:'Stone Skin', cast:'self', mana:[45,45,45,45], cd:[16,14,12,10],
-     desc:'For 6s gain %d armor and regenerate 4% max HP per second.', val:[6,9,12,15]},
-    {key:'E', name:'Quake', cast:'self', aoe:300, mana:[60,65,70,75], cd:[13,12,11,10],
-     desc:'The ground shakes for 3s: %d damage per second and 35% slow nearby.',
+     desc:'For 6s gain %d armor and regenerate %p% max HP per second.',
+     val:[6,9,12,15], val2:[2.5,3,3.5,4]},
+    {key:'E', name:'Quake', cast:'self', aoe:300, aoeRank:[210,240,270,300], mana:[60,65,70,75], cd:[13,12,11,10],
+     desc:'The ground shakes for 3s: %d damage per second and 35% slow nearby. The tremor widens with each rank, up to 300.',
      val:[45,75,105,135]},
     {key:'R', name:'Colossus', cast:'self', ult:true, mana:[150,175,200], cd:[80,70,60],
      desc:'For 12s gain %d max HP (healed), +40 attack damage and slow immunity.',
@@ -171,13 +172,14 @@ mara:{
     desc:'Once every 60s, the blow that should kill Mara leaves her at 1 HP instead — every debuff burns away and a free Judgement detonates around her. The light does not go out on someone else’s schedule.'}
 },
 orrin:{
-  id:'orrin', name:'ORRIN', title:'The Siegewright', col:'#e0c477', col2:'#6b5420',
+  id:'orrin', name:'CORVICK', title:'The Siegewright', col:'#e0c477', col2:'#6b5420',
   desc:'A siege engineer. Empower the wave, out-push the lane, and take the tower instead of the kills.',
   hp:600, hpg:88, mp:340, mpg:48, dmg:46, dmgg:4.6, arm:3, armg:.36,
   ms:320, range:575, bat:1.05, ranged:true, projSpeed:1200,
   abilities:[
     {key:'Q', name:'Siege Bolt', cast:'point', range:800, mana:[50,55,60,65], cd:[7,6.3,5.6,4.9],
-     desc:'A heavy bolt dealing %d damage — and 80% more to towers.', val:[95,150,205,260]},
+     desc:'A heavy bolt that punches through the creep line for %d damage — 80% more to towers. Allied creeps it passes over are mended for half. Enemy creeps are hurled backward, and a hero they crash into takes half again. Every creep it touches saps the bolt by 30%.',
+     val:[95,150,205,260]},
     {key:'W', name:'War Banner', cast:'point', range:520, aoe:300, mana:[60,65,70,75], cd:[20,18,16,14],
      desc:'Plant a banner for 10s. Allied creeps AND heroes near it gain +%d damage, +4 armor and +40 move speed.',
      val:[10,16,22,28]},
@@ -224,8 +226,8 @@ thorne:{
     {key:'W', name:'Barbed Hide', cast:'self', mana:[45,50,55,60], cd:[15,14,13,12],
      desc:'For 6s anything that attacks you takes %d damage and is slowed 25%.',
      val:[30,50,70,90]},
-    {key:'E', name:'Overgrowth', cast:'point', range:520, aoe:230, mana:[60,65,70,75], cd:[14,13,12,11],
-     desc:'A thicket for 5s dealing %d damage per second and slowing by 45%.',
+    {key:'E', name:'Overgrowth', cast:'point', range:520, aoe:230, aoeRank:[170,190,210,230], mana:[60,65,70,75], cd:[14,13,12,11],
+     desc:'A thicket for 5s dealing %d damage per second and slowing by 35%. The bramble spreads wider with each rank, up to 230.',
      val:[40,65,90,115]},
     {key:'R', name:'Verdant Prison', cast:'point', range:700, aoe:330, ult:true, mana:[150,175,200], cd:[70,60,50],
      desc:'Roots everything within 330 for 2s and deals %d damage over the duration.',
@@ -296,26 +298,27 @@ svaar:{
   scepter:{name:'Worldbreaker',
     desc:'During God’s Strength every swing is a wrecking ball: Great Cleave splashes in a FULL CIRCLE around the target, and everything caught in it is slowed 20% for 1s. There is no safe side of Svaar to stand on.'}
 },
-liora:{
-  id:'liora', name:'LIORA', title:'The Lifebinder', col:'#8affd4', col2:'#1f7a5a',
-  desc:'A radiant support who keeps her side standing through every trade. Deadliest with an ally to protect — every spell can also be turned on herself.',
-  hp:560, hpg:84, mp:400, mpg:56, dmg:42, dmgg:4.3, arm:2.5, armg:.34,
-  ms:322, range:560, bat:1.04, ranged:true, projSpeed:1150,
+geist:{
+  id:'geist', name:'GEIST', title:'The Pale Countess', col:'#d8a6ff', col2:'#4a2b6d',
+  desc:'An undying noblewoman who spends her own blood like coin. Every wound she deals feeds her, every wound she takes is a debt she intends to collect — and her ultimate simply trades health bars with whoever thought they were winning.',
+  hp:560, hpg:84, mp:400, mpg:56, dmg:43, dmgg:4.3, arm:2.2, armg:.32,
+  ms:320, range:545, bat:1.05, ranged:true, projSpeed:1150,
   abilities:[
-    {key:'Q', name:'Searing Light', cast:'point', range:800, mana:[50,55,60,65], cd:[6,5.4,4.8,4.2],
-     desc:'A lance of light dealing %d damage and slowing by 25% for 1.5s.', val:[100,160,220,280]},
-    {key:'W', name:'Mending Wave', cast:'point', range:700, mana:[60,65,70,75], cd:[12,11,10,9],
-     desc:'Heal the most wounded allied hero near the cursor for %d. With no ally in reach it mends Liora instead.',
-     val:[120,190,260,330]},
-    {key:'E', name:'Guardian Sigil', cast:'point', range:700, mana:[55,55,55,55], cd:[15,13.5,12,10.5],
-     desc:'Shield the allied hero nearest the cursor (or yourself) for %d for 3s, granting 20% move speed.',
-     val:[110,180,250,320]},
-    {key:'R', name:'Sanctuary', cast:'point', range:600, aoe:300, ult:true, mana:[150,175,200], cd:[70,60,50],
-     desc:'Consecrate the ground for 5s: allied heroes inside heal %d per second and enemies inside are slowed 30%.',
-     val:[90,130,170]}
+    {key:'Q', name:'Essence Bomb', cast:'point', range:700, aoe:240, mana:[45,50,55,60], cd:[8,7.2,6.4,5.6],
+     desc:'Hurl a globe of her own vitality: %d damage to everything in the blast. Casting it costs her 7% of her max health.',
+     val:[110,175,240,305]},
+    {key:'W', name:'Life Drain', cast:'point', range:550, mana:[55,60,65,70], cd:[16,15,14,13],
+     desc:'Latch a crimson tether onto the enemy nearest the cursor: %d damage per second for 4s, all of it healed back to Geist. Breaks if they escape past 700 range.',
+     val:[40,60,80,100]},
+    {key:'E', name:'Malice', cast:'point', range:750, mana:[45,50,55,60], cd:[12,11,10,9],
+     desc:'A spiteful bolt dealing %d damage and cursing the victim: they take %p% more damage from ALL sources for 5s.',
+     val:[70,110,150,190], val2:[12,16,20,24]},
+    {key:'R', name:'Soul Exchange', cast:'point', range:600, ult:true, mana:[150,175,200], cd:[80,70,60],
+     desc:'Swap health PERCENTAGES with the enemy hero nearest the cursor. The victim cannot be left below %d% of their health. Her favourite trick: walk in dying, leave them dying instead.',
+     val:[30,25,20]}
   ],
-  scepter:{name:'Overflow',
-    desc:'Her light does not stop at full. Healing Liora lands beyond a full health bar becomes a shield instead — up to 30% of the target’s max health, held for 4 seconds. Pre-heal the fight before it starts.'}
+  scepter:{name:'Blood Dividend',
+    desc:'Her flesh becomes an investment. When Essence Bomb damages at least one enemy hero, its entire health cost is repaid on the spot, plus 60 healing per hero caught in the blast. Blood in, blood out — with interest.'}
 },
 drex:{
   id:'drex', name:'DREX', title:'The Demolitionist', col:'#ff7a3c', col2:'#7a3312',
@@ -393,7 +396,7 @@ jarak:{
      desc:'Fling three axes in a spread, each dealing %d damage and slowing by 30% for 2s.',
      val:[80,125,170,215]},
     {key:'W', name:'Fervor', cast:'self', grants:'fervor', mana:[20,20,20,20], cd:[3,3,3,3],
-     desc:'Passive: every blow landed on the SAME target grants +%d% attack speed, stacking four times. Switch targets and it is gone. ACTIVE: change grip — throw axes at 520 range, or come back to the blade for a %p% chance to root on every swing.',
+     desc:'Passive: every blow landed on the SAME target grants +%d% attack speed, stacking four times. Switch targets and it is gone. ACTIVE: change grip — throw axes at 520 range, or come back to the blade for +35% attack speed and a %p% chance to root on every swing.',
      val:[16,23,30,37], val2:[8,11,15,18]},
     {key:'E', name:"Berserker's Rage", cast:'self', mana:[45,50,55,60], cd:[18,16,14,12],
      desc:'For 8s gain %d armor and 20% move speed, and Fervor stacks twice as fast, up to eight.',
@@ -421,7 +424,7 @@ stryg:{
      desc:'Passive: every creep you last hit or deny restores %d health PLUS 2% of his maximum health, so it never stops mattering. A hero kill restores five times as much. He also runs down the wounded — up to +%p% move speed, scaling on how little health the most beaten enemy hero has left.',
      val:[30,45,60,75], val2:[10,15,20,25]},
     {key:'R', name:'Rupture', cast:'point', range:750, ult:true, mana:[125,150,175], cd:[65,55,45],
-     desc:'The enemy hero nearest the cursor bleeds for 6s, taking %d pure damage for every 100 units they move. Standing still costs nothing.',
+     desc:'The enemy hero nearest the cursor bleeds for 6s, taking %d pure damage for every 80 units they move. Standing still costs nothing.',
      val:[12,18,24]}
   ],
   scepter:{name:'Open Wounds',
@@ -484,8 +487,8 @@ timber:{
      desc:'Fire a chain and reel himself to the cursor, sawing everything along the way for %d damage.',
      val:[80,130,180,230]},
     {key:'E', name:'Reactive Armor', passive:true, grants:'reactive', mana:[0,0,0,0], cd:[0,0,0,0],
-     desc:'Passive: every enemy ATTACK that lands on him plates him up — +%d armor and +1.2 HP regen per stack for 12s, up to 10 stacks. Hitting Timbersaw is how you lose to Timbersaw.',
-     val:[0.7,1.0,1.3,1.6]},
+     desc:'Passive: every enemy ATTACK that lands on him plates him up — +%d armor and +1 HP regen per stack for 12s, up to 8 stacks. Hitting Timbersaw is how you lose to Timbersaw.',
+     val:[0.5,0.8,1.1,1.4]},
     {key:'R', name:'Chakram', cast:'point', range:700, aoe:180, ult:true, mana:[150,175,200], cd:[24,20,16],
      desc:'Hurl the great blade to a point, where it spins for %d damage per second and slows by 35% within 180. It stays as long as he feeds it 18 mana per second — press R again to recall it, and it saws through everything on the way home. The cooldown starts when the blade returns.',
      val:[70,105,140]}
@@ -495,25 +498,25 @@ timber:{
 },
 drift:{
   id:'drift', name:'DRIFT', title:'The Drifter', col:'#b0b8d8', col2:'#3a3f5c',
-  desc:'A vagabond who arrives with nothing and takes everything. Before his first kill he is the weakest hero in the game — after it, every takedown is another trophy on his belt, and somebody has to stop him before he closes the match out.',
+  desc:'A stalker who hunts by feel, not by sight. He opens a wound, follows the blood through the dark, and when the lights go out for everyone else — that is when he is most at home.',
   hp:570, hpg:88, mp:280, mpg:38, dmg:45, dmgg:4.4, arm:2.5, armg:.36,
   ms:340, range:150, bat:0.95, ranged:false,
   abilities:[
-    {key:'Q', name:'Stickup', cast:'point', range:700, mana:[40,45,50,55], cd:[8,7,6,5],
-     desc:'Flick a knife for %d damage. Heroes it strikes are also robbed of %p gold, straight into his pocket.',
-     val:[85,135,185,235], val2:[25,35,45,55]},
-    {key:'W', name:'Slip', cast:'self', mana:[50,55,60,65], cd:[16,14,12,10],
-     desc:'Step between moments: untouchable for 0.75s, slows purged, and +%d% move speed for 2s. His only way out — until he is strong enough to stop leaving.',
-     val:[20,25,30,35]},
-    {key:'E', name:'Trophies', passive:true, grants:'trophy', mana:[0,0,0,0], cd:[0,0,0,0],
-     desc:'Passive: every enemy hero he kills is a permanent trophy — +%d attack damage and +70 max health, forever. Until he takes his first, he is HUNGRY: everything he deals hits 12% weaker. A kill with Cash Out counts as two trophies.',
-     val:[7,10,13,16]},
-    {key:'R', name:'Cash Out', cast:'point', range:500, blink:true, ult:true, mana:[110,135,160], cd:[60,50,40],
-     desc:'Lunge onto the enemy hero nearest the cursor and collect: %d damage, plus 25% more for every trophy he holds. This is the blade that ends matches.',
-     val:[220,340,460]}
+    {key:'Q', name:'Twin Rakes', cast:'point', range:550, mana:[40,45,50,55], cd:[7.5,7,6.5,6],
+     desc:'Both claws slash the arc in front of him for %d magic damage. Anything caught in the closest 30% of the reach also takes the steel: bonus melee damage equal to %p% of his attack damage.',
+     val:[70,115,160,205], val2:[60,75,90,105]},
+    {key:'W', name:'Bloodtrail', cast:'point', range:760, mana:[55,60,65,70], cd:[15,14,13,12],
+     desc:'Flick a hooked blade that opens a wound: the victim BLEEDS %d% of their max health over 5s. While the wound is open, RECAST to step through the blood straight to it — free, from anywhere.',
+     val:[10,14,18,22]},
+    {key:'E', name:'Lacerate', passive:true, grants:'lacerate', mana:[0,0,0,0], cd:[0,0,0,0],
+     desc:'Passive: his attacks and abilities tear %d% harder into anything still bleeding from Bloodtrail, and a bleeding enemy that dies feeds him 90 health.',
+     val:[12,16,20,24]},
+    {key:'R', name:'Blackout', cast:'self', ult:true, mana:[140,170,200], cd:[90,80,70],
+     desc:'The lights go out for the other side: for %d s every enemy hero is night-blind, able to see only 180 units around themselves. The lane, the wave, the man with the claws — all of it gone dark.',
+     val:[5,6.5,8]}
   ],
-  scepter:{name:'Grand Larceny',
-    desc:'His trophies stop being symbolic: every takedown permanently STEALS 8 attack damage from the victim — they lose it for the rest of the match, and he swings it instead. The longer the game goes, the less of them there is.'}
+  scepter:{name:'Pitch Black',
+    desc:'The dark gets teeth. Blackout also slows its victims 25% for its full duration, and Drift’s attacks and abilities deal 20% more damage to the night-blind. The dark is his.'}
 }};
 export const HERO_IDS = Object.keys(HEROES);
 

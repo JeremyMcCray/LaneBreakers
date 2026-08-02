@@ -55,6 +55,8 @@ npm run smoke:scepter    # every hero's Ascendant Scepter upgrade, with/without
 npm run smoke:camps      # jungle camps: spawn cycle, leash, charges → wave allies
 npm run smoke:netclient  # a real 2v2 online client through match end (stub DOM)
 npm run smoke:endstats   # post-game stats panel
+npm run smoke:tour       # tournament draft/field rules: hero goes to the seat that clicked it
+npm run smoke:hideout    # pre-game warm-up room: fixtures, movers, no-end gates, respawns
 npm run smoke:sandbox    # dev-sandbox live tuning against the real sim
 npm run smoke:neural     # neural runtime loads and plays
 npm run smoke:parity     # module surface used by trainer/tools still exists
@@ -69,10 +71,12 @@ src/
             (24 kits + scepter upgrades), items.ts, camps.ts (jungle variants)
   sim/      headless rules: create, step, hero, creep, tower, attack, combat,
             abilities, zones, projectiles, shop, stats, snapshot, commands,
-            waves, camp (jungle camps: spawn cycle, neutral AI, charges)
+            waves, camp (jungle camps: spawn cycle, neutral AI, charges),
+            hideout (warm-up room fixtures: dummies, movers, tower respawn)
   ai/       bot.ts (classic), neural/ (runtime, train UI, baked brains)
   app/      state.ts (G), shell.ts (loop/beginMatch), netplay.ts, lobbyUi.ts,
-            tournament.ts, boot.ts, persistence.ts, online.ts (barrel)
+            tournament.ts, boot.ts, persistence.ts, online.ts (barrel),
+            hideout.ts (enter/exit the pre-game warm-up room)
   render/   canvas.ts, worldDraw.ts (entities/zones/badges), hud.ts, fx.ts, view.ts, devOverlay.ts
   audio/    sfx.ts — procedural WebAudio; sim fx events → sounds, no asset files
   ui/       menus, shop panel, books (hero/item), endCard, matchStats, input
@@ -91,20 +95,36 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
 - Economy: `START_GOLD 420`, passive 2.2 g/s, courier delay 5 s, 6 item slots,
   full refund within 10 s of purchase. **Nothing splits by team size**: XP, kill
   bounties, tower gold AND creep/jungle bounties all pay every nearby teammate
-  in full (last hits keep the `cs` credit). Death costs time, never gold.
+  in full (last hits keep the `cs` credit); uncredited creep deaths pay half
+  bounty to nearby (XP-range) enemy heroes only. Death costs time, never gold.
+  Exception: 3v3 lane-creep bounties AND creep XP are 35% lower (8-creep
+  waves). Non-pet creeps take 30% less ability damage (`damage()` in
+  combat.ts; pure bypasses). 3v3 lane creeps have 15% more HP, and the 3v3
+  tower is beefier (3300 HP / 175 dmg vs 2300/150 in 2v2, 1500/135 in 1v1).
 - Items build component → upgrade (`from` + `recipe`); cost auto-derived.
   **Ascendant Scepter (2200 g)** is the capstone — see below.
 - **Jungle camps**: two walkable pockets off the lane at mid-map (`CAMP_X`,
   `campY(side)` in world.ts; one random side in 1v1, both in 2v2/3v3). First spawn
-  `CAMP_FIRST` (120 s), refill check every `CAMP_RESPAWN` (120 s) **only when
+  `CAMP_FIRST` (120 s), refill check every `CAMP_RESPAWN` (90 s) **only when
   empty**. Neutrals are `team:2` with `e.neutral` — every targeting loop that
   iterates enemies must decide whether neutrals belong (lane creeps/bot: never;
   hero auto-acquire: only near the camp). Last hit banks the variant id in
   `S.campCharges[team]`; `spawnWave` cashes them in as team creeps. Variants
-  (5, pack sizes 1–8) live in `data/camps.ts`; behaviour in `sim/camp.ts`.
+  (8, pack sizes 1–8) live in `data/camps.ts`; behaviour in `sim/camp.ts`.
 - Most gameplay constants in `world.ts` are `export let` + `setWorldTunable` so
   the F4 sandbox can retune them live. Treat as constants when reading; don't
   convert them to `const`.
+- **The Hideout** (sim mode `'hideout'`): the pre-game warm-up room every
+  online-lobby player waits in — a LOCAL single-player sim (slot 0 / team 0),
+  never networked. Geometry in `world.ts HIDEOUT`; fixtures + respawns in
+  `sim/hideout.ts`; enter/exit in `app/hideout.ts`. While it runs, the real
+  lobby seat is parked in `G.hideout` — resolve seats via `myLobbySlot()`
+  (lobbyUi), never `G.mySlot`. Match-ending paths (time cap, waves, tower
+  fall, backdoor shield, camp refill pace) gate on `S.hideout`. `beginMatch`
+  and the `start`/`tour` net messages tear it down; `enterHideout` must set
+  `G.hideout` only AFTER `beginMatch` returns (its guard would undo it).
+  Cozy dressing is render-only: `worldDraw.ts drawHideout` + the
+  `#hideoutPanel` DOM overlay rendered by `lobbyUi.renderHideoutPanel`.
 
 ## Sim architecture
 
@@ -128,7 +148,7 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
 - **Passive abilities** use `grants:` in heroes.ts, wired in `updateHeroStats`
   (`stats.ts`) — the stat pass runs every tick, so items and buffs compose there.
 - **Zones** (`zones.ts`): ground effects with a `kind` switch (bomb, mine, trap,
-  quake, firestorm, strike, omni, nova, sanct, hive, ...). **Projectiles**
+  quake, firestorm, strike, omni, nova, hive, ...). **Projectiles**
   (`projectiles.ts`): homing `atk`/`tower` vs free-flying ability shots with
   flags (pierce, pull, slow, stun, emb, twin, grow...).
 - **FX pipeline**: sim emits `fx(S, {t:'name', ...})` → buffered → rendered by

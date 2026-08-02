@@ -5,11 +5,12 @@ import { now } from '../data/world';
 import { applyCmd, buildSnapshot } from '../sim/engine';
 import { G, SLOT_TEAM } from './state';
 import { beginMatch, teamOfSlot } from './shell';
+import { enterHideout, exitHideout } from './hideout';
 import { spawnFx, addToast } from '../render/fx';
 import { showEnd, refreshEndStats } from '../ui/endCard';
 import { showScreen } from '../ui/menus';
 import {
-  newLobby, lobbySeat, lobbyFreeSlot, lobbyCap,
+  newLobby, lobbySeat, myLobbySlot, lobbyFreeSlot, lobbyCap,
   broadcastLobby, renderLobby, tryStartMatch, broadcastTour, renderTour
 } from './lobbyUi';
 import { tourDraft, tourField } from './tournament';
@@ -87,7 +88,7 @@ export async function joinGenerate(){
       dc.onmessage = e=>onNetMsg(JSON.parse(e.data));
       dc.onopen = ()=>{
         Net.open=true; G.mySlot=1; G.myTeam=1;
-        dc.send(JSON.stringify({k:'hello', h:G.pick}));
+        dc.send(JSON.stringify({k:'hello', h:G.pick, r:G.randomLocked?1:0}));
         status('Connected — waiting for host…','connStatus2');
         showScreen('scrHero');
         document.getElementById('rowLocal').classList.add('hide');
@@ -177,7 +178,7 @@ export function loadPeerJS(){
 export function wireClientConn(conn){                 // I am a client, this is my link to the host
   Net.conn = conn; Net.mode = 'client';
   conn.on('data', m => onNetMsg(typeof m==='string' ? JSON.parse(m) : m));
-  conn.on('open', ()=>{ Net.open = true; netSendCmd({k:'hello', h:G.pick, nm:G.name}); });
+  conn.on('open', ()=>{ Net.open = true; netSendCmd({k:'hello', h:G.pick, nm:G.name, r:G.randomLocked?1:0}); });
   conn.on('close', ()=>{
     Net.open=false; Net.conn=null;
     addToast('Host disconnected');
@@ -237,6 +238,7 @@ export async function quickHost(){
       document.getElementById('btnCopyCode').classList.remove('hide');
       Net.code = code;
       setQuickStatus('Lobby open — send this code to your friend, then wait here.');
+      enterHideout();                       // wait in the warm-up room — the code rides on the panel
     });
     peer.on('connection', conn=> wireHostConn(conn));
     peer.on('error', err=>{
@@ -295,7 +297,7 @@ export function onNetMsg(m, fromSlot){
   if (m.k==='hello'){                       // a client has arrived and told us its pick
     if (Net.mode!=='host') return;
     const seat = lobbySeat(fromSlot);
-    if (seat){ seat.hero = m.h; if (m.nm) seat.name = m.nm; }
+    if (seat){ seat.hero = m.h; seat.rand = m.r?1:0; if (m.nm) seat.name = m.nm; }
     broadcastLobby(); renderLobby();
     return;
   }
@@ -318,12 +320,13 @@ export function onNetMsg(m, fromSlot){
     if (Net.mode!=='host' || !G.tour) return;
     const team = teamOfSlot(fromSlot);
     const done = G.tour.phase==='draft' ? tourDraft(G.tour, team, m.h)
-                                        : tourField(G.tour, team, m.h);
+                                        : tourField(G.tour, team, m.h, fromSlot);
     if (done){ broadcastTour(); renderTour(); }
     return;
   }
   if (m.k==='c'){                           // a client command
-    if (Net.mode==='host' && G.S && fromSlot!==undefined) applyCmd(G.S, fromSlot, m);
+    // never into the hideout warm-up sim — its seats are not the lobby's
+    if (Net.mode==='host' && G.S && !G.hideout && fromSlot!==undefined) applyCmd(G.S, fromSlot, m);
     return;
   }
   /* ---------- client side ---------- */
@@ -334,27 +337,30 @@ export function onNetMsg(m, fromSlot){
     document.getElementById('rowLocal').classList.add('hide');
     document.getElementById('rowLobby').classList.remove('hide');
     document.getElementById('btnReady').disabled = false;
+    enterHideout();                         // wait in the warm-up room, not on a menu
     return;
   }
   if (m.k==='tour'){
     G.tour = m.T;
+    if (G.hideout) exitHideout(false);      // the draft board needs the real menu
     if (!G.started){ showScreen('scrDraft'); renderTour(); }
     else renderTour();
     return;
   }
   if (m.k==='lobby'){
     G.lobby = {mode:m.mode, slots:m.slots};
-    const seat = lobbySeat(G.mySlot);
+    const seat = lobbySeat(myLobbySlot());
     if (seat && !seat.ready) document.getElementById('btnReady').disabled = false;
     renderLobby();
     return;
   }
   if (m.k==='start'){
+    if (G.hideout) exitHideout(true);       // drop the warm-up room, keep the seat
     if (!G.started){ G.matchId = m.mid || null; beginMatch('client', m.picks, m.slot, m.mode); }
     return;
   }
   if (m.k==='over'){                        // the verdict, tiny and on its own
-    if (!G.started) return;
+    if (!G.started || G.hideout) return;    // a warm-up room has no end card
     // stamp the outcome onto whatever view we hold so the card can describe it
     for (const view of [G.view, G.latest]){
       if (view){ view.ov = true; view.w = m.w; view.hw = view.hw || m.hw; }
@@ -363,7 +369,7 @@ export function onNetMsg(m, fromSlot){
     return;
   }
   if (m.k==='s'){                           // snapshot
-    if (!G.started) return;
+    if (!G.started || G.hideout) return;    // hideout draws its own local sim
     G.buf.push({rt:now(), v:m});
     if (G.buf.length>28) G.buf.shift();
     // one bad effect must never take the whole message handler down with it —

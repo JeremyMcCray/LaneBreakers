@@ -34,5 +34,23 @@ export const CAMP_VARIANTS = {
     siege:2.5,                                // damage multiplier against towers
     bounty:70, xp:75, col:'#d9cfa8', col2:'#4a4433',
   },
+  howler: {                                   // rime-wolves — every bite chills (20% slow)
+    name:'Frostfen Howler', n:2,
+    hp:600, dmg:34, armor:1, ms:300, range:90, bat:1.0, r:18, ranged:false,
+    chill:1,                                  // rides the existing on-hit slow path
+    bounty:50, xp:55, col:'#e8f4ff', col2:'#37485e',
+  },
+  spitter: {                                  // toxic lobbers — hits leave a stacking poison
+    name:'Bogfang Spitter', n:3,
+    hp:380, dmg:22, armor:0, ms:265, range:380, bat:1.3, r:15, ranged:true,
+    venom:12,                                 // dps of the 3s dot each hit smears on
+    bounty:45, xp:50, col:'#c77dff', col2:'#3a1d4a',
+  },
+  scarab: {                                   // a skittering treasure — never fights, pays big
+    name:'Gilded Scarab', n:1,
+    hp:900, dmg:10, armor:3, ms:340, range:60, bat:1.2, r:16, ranged:false,
+    timid:true,                               // flees around the pocket rim instead of fighting
+    bounty:250, xp:120, col:'#ffd166', col2:'#5a4413',
+  },
 };
 export const CAMP_IDS = Object.keys(CAMP_VARIANTS);

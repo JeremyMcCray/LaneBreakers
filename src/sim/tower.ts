@@ -5,6 +5,7 @@ import {
 import { ent, fx } from './create';
 
 export function towerShielded(S, tw){
+  if (S.hideout) return false;    // the practice tower takes real hits — no wave needed
   for (const o of S.ents){
     if (o.dead || o.type!=='creep' || o.team===tw.team) continue;
     if (dist(o.x,o.y,tw.x,tw.y) < 900) return false;

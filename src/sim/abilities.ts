@@ -32,6 +32,17 @@ export function chakramRecall(S,p,i){
     if ((z.kind==='chakram' || z.kind==='chakret') && z.slot===p.slot) out++;
   return out >= ((e && e.aghs) ? 2 : 1);
 }
+/* Drift with a Bloodtrail wound still open: pressing W again is the free step
+   through the blood — no mana, no cooldown check, the cooldown keeps ticking. */
+export function bloodtrailRecast(S,p,i){
+  if (i!==1 || p.heroId!=='drift') return false;
+  const e = p.hero;
+  if (!e || !(e.btT>0)) return false;
+  const mk = ent(S, e.btId);
+  return !!(mk && !mk.dead);
+}
+/* the free-recast gates that skip mana and cooldown */
+function freeCast(S,p,i){ return chakramRecall(S,p,i) || bloodtrailRecast(S,p,i); }
 export function canCast(S,p,i){
   const e=p.hero, A=HEROES[p.heroId].abilities[i];
   if (!e || e.dead || e.stun>0 || S.over) return false;
@@ -39,7 +50,7 @@ export function canCast(S,p,i){
   if (A.passive) return false;                  // nothing to cast — it is always on
   // dev sandbox "free cast": lifts cooldowns and mana only — stun, silence and
   // root still stop you, so what you are testing still behaves like the real thing
-  if (!p.devFree && !chakramRecall(S,p,i)){
+  if (!p.devFree && !freeCast(S,p,i)){
     if (A.charges){ if ((p.chg[i]||0) <= 0) return false; }
     else if (p.cds[i]>0) return false;
     if (e.mp < A.mana[p.sk[i]-1]) return false;
@@ -51,7 +62,7 @@ export function canCast(S,p,i){
 export function castAbility(S,p,i,tx,ty){
   if (!canCast(S,p,i)) return;
   const e=p.hero, H=HEROES[p.heroId], A=H.abilities[i], l=p.sk[i], V=A.val[l-1];
-  if (!p.devFree && !chakramRecall(S,p,i)){
+  if (!p.devFree && !freeCast(S,p,i)){
     e.mp -= A.mana[l-1];
     if (A.charges){
       p.chg[i]--;
@@ -143,10 +154,10 @@ export function castAbility(S,p,i,tx,ty){
       stun:1.2, col:'#d8a66a'});
     break; }
   case 'gruk1':
-    e.armT=6; e.armB=V; e.regT=6; e.regP=.04;
+    e.armT=6; e.armB=V; e.regT=6; e.regP=A.val2[l-1]/100;
     fx(S,{t:'buff', x:e.x, y:e.y, col:'#ffcf8f'}); break;
   case 'gruk2':
-    addZone(S,{kind:'quake', team:e.team, follow:e.id, x:e.x, y:e.y, r:A.aoe, t:3,
+    addZone(S,{kind:'quake', team:e.team, follow:e.id, x:e.x, y:e.y, r:A.aoeRank[l-1], t:3,
       dps:V, slow:.35, src:e.id, tickT:0});
     break;
   case 'gruk3': {
@@ -159,7 +170,7 @@ export function castAbility(S,p,i,tx,ty){
     if (e.aghs){
       const el = Math.max(1, p.sk[2]);
       addZone(S,{kind:'quake', team:e.team, follow:e.id, x:e.x, y:e.y,
-        r:H.abilities[2].aoe, t:12, dps:H.abilities[2].val[el-1], slow:.35,
+        r:H.abilities[2].aoeRank[el-1], t:12, dps:H.abilities[2].val[el-1], slow:.35,
         src:e.id, tickT:0, tag:'i:scepter'});
     }
     break; }
@@ -167,7 +178,7 @@ export function castAbility(S,p,i,tx,ty){
   case 'brann0': {
     const a = Math.atan2(ty-e.y, tx-e.x);
     S.projs.push({id:S.nextId++, kind:'hook', team:e.team, x:e.x, y:e.y-8,
-      vx:Math.cos(a)*1400, vy:Math.sin(a)*1400, life:920/1400, dmg:V, src:e.id, r:22,
+      vx:Math.cos(a)*1100, vy:Math.sin(a)*1100, life:920/1100, dmg:V, src:e.id, r:22,
       pull:true, col:'#ff9b6a'});
     break; }
   case 'brann1':
@@ -297,12 +308,16 @@ export function castAbility(S,p,i,tx,ty){
     const n = aoe(S, e.team, e.x, e.y, A.aoe, V, e, o=>{ applyStun(S,o,1.1); });
     if (n>0){ heal(S, e, 70*n); fx(S,{t:'heal', x:e.x, y:e.y}); }
     break; }
-  /* ---- ORRIN ---- */
+  /* ---- CORVICK (id: orrin) ---- */
   case 'orrin0': {
     const a = Math.atan2(ty-e.y, tx-e.x);
     S.projs.push({id:S.nextId++, kind:'siege', team:e.team, x:e.x, y:e.y-8,
       vx:Math.cos(a)*1250, vy:Math.sin(a)*1250, life:800/1250, dmg:V, src:e.id, r:20,
-      siege:true, twr:1.8, col:'#e0c477'});
+      siege:true, twr:1.8, col:'#e0c477',
+      // the bolt sails over his own creeps (mending them) and punches through
+      // the enemy wave, hurling each creep backward — see stepProjectiles
+      heals:Math.round(V/2), healed:[], ram:{d:170, dmg:Math.round(V/2)}, hits:[],
+      fall:.30});   // every creep it touches saps the bolt, like Sable's Piercing Shot
     break; }
   case 'orrin1':
     addZone(S,{kind:'banner', team:e.team, x:tx, y:ty, r:A.aoe, t:10,
@@ -310,7 +325,7 @@ export function castAbility(S,p,i,tx,ty){
     fx(S,{t:'buff', x:tx, y:ty, col:'#e0c477'});
     break;
   case 'orrin2': {
-    const thp = 320 + Math.round(e.maxHp*0.25);          // the turret is built from Orrin's stats
+    const thp = 320 + Math.round(e.maxHp*0.25);          // the turret is built from Corvick's stats
     // Legs for the Guns — a scepter turret marches the lane and holds together longer
     const t2 = spawnPet(S, e.team, tx, ty, e.aghs?22:14, {static:!e.aghs, ranged:true, r:15,
       hp:thp, maxHp:thp, dmg:V + Math.round(e.dmg*0.4), armor:2 + Math.round(e.armor*0.5),
@@ -378,11 +393,12 @@ export function castAbility(S,p,i,tx,ty){
   case 'shiv0': {
     const a0 = Math.atan2(ty-e.y, tx-e.x);
     const fan = enraged(e) ? [-0.17, 0, 0.17] : [0];   // full rage throws the whole hand
+    const vhits = fan.length>1 ? [] : null;   // the volley shares one hero ledger — one knife each
     for (const off of fan){
       const a = a0 + off;
       S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
         vx:Math.cos(a)*1400, vy:Math.sin(a)*1400, life:760/1400, dmg:V, src:e.id, r:13,
-        dot:{dps:V*0.16, t:5, stack:true}, col:'#ff8f8f'});
+        vhits:vhits, dot:{dps:V*0.16, t:5, stack:true}, col:'#ff8f8f'});
     }
     break; }
   case 'shiv1': {
@@ -428,43 +444,66 @@ export function castAbility(S,p,i,tx,ty){
     updateHeroStats(S,p);
     fx(S,{t:'blast', x:e.x, y:e.y, r:240, col:'#bcd4ff'});
     break;
-  /* ---- LIORA ---- */
-  case 'liora0': {
+  /* ---- GEIST ---- */
+  case 'geist0': {
+    // Essence Bomb — the blast is paid for in her own flesh
+    const cost = e.maxHp*0.07;
+    e.hp = Math.max(1, e.hp - cost);
+    fx(S,{t:'blast', x:tx, y:ty, r:A.aoe, col:'#d8a6ff'});
+    let heroesHit = 0;
+    for (const o of S.ents){
+      if (o.dead || o.team===e.team || o.type==='tower') continue;
+      if (dist(o.x,o.y,tx,ty) > A.aoe + o.r) continue;
+      damage(S, e, o, V, {ability:true});
+      if (o.type==='hero') heroesHit++;
+    }
+    // Blood Dividend — a bomb that finds heroes repays the flesh it cost
+    if (e.aghs && heroesHit>0){
+      const prev = S.tag; S.tag = 'i:scepter';
+      heal(S, e, cost + 60*heroesHit);
+      S.tag = prev;
+      fx(S,{t:'heal', x:e.x, y:e.y});
+    }
+    break; }
+  case 'geist1': {
+    // Life Drain — the tether itself ticks in heroTimers, half-second sips
+    let tg=null, bd=340;
+    for (const o of S.ents){
+      if (o.dead || o.team===e.team || o.type==='tower') continue;
+      const d = dist(o.x,o.y,tx,ty);
+      if (d<bd){ bd=d; tg=o; }
+    }
+    if (tg && !warded(S, tg)){
+      e.drainId = tg.id; e.drainT = 4; e.drainTick = 0;
+      e.drainDps = V; e.drainTag = slotTag;
+      fx(S,{t:'chain', x:tg.x, y:tg.y-8, x2:e.x, y2:e.y-8, col:'#d8a6ff'});
+    }
+    break; }
+  case 'geist2': {
     const a = Math.atan2(ty-e.y, tx-e.x);
     S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
-      vx:Math.cos(a)*1150, vy:Math.sin(a)*1150, life:800/1150, dmg:V, src:e.id, r:16,
-      slow:{p:.25,t:1.5}, col:'#8affd4'});
+      vx:Math.cos(a)*1150, vy:Math.sin(a)*1150, life:750/1150, dmg:V, src:e.id, r:15,
+      mark:{p:A.val2[l-1]/100, t:5}, col:'#d8a6ff'});
     break; }
-  case 'liora1': {
-    let tg=null, worst=1.01;                     // the most wounded ally near the cursor
-    for (const q of S.players){
-      if (q.team!==e.team || !q.hero || q.hero.dead) continue;
-      if (dist(q.hero.x,q.hero.y,tx,ty) > 340) continue;
-      const f2 = q.hero.hp/q.hero.maxHp;
-      if (f2 < worst){ worst=f2; tg=q.hero; }
+  case 'geist3': {
+    // Soul Exchange — health percentages trade owners; the floor is all the mercy they get
+    let tg=null, bd=360;
+    for (const o of S.ents){
+      if (o.dead || o.team===e.team || o.type!=='hero') continue;
+      const d = dist(o.x,o.y,tx,ty);
+      if (d<bd){ bd=d; tg=o; }
     }
-    if (!tg) tg = e;
-    overheal(S, tg, V, e.aghs);                 // Overflow — spillover becomes a shield
-    fx(S,{t:'heal', x:tg.x, y:tg.y});
-    fx(S,{t:'buff', x:tg.x, y:tg.y, col:'#8affd4'});
-    break; }
-  case 'liora2': {
-    let tg=null, bd=340;
-    for (const q of S.players){
-      if (q.team!==e.team || !q.hero || q.hero.dead) continue;
-      const d = dist(q.hero.x,q.hero.y,tx,ty);
-      if (d<bd){ bd=d; tg=q.hero; }
+    if (tg && !warded(S, tg) && !(tg.invT>0)){
+      const myPct = clamp(e.hp/e.maxHp, 0, 1), tgPct = clamp(tg.hp/tg.maxHp, 0, 1);
+      e.hp  = Math.max(1, e.maxHp * tgPct);
+      tg.hp = tg.maxHp * Math.max(V/100, myPct);
+      const lost = Math.round(tg.maxHp * Math.max(0, tgPct - Math.max(V/100, myPct)));
+      fx(S,{t:'chain', x:tg.x, y:tg.y-8, x2:e.x, y2:e.y-8, col:'#d8a6ff'});
+      fx(S,{t:'purge', x:tg.x, y:tg.y});
+      fx(S,{t:'heal', x:e.x, y:e.y});
+      if (lost>0) fx(S,{t:'dmg', x:tg.x, y:tg.y+2, r:tg.r, v:lost, c:1, ab:true});
     }
-    if (!tg) tg = e;
-    tg.shield=V; tg.shieldT=3; tg.shieldRef=0;
-    tg.msT=2; tg.msP=Math.max(tg.msP||0,.20);
-    fx(S,{t:'buff', x:tg.x, y:tg.y, col:'#bffff0'});
     break; }
-  case 'liora3':
-    addZone(S,{kind:'sanct', team:e.team, x:tx, y:ty, r:A.aoe, t:5, hps:V, src:e.id, tickT:0,
-      aghs: e.aghs?1:0});                       // Overflow reaches the Sanctuary too
-    fx(S,{t:'blast', x:tx, y:ty, r:A.aoe, col:'#8affd4'});
-    break;
   /* ---- DREX ---- */
   case 'drex0':
     addZone(S,{kind:'bomb', team:e.team, x:tx, y:ty, r:A.aoe, t:.9, mt:.9, dmg:V, src:e.id,
@@ -508,11 +547,12 @@ export function castAbility(S,p,i,tx,ty){
     e.barbT = 6; e.barbV = V;
     fx(S,{t:'buff', x:e.x, y:e.y, col:'#7fdc6a'});
     break;
-  case 'thorne2':
+  case 'thorne2': {
     // Wild Growth — the thicket keeps spreading while it lives
-    addZone(S,{kind:'thicket', team:e.team, x:tx, y:ty, r:A.aoe, t: e.aghs?7:5,
-      dps:V, slow:.45, src:e.id, tickT:0, grow: e.aghs?1:0, rMax:A.aoe+130});
-    break;
+    const tr = A.aoeRank[l-1];
+    addZone(S,{kind:'thicket', team:e.team, x:tx, y:ty, r:tr, t: e.aghs?7:5,
+      dps:V, slow:.35, src:e.id, tickT:0, grow: e.aghs?1:0, rMax:tr+130});
+    break; }
   case 'thorne3':
     fx(S,{t:'blast', x:tx, y:ty, r:A.aoe, col:'#7fdc6a'});
     aoe(S, e.team, tx, ty, A.aoe, 0, e, o=>{ applyRoot(S,o,2); applyDot(S,o,V/2,2,e.id); });
@@ -801,36 +841,63 @@ export function castAbility(S,p,i,tx,ty){
     break; }
   /* ---- DRIFT ---- */
   case 'drift0': {
-    const a = Math.atan2(ty-e.y, tx-e.x);
-    S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
-      vx:Math.cos(a)*1350, vy:Math.sin(a)*1350, life:710/1350, dmg:V, src:e.id, r:14,
-      steal:A.val2[l-1], col:'#b0b8d8'});
-    break; }
-  case 'drift1':
-    e.invT = Math.max(e.invT||0, 0.75);
-    e.slowT = 0; e.slowP = 0;
-    e.msT = 2; e.msP = Math.max(e.msP||0, V/100);
-    fx(S,{t:'counter', x:e.x, y:e.y});
-    fx(S,{t:'buff', x:e.x, y:e.y, col:'#b0b8d8'});
-    break;
-  case 'drift2': break;                         // Trophies is passive
-  case 'drift3': {
-    // Cash Out — lunge onto the mark and collect, scaled by the belt
-    let tg=null, bd=360;
+    // Twin Rakes — both claws rip the arc in front of him; inside the closest
+    // 30% of the reach the steel lands too, scaling with his attack damage
+    const R = A.range, close = R*0.30, spread = 0.28*1.15, reach = Math.max(80, Math.min(130, R*0.22));
+    const lsPct = [0.15,0.20,0.25,0.35][l-1];
+    fx(S,{t:'slash', x:e.x, y:e.y, a:e.facing-spread, r:reach});
+    fx(S,{t:'slash', x:e.x, y:e.y, a:e.facing+spread, r:reach});
     for (const o of S.ents){
-      if (o.dead || o.team===e.team || o.type!=='hero') continue;
-      const d = dist(o.x,o.y,tx,ty);
-      if (d<bd){ bd=d; tg=o; }
+      if (o.dead || o.team===e.team || o.type==='tower') continue;
+      const d = dist(o.x,o.y,e.x,e.y);
+      if (d > R + o.r) continue;
+      let da = Math.abs(Math.atan2(o.y-e.y, o.x-e.x) - e.facing);
+      if (da > Math.PI) da = Math.PI*2 - da;
+      if (da > 1.0925) continue;                // ~125° arc
+      damage(S, e, o, V, {ability:true});
+      let dealt = V;
+      if (!o.dead && d <= close + o.r){
+        const bonus = e.dmg*A.val2[l-1]/100;
+        damage(S, e, o, bonus, {melee:true});
+        dealt += bonus;
+      }
+      if (dealt > 0 && !e.dead){
+        const got = heal(S, e, dealt*lsPct);
+        if (got > 0) fx(S,{t:'heal', x:e.x, y:e.y});
+      }
     }
-    if (tg && !warded(S, tg) && !(tg.invT>0)){
+    break; }
+  case 'drift1': {
+    const mk = e.btT>0 ? ent(S, e.btId) : null;
+    if (mk && !mk.dead && !(e.rootT>0)){
+      // the recast — he steps through the blood, straight to the open wound
       const ox=e.x, oy=e.y;
-      const a2 = Math.atan2(tg.y-e.y, tg.x-e.x);
-      e.x = tg.x - Math.cos(a2)*(tg.r + e.r + 6);
-      e.y = tg.y - Math.sin(a2)*(tg.r + e.r + 6);
+      const a2 = Math.atan2(mk.y-e.y, mk.x-e.x);
+      e.facing = a2;
+      e.x = mk.x + Math.cos(a2)*(mk.r + e.r + 6);
+      e.y = mk.y + Math.sin(a2)*(mk.r + e.r + 6);
       clampToLane(e);
-      fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:'#b0b8d8'});
-      fx(S,{t:'exec', x:tg.x, y:tg.y});
-      damage(S, e, tg, V * (1 + 0.25*(p.trophies||0)), {ability:true});
+      e.btT = 0; e.btId = 0;
+      fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:'#ff5f7a'});
+    } else {
+      const a = Math.atan2(ty-e.y, tx-e.x);
+      S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
+        vx:Math.cos(a)*1250, vy:Math.sin(a)*1250, life:760/1250, dmg:60, src:e.id, r:14,
+        phdot:{pct:V/100, t:5}, bmark:1, col:'#ff5f7a'});
+    }
+    break; }
+  case 'drift2': break;                         // Lacerate is passive
+  case 'drift3': {
+    // Blackout — the lights go out for the other side: each enemy hero can
+    // see only 180 units around themselves until it lifts
+    fx(S,{t:'blackout', x:e.x, y:e.y, r:520});
+    for (const q of S.players){
+      if (q.team===p.team || !q.hero || q.hero.dead) continue;
+      const h2 = q.hero;
+      if (warded(S, h2)) continue;              // a counterspell keeps the lights on
+      h2.blindT = Math.max(h2.blindT||0, V);
+      if (e.aghs) applySlow(h2, .25, V);        // Pitch Black — the dark drags at their feet
+      fx(S,{t:'silence', x:h2.x, y:h2.y});
     }
     break; }
   }
@@ -895,21 +962,6 @@ export function chainLightning(S, src, x, y, dmg, jumps, fall, jumpR, col, onHit
   }
   if (!n) fx(S,{t:'chain', x:src.x, y:src.y-8, x2:x, y2:y, col:col});
   return n;
-}
-/* Overflow — healing landed past a full bar becomes a short shield instead of
-   evaporating. Only Liora's scepter turns `on`; everyone else just heals. */
-export function overheal(S, tg, amt, on){
-  const missing = Math.max(0, (tg.maxHp||0) - tg.hp);
-  heal(S, tg, amt);
-  if (!on || tg.type!=='hero') return;
-  let over = amt - missing;
-  if (over <= 0) return;
-  if (tg.hcT>0) over *= (1 - tg.hcP);           // heal cuts bite the spillover too
-  const cap = tg.maxHp*0.30;
-  tg.shield = Math.min(cap, (tg.shieldT>0 ? (tg.shield||0) : 0) + over);
-  tg.shieldT = Math.max(tg.shieldT||0, 4);
-  tg.shieldRef = tg.shieldRef||0;
-  fx(S,{t:'shield', x:tg.x, y:tg.y});
 }
 /* Every spawnling still answering to this hero. */
 export function broodOf(S, e){

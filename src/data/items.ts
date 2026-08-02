@@ -15,7 +15,7 @@ export const ITEMS = {
   talon:  {name:'Talon',         cost:260, cat:'comp', d:'+16% attack speed'},
   ember:  {name:'Ember Shard',   cost:300, cat:'comp', d:'+7% ability damage'},
   stone:  {name:'Whetstone',     cost:150, cat:'comp', d:'+14 damage to creeps'},
-  buckler:{name:'Buckler',       cost:250, cat:'comp', d:'Blocks 10 damage from every attack'},
+  buckler:{name:'Buckler',       cost:250, cat:'comp', d:'60% chance to block 10 damage from an attack'},
 
   /* ---------- attack ---------- */
   quell:  {name:'Quelling Blade', cat:'attack', from:['stone','gaunt'],   recipe:120,
@@ -39,7 +39,7 @@ export const ITEMS = {
 
   /* ---------- defense ---------- */
   stout:  {name:'Stout Shield',  cat:'defense', from:['buckler','hide'], recipe:100,
-           d:'Blocks 24 damage from every attack, +3 armor'},
+           d:'60% chance to block 24 damage from an attack, +3 armor'},
   vit:    {name:'Ironheart',     cat:'defense', from:['band','band'],    recipe:250,
            d:'+300 max HP, +6 HP regen'},
   plate:  {name:'Bramble Plate', cat:'defense', from:['hide','hide'],    recipe:500,
@@ -58,6 +58,8 @@ export const ITEMS = {
            d:'+300 mana, +4 mana regen, -18% cooldowns, +22% ability damage'},
   wither: {name:'Withering Rod',  cat:'magic', from:['ember','hide'],    recipe:550,
            d:'+10% ability damage, +3 armor. Your ABILITIES cut enemy healing and regen by 65% for 6s'},
+  weave:  {name:'Soulweave',      cat:'magic', from:['ember','band'],    recipe:520,
+           d:'+10% ability damage, +140 HP. SPELL LIFESTEAL: your abilities heal you for 18% of the damage they deal to enemies (one third as much from creeps)'},
   scepter:{name:'Ascendant Scepter', cat:'magic', from:['band','crystal','ember'], recipe:1400,
            d:'+220 HP, +220 mana, +2 mana regen, +16 damage, +10% ability damage. '+
              'UNIQUE: unlocks your hero’s SCEPTER upgrade — a different power for every hero. '+
@@ -95,7 +97,7 @@ export const ITEM_IDS = Object.keys(ITEMS);
 export const ITEM_SLOTS = 6;
 
 export function itemStats(items){
-  const s = {ms:0, dmg:0, hp:0, hpr:0, mp:0, mpr:0, cdr:0, arm:0, thorns:0, ls:0, as:0,
+  const s = {ms:0, dmg:0, hp:0, hpr:0, mp:0, mpr:0, cdr:0, arm:0, thorns:0, ls:0, sls:0, as:0,
              crit:0, chill:0, amp:0, quell:0, block:0, hcut:0, hcutM:0, shred:0, cleave:0};
   for (const it of items){
     switch(it.id){
@@ -130,6 +132,7 @@ export function itemStats(items){
       case 'bomb':    s.mp+=130; s.amp+=.14; break;
       case 'orb':     s.mp+=300; s.mpr+=4; s.cdr+=.18; s.amp+=.22; break;
       case 'wither':  s.amp+=.10; s.arm+=3; s.hcutM=1; break;
+      case 'weave':   s.amp+=.10; s.hp+=140; s.sls+=.18; break;
       case 'scepter': s.hp+=220; s.mp+=220; s.mpr+=2; s.dmg+=16; s.amp+=.10; break;
       /* utility */
       case 'boots':   s.ms+=65; break;

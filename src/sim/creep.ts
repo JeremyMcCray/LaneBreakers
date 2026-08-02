@@ -32,13 +32,17 @@ export function creepThink(S,e,dt){
   if (e.stun>0) return;
   if (e.windT>0) return;
   if (e.noHeroT>0) e.noHeroT -= dt;
-  // illusions mirror their owner's target
+  // illusions mirror their owner's target; Vhal's brood joins in on whatever she
+  // is attacking, but only the spawnlings already close to that target refocus
   e.forceTid = 0;
-  if (e.illu){
+  if (e.illu || e.brood){
     const ow = ent(S, e.owner);
     if (ow && !ow.dead && ow.curTid){
       const ot = ent(S, ow.curTid);
-      if (ot && !ot.dead && ot.team!==e.team){ e.forceTid = ot.id; e.tid = ot.id; }
+      if (ot && !ot.dead && ot.team!==e.team &&
+          (e.illu || dist(e.x,e.y,ot.x,ot.y) <= 200 + ot.r)){
+        e.forceTid = ot.id; e.tid = ot.id;
+      }
     }
   }
   const foeBase = BASE_X[1-e.team];

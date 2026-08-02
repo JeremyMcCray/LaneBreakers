@@ -21,8 +21,9 @@ export function spawnWave(S){
       mkEnt(S,{
         type:'creep', kind: ranged?'ranged':'melee', team:tm,
         x: BASE_X[tm] + (tm? 60:-60) * -1 + (i*-14)*(tm?-1:1),
-        y: LANE_Y + off, r: ranged?15:18,
-        hp: (ranged?330:560)*0.75*scale, maxHp:(ranged?330:560)*0.75*scale,
+        y: LANE_Y + off, r: ranged?17:20,
+        hp: (ranged?330:560)*0.75*scale*(three?1.15:1),
+        maxHp:(ranged?330:560)*0.75*scale*(three?1.15:1),
         dmg: (ranged?27:22)*scale, armor: ranged?0:2,
         range: ranged?480:95, bat: ranged?1.2:0.95, atkCd: rnd(0,.5),
         ms: 250, ranged:ranged, laneOff: off, tid:0
