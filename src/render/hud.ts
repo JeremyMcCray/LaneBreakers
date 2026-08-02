@@ -148,7 +148,7 @@ export function drawHUD(v, own){
     ctx.fillStyle = lv>0 ? HD.col : '#3d4863';
     ctx.font='800 26px Segoe UI'; ctx.fillText(A.key, x+aw/2, ay+27);
     ctx.fillStyle='#8b9ab4'; ctx.font='600 9px Segoe UI';
-    ctx.fillText(A.name.length>13?A.name.slice(0,12)+'…':A.name, x+aw/2, ay+46);
+    fitText(A.name, x+aw/2, ay+46, aw-8);
     // level pips
     const maxL = A.ult?3:4, pw=(aw-14)/maxL;
     for (let k=0;k<maxL;k++){
@@ -237,9 +237,12 @@ export function drawHUD(v, own){
     if (it){
       const D=ITEMS[it.id];
       ctx.fillStyle = DC;
-      ctx.font='800 15px Segoe UI'; ctx.fillText(D.name.slice(0,2).toUpperCase(), x+iw/2, iy+18);
+      ctx.font='800 15px Segoe UI'; ctx.fillText(D.name.slice(0,2).toUpperCase(), x+iw/2, iy+16);
+      // full name on up to two fitted lines instead of a hard 9-char chop
       ctx.fillStyle='#8b9ab4'; ctx.font='600 8px Segoe UI';
-      ctx.fillText(D.name.slice(0,9), x+iw/2, iy+34);
+      const nl = wrapLines(D.name, iw-6);
+      if (nl.length===1) ctx.fillText(nl[0], x+iw/2, iy+32);
+      else { fitText(nl[0], x+iw/2, iy+28, iw-6); fitText(nl.slice(1).join(' '), x+iw/2, iy+37, iw-6); }
       if (D.active){
         ctx.fillStyle = it.cd>0 ? '#ff5f5f' : '#5ef0c8';
         ctx.beginPath(); ctx.arc(x+7, iy+7, 3, 0, 7); ctx.fill();
@@ -265,7 +268,7 @@ export function drawHUD(v, own){
       }
     }
     ctx.fillStyle='#4a5670'; ctx.font='600 9px Segoe UI';
-    ctx.fillText(i+1, x+iw-8, iy+iw-7);
+    ctx.fillText(i+1, x+iw-8, iy+8);   // top-right, clear of the two name lines
   }
   // pending deliveries
   if (me.pend.length){
@@ -287,9 +290,11 @@ export function drawHUD(v, own){
       ctx.fillStyle = DC+'33'; rr(x, y, iw, iw, 7); ctx.fill();
       ctx.strokeStyle = DC; ctx.lineWidth=2; ctx.stroke();
       ctx.textAlign='center'; ctx.fillStyle=DC; ctx.font='800 15px Segoe UI';
-      ctx.fillText(D.name.slice(0,2).toUpperCase(), x+iw/2, y+18);
+      ctx.fillText(D.name.slice(0,2).toUpperCase(), x+iw/2, y+16);
       ctx.fillStyle='#c8d4ea'; ctx.font='600 8px Segoe UI';
-      ctx.fillText(D.name.slice(0,9), x+iw/2, y+34);
+      const nl = wrapLines(D.name, iw-6);
+      if (nl.length===1) ctx.fillText(nl[0], x+iw/2, y+32);
+      else { fitText(nl[0], x+iw/2, y+28, iw-6); fitText(nl.slice(1).join(' '), x+iw/2, y+37, iw-6); }
       ctx.globalAlpha=1;
     }
   }
@@ -298,21 +303,28 @@ export function drawHUD(v, own){
     const A = HD.abilities[hoverAb.i], lv = Math.max(1, me.sk[hoverAb.i]);
     let txt = A.desc.replace('%d', A.val[lv-1]);
     if (A.val2) txt = txt.replace('%p', A.val2[lv-1]);   // a second scaling number in the text
-    const w2=330, h2=76;
+    // measure the wrapped description first so the box always fits the text
+    const w2=340, lh=16;
+    ctx.font='600 12px Segoe UI';
+    const lines = wrapLines(txt, w2-24);
+    const h2 = 62 + lines.length*lh;
     let x2 = clamp(hoverAb.x + 31 - w2/2, 8, W-w2-8);
     let y2 = hoverAb.y - h2 - 12;
     if (y2 < 8) y2 = hoverAb.y + hoverAb.h + 12;
     y2 = clamp(y2, 8, H-h2-8);
-    ctx.fillStyle='#0b111cf2'; rr(x2,y2,w2,h2,8); ctx.fill();
-    ctx.strokeStyle='#233049'; ctx.lineWidth=1; ctx.stroke();
+    ctx.save();
+    ctx.shadowColor='#000000cc'; ctx.shadowBlur=14; ctx.shadowOffsetY=3;
+    ctx.fillStyle='#0b111cfa'; rr(x2,y2,w2,h2,8); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle='#2e3d5c'; ctx.lineWidth=1; rr(x2,y2,w2,h2,8); ctx.stroke();
     ctx.textAlign='left'; ctx.fillStyle=HD.col; ctx.font='800 14px Segoe UI';
-    ctx.fillText(A.name+'  ['+A.key+']', x2+12, y2+18);
+    ctx.fillText(A.name+'  ['+A.key+']', x2+12, y2+19);
     ctx.fillStyle='#8b9ab4'; ctx.font='600 11px Segoe UI';
     ctx.fillText(A.passive ? 'Passive    Lv '+me.sk[hoverAb.i]
                            : 'Mana '+A.mana[lv-1]+'    Cooldown '+A.cd[lv-1]+'s    Lv '+me.sk[hoverAb.i],
-                 x2+12, y2+36);
-    ctx.fillStyle='#dfe7f5'; ctx.font='600 11.5px Segoe UI';
-    wrapText(txt, x2+12, y2+54, w2-24, 15);
+                 x2+12, y2+38);
+    ctx.fillStyle='#dfe7f5'; ctx.font='600 12px Segoe UI';
+    for (let k=0;k<lines.length;k++) ctx.fillText(lines[k], x2+12, y2+58+k*lh);
   }
 
   /* ---------- your teammate ---------- */
@@ -370,9 +382,11 @@ export function drawHUD(v, own){
         if (it){
           const D=ITEMS[it.id];
           ctx.textAlign='center'; ctx.fillStyle=DC; ctx.font='800 12px Segoe UI';
-          ctx.fillText(D.name.slice(0,2).toUpperCase(), x+ew/2, ey+13);
+          ctx.fillText(D.name.slice(0,2).toUpperCase(), x+ew/2, ey+12);
           ctx.fillStyle='#8b9ab4'; ctx.font='600 6.5px Segoe UI';
-          ctx.fillText(D.name.slice(0,10), x+ew/2, ey+25);
+          const nl = wrapLines(D.name, ew-4);
+          if (nl.length===1) ctx.fillText(nl[0], x+ew/2, ey+24);
+          else { fitText(nl[0], x+ew/2, ey+21, ew-4); fitText(nl.slice(1).join(' '), x+ew/2, ey+29, ew-4); }
         }
       }
       if (q.pend.length){
@@ -410,12 +424,24 @@ export function drawHUD(v, own){
   if (G.shopOpen && (G.frame=(G.frame||0)+1)%8===0) refreshShop(v);
 }
 export function wrapText(txt,x,y,maxW,lh){
-  const words=txt.split(' '); let line='', yy=y;
+  const lines = wrapLines(txt, maxW);
+  for (let k=0;k<lines.length;k++) ctx.fillText(lines[k], x, y+k*lh);
+}
+// split text into lines that fit maxW using the CURRENT ctx.font — set the font before calling
+export function wrapLines(txt,maxW){
+  const words=txt.split(' '), lines=[]; let line='';
   for (const w of words){
     const t=line+w+' ';
-    if (ctx.measureText(t).width > maxW){ ctx.fillText(line,x,yy); line=w+' '; yy+=lh; }
+    if (line && ctx.measureText(t).width > maxW){ lines.push(line.trimEnd()); line=w+' '; }
     else line=t;
   }
-  ctx.fillText(line,x,yy);
+  lines.push(line.trimEnd());
+  return lines;
+}
+// draw txt at (x,y), ellipsized to fit maxW — honours the current ctx.font and textAlign
+export function fitText(txt,x,y,maxW){
+  if (ctx.measureText(txt).width <= maxW){ ctx.fillText(txt,x,y); return; }
+  while (txt.length>1 && ctx.measureText(txt+'…').width > maxW) txt = txt.slice(0,-1);
+  ctx.fillText(txt.trimEnd()+'…', x, y);
 }
 

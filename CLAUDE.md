@@ -39,6 +39,12 @@ packaging), `PATCHNOTES.md` (player-facing change log — mandatory, see rule 7)
    `__APP_VERSION__`): new mechanics/heroes/items bump the **minor**
    (0.1.0 → 0.2.0), balance/fixes/UI bump the **patch** (0.2.0 → 0.2.1).
    Head the new `PATCHNOTES.md` entry with that version.
+9. **Plain prose, no dramatic flourishes.** Comments, ability descriptions, and
+   patch notes are written in plain, complete sentences that state facts. No
+   "edgy" em-dash fragments tacked onto the end for flavor (bad: "reel himself
+   to the cursor, sawing everything on the line"; good: "pulls the hero to the
+   cursor and damages units along the path"). If a sentence reads like movie
+   trailer copy instead of documentation, rewrite it. Clarity beats style.
 
 ## Commands
 

@@ -7,6 +7,21 @@ looks, or connects, it belongs on this list.
 
 ---
 
+## 2026-08-02 · v0.6.2
+
+### UI
+- **Ability tooltips are readable now.** The hover tooltip on your ability row
+  used to be a fixed-size box, so longer spell descriptions spilled out the
+  bottom and bled into the HUD behind it. The box now sizes itself to fit the
+  full description, the text is slightly larger, and the tooltip casts a
+  shadow so it stands apart from the ability row underneath.
+- **Item and ability names are no longer chopped mid-word.** HUD item slots
+  (yours and the enemy's strip) now show the full item name on up to two
+  lines — "Ascendant Scepter" instead of "Ascendant" — and anything that
+  still can't fit gets a proper "…" instead of a silent cut. Ability names
+  under the Q/W/E/R row get the same treatment. Slot numbers moved to the
+  top-right corner of each item slot to make room.
+
 ## 2026-08-01 · v0.6.1
 
 ### Fixes

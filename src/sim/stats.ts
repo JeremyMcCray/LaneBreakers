@@ -23,9 +23,10 @@ export function updateHeroStats(S,p,init){
   e.thorns= it.thorns; e.cdr = it.cdr; e.hpr = it.hpr; e.mpr = it.mpr;
   e.crit = it.crit; e.chill = it.chill; e.amp = it.amp;
   e.block = it.block; e.hcut = it.hcut; e.hcutM = it.hcutM; e.shredOn = it.shred;
-  e.cleave = H.ranged ? 0 : it.cleave;          // splash is a melee-only affair
-  // passive abilities feed straight into the stat block — an ability with an active
-  // half (Fervor) still grants its passive, so this keys off `grants`, not `passive`
+  e.cleave = H.ranged ? 0 : it.cleave;          // cleave only applies to melee heroes
+  // Passive abilities are applied here as stat bonuses. This checks `grants` rather
+  // than `passive` because some abilities (e.g. Fervor) have both an active and a
+  // passive component, and the passive must still apply.
   e.fervAs = 0; e.fervMax = 0; e.fervStep = 1; e.thirst = 0;
   e.thirstPct = 0; e.thirstMs = 0; e.rootChance = 0;
   e.reactOn = false; e.raArm = 0; e.lacer = 0;
