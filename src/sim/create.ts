@@ -108,9 +108,9 @@ export function spawnPet(S, team, x, y, ttl, o){
   return e;
 }
 
-/* One of Vhal's spawnlings. Symbiosis is what makes it worth anything — the brood
-   is cut from her own damage and health, so her items scale the whole swarm.
-   Kept in step with her by updateHeroStats for as long as it lives. */
+/* One of Vhal's spawnlings. Symbiosis derives its stats from her own damage and
+   health, so her items scale the whole brood. Kept in sync with her by
+   updateHeroStats for as long as it lives. */
 export function broodStats(h, V){
   return {hp: Math.round(110 + h.maxHp*V/400), dmg: Math.round(12 + h.dmg*V/100)};
 }

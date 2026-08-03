@@ -5,12 +5,12 @@
    n is the pack size (1–8). Colors feed the renderer so packs read at a glance. */
 
 export const CAMP_VARIANTS = {
-  swarm: {                                    // eight gnashing teeth — raw push mass
+  swarm: {                                    // eight weak units, high total push
     name:'Gnasher Swarm', n:8,
     hp:120, dmg:13, armor:0, ms:345, range:70, bat:0.7, r:11, ranged:false,
     bounty:12, xp:16, col:'#9be15d', col2:'#2e4a17',
   },
-  brute: {                                    // one huge cleaving wall of moss
+  brute: {                                    // one tanky melee unit with cleave
     name:'Mosshide Brute', n:1,
     hp:1500, dmg:72, armor:4, ms:225, range:110, bat:1.25, r:30, ranged:false,
     cleave:0.55,                              // splashes its swings like a hero cleave
@@ -46,7 +46,7 @@ export const CAMP_VARIANTS = {
     venom:12,                                 // dps of the 3s dot each hit smears on
     bounty:45, xp:50, col:'#c77dff', col2:'#3a1d4a',
   },
-  scarab: {                                   // a skittering treasure — never fights, pays big
+  scarab: {                                   // never fights back, but pays a large bounty
     name:'Gilded Scarab', n:1,
     hp:900, dmg:10, armor:3, ms:340, range:60, bat:1.2, r:16, ranged:false,
     timid:true,                               // flees around the pocket rim instead of fighting

@@ -810,7 +810,7 @@ export function castAbility(S,p,i,tx,ty){
     aoe(S, e.team, e.x, e.y, A.aoe, V, e, o=> applySlow(o,.25,2));
     break;
   case 'timber1': {
-    // Timber Chain — reel himself to the cursor, sawing everything on the line
+    // pulls Timber to the cursor, damaging everything along the path
     const ox=e.x, oy=e.y;
     e.x=tx; e.y=ty; clampToLane(e);
     fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:'#d98862'});
@@ -827,7 +827,7 @@ export function castAbility(S,p,i,tx,ty){
   case 'timber3': {
     const mine = S.zones.filter(z=>(z.kind==='chakram' || z.kind==='chakret') && z.slot===p.slot);
     if (mine.length >= (e.aghs ? 2 : 1)){
-      // the recall — every blade comes home, sawing the whole way
+      // recall: both blades return, damaging everything on the way back
       for (const z of mine) if (z.kind==='chakram'){ z.kind='chakret'; z.hits=[]; }
       fx(S,{t:'buff', x:e.x, y:e.y, col:'#d98862'});
     } else {

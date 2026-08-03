@@ -19,7 +19,7 @@ vex:{
      val:[300,460,620]}
   ],
   scepter:{name:'Encore',
-    desc:'A kill with Execute is an invitation: it refunds the mana, resets its cooldown, and resets Blink Slash. The dance only ends when she runs out of partners.'}
+    desc:'A kill with Execute refunds its mana, resets its own cooldown, and resets Blink Slash.'}
 },
 ilva:{
   id:'ilva', name:'ILVA', title:'The Frostcaller', col:'#a9d8ff', col2:'#3b5fa8',
@@ -43,7 +43,7 @@ ilva:{
 },
 gruk:{
   id:'gruk', name:'GRUK', title:'The Stonewarden', col:'#ffcf8f', col2:'#8a5a2b',
-  desc:'A durable bruiser with a long-range stun and a monstrous late-game ultimate.',
+  desc:'A durable bruiser with a long-range stun and a powerful late-game ultimate.',
   hp:730, hpg:110, mp:260, mpg:34, dmg:50, dmgg:5.4, arm:4, armg:.5,
   ms:318, range:145, bat:1.10, ranged:false,
   abilities:[
@@ -64,7 +64,7 @@ gruk:{
 },
 brann:{
   id:'brann', name:'BRANN', title:'The Ironhook', col:'#ff9b6a', col2:'#8a3b1f',
-  desc:'A grappler. Land the hook from across the lane and the fight is already decided.',
+  desc:'A grappler who pulls enemies into position with a long-range hook.',
   hp:700, hpg:104, mp:270, mpg:36, dmg:50, dmgg:5.4, arm:3.5, armg:.45,
   ms:322, range:140, bat:1.05, ranged:false,
   abilities:[
@@ -82,11 +82,11 @@ brann:{
      val:[280,430,580]}
   ],
   scepter:{name:'Over the Shoulder',
-    desc:'Hooked heroes are no longer reeled in politely — they are dragged THROUGH Brann and slammed into the ground behind him, taking the hook’s damage a second time and a 1s stun.'}
+    desc:'The hook now drags its target THROUGH Brann and slams them into the ground behind him, dealing the hook’s damage a second time and stunning for 1s.'}
 },
 sable:{
   id:'sable', name:'SABLE', title:'The Deadeye', col:'#c9f06a', col2:'#5a7a26',
-  desc:'The longest attack range in the game. Out-range, out-trade, execute from safety.',
+  desc:'Has the longest attack range in the game, letting her out-trade and execute from safety.',
   hp:530, hpg:78, mp:300, mpg:40, dmg:44, dmgg:4.8, arm:2, armg:.32,
   ms:325, range:640, bat:1.00, ranged:true, projSpeed:1500,
   abilities:[
@@ -103,11 +103,11 @@ sable:{
      val:[340,510,680]}
   ],
   scepter:{name:'Killshot',
-    desc:'Deadshot no longer stops at the first body. Every KILL along its path feeds the shot +40% damage; anything that survives merely saps 30% from it. Line up the wave, and what comes out the far end is not survivable.'}
+    desc:'Deadshot no longer stops at the first target it hits. Each kill along its path adds 40% damage to the shot; each survivor it passes through instead reduces it by 30%.'}
 },
 vhal:{
   id:'vhal', name:'VHAL', title:'The Broodmother', col:'#b78cff', col2:'#4b2f7a',
-  desc:'She never fights alone. The brood is her damage, her wave clear and her body count — every spell she owns makes, moves, or feeds it.',
+  desc:'Fights through her brood of spawnlings: every ability she has creates, moves, or strengthens them, and they provide her damage and wave clear.',
   hp:560, hpg:84, mp:360, mpg:52, dmg:43, dmgg:4.4, arm:2, armg:.34,
   ms:318, range:545, bat:1.05, ranged:true, projSpeed:1050,
   abilities:[
@@ -129,12 +129,12 @@ vhal:{
 },
 ash:{
   id:'ash', name:'ASH', title:'The Emberlord', col:'#ffb347', col2:'#8a4a1f',
-  desc:'Nothing he throws kills on its own. He sets EMBERS on everything, lets them eat, and blows them out all at once — and anything that dies still burning passes the fire on.',
+  desc:'His abilities apply EMBERS rather than dealing direct damage, then detonate them for burst damage; anything that dies while still burning spreads its embers to a nearby enemy.',
   hp:560, hpg:82, mp:380, mpg:54, dmg:44, dmgg:4.5, arm:2, armg:.32,
   ms:325, range:560, bat:1.02, ranged:true, projSpeed:1150,
   abilities:[
     {key:'Q', name:'Cinderbolt', cast:'point', range:820, charges:3, mana:[35,40,45,50], cd:[6,5.4,4.8,4.2],
-     desc:'A bolt for %d damage that sets 2 EMBERS alight. Holds three charges — the whole hand primes a target instantly.',
+     desc:'A bolt dealing %d damage that applies 2 EMBERS. Holds three charges, so all three can hit the same target at once.',
      val:[55,90,125,160]},
     {key:'W', name:'Wildfire', passive:true, grants:'wildfire', mana:[0,0,0,0], cd:[0,0,0,0],
      desc:'Passive: your EMBERS stack six deep instead of three and each burns for %d damage per second. Anything that dies still burning throws its embers to the nearest enemy within 350.',
@@ -147,7 +147,7 @@ ash:{
      val:[45,70,95]}
   ],
   scepter:{name:'From the Ashes',
-    desc:'His EMBERS stack eight deep. And the fire refuses to die with its victim: any HERO that dies still burning erupts into a free 4-second Firestorm on the spot where they fell.'}
+    desc:'His EMBERS now stack eight deep. Any HERO that dies while still burning erupts into a free 4-second Firestorm on the spot where they died.'}
 },
 mara:{
   id:'mara', name:'MARA', title:'The Dawnshield', col:'#ffe9a8', col2:'#8a7a2b',
@@ -169,7 +169,7 @@ mara:{
      val:[280,430,580]}
   ],
   scepter:{name:'Undying Light',
-    desc:'Once every 60s, the blow that should kill Mara leaves her at 1 HP instead — every debuff burns away and a free Judgement detonates around her. The light does not go out on someone else’s schedule.'}
+    desc:'Once every 60s, a killing blow instead leaves Mara at 1 HP: all debuffs are removed and a free Judgement triggers around her.'}
 },
 orrin:{
   id:'orrin', name:'CORVICK', title:'The Siegewright', col:'#e0c477', col2:'#6b5420',
@@ -190,11 +190,11 @@ orrin:{
      val:[24,40,56]}
   ],
   scepter:{name:'Legs for the Guns',
-    desc:'His turrets are built with legs. They march down the lane on their own, hunting as they go, and their chassis holds together for 22 seconds. He is no longer defending a position — the position advances.'}
+    desc:'His turrets gain legs: they walk down the lane on their own, seeking out enemies, and last 22 seconds.'}
 },
 nix:{
   id:'nix', name:'NIX', title:'The Mirrorborn', col:'#ff7fd0', col2:'#7a2b63',
-  desc:'A trickster who fights beside copies of herself. Nothing your opponent sees is guaranteed to be real.',
+  desc:'A trickster who fights alongside illusions of herself.',
   hp:620, hpg:92, mp:300, mpg:40, dmg:47, dmgg:5.0, arm:3, armg:.38,
   ms:330, range:145, bat:0.95, ranged:false,
   abilities:[
@@ -212,16 +212,16 @@ nix:{
      val:[60,75,90]}
   ],
   scepter:{name:'Hall of Mirrors',
-    desc:'Every blink she makes leaves someone behind: Displace and Phantom Strike spawn an illusion at the exact spot she vanished from (30% damage, 8s). Her opponent is never fighting fewer of her than a second ago.'}
+    desc:'Every blink leaves an illusion behind: Displace and Phantom Strike each spawn one at the spot she teleported from (30% damage, lasts 8s).'}
 },
 thorne:{
   id:'thorne', name:'THORNE', title:'The Bramblewarden', col:'#7fdc6a', col2:'#2f6b2a',
-  desc:'A zoner who makes half the lane unsafe. Set the ground against your opponent and punish every step.',
+  desc:'A zoning hero who covers ground with traps and slows to control lane space.',
   hp:700, hpg:104, mp:320, mpg:44, dmg:48, dmgg:5.0, arm:4, armg:.48,
   ms:320, range:150, bat:1.05, ranged:false,
   abilities:[
     {key:'Q', name:'Bramble Trap', cast:'point', range:620, aoe:130, mana:[50,55,60,65], cd:[11,10,9,8],
-     desc:'Plant a hidden-in-plain-sight trap for 45s. The first enemy hero to step near takes %d damage and is rooted for 1.5s. Three can be armed at once.',
+     desc:'Plant a hidden trap for 45s. The first enemy hero to step near takes %d damage and is rooted for 1.5s. Three can be armed at once.',
      val:[110,175,240,305]},
     {key:'W', name:'Barbed Hide', cast:'self', mana:[45,50,55,60], cd:[15,14,13,12],
      desc:'For 6s anything that attacks you takes %d damage and is slowed 25%.',
@@ -238,7 +238,7 @@ thorne:{
 },
 krell:{
   id:'krell', name:'KRELL', title:'The Voidsinger', col:'#6ce0e8', col2:'#1f6b72',
-  desc:'A caster who shuts other casters down. Silence the answer, drain the mana, delete the reply.',
+  desc:'An anti-caster mage who silences, burns mana, and strips buffs.',
   hp:545, hpg:80, mp:400, mpg:58, dmg:42, dmgg:4.3, arm:2, armg:.30,
   ms:318, range:560, bat:1.05, ranged:true, projSpeed:1200,
   abilities:[
@@ -254,11 +254,11 @@ krell:{
      desc:'%d damage in a 380 radius and a 3s silence.', val:[290,440,590]}
   ],
   scepter:{name:'Void Feedback',
-    desc:'The void listens. Every ability an enemy hero casts within 900 of Krell costs them 40 extra mana — dealt straight back as damage — and ticks all four of Krell’s cooldowns forward one second. Their spells wind HIS clock.'}
+    desc:'Every ability an enemy hero casts within 900 of Krell costs them 40 extra mana, dealt back to them as damage, and reduces all four of Krell’s cooldowns by one second.'}
 },
 shiv:{
   id:'shiv', name:'SHIV', title:'The Bleeder', col:'#ff6b6b', col2:'#7a1f2b',
-  desc:'A knife fighter who wins on bleed. Open the wound, keep it open, then finish anything that limps away.',
+  desc:'A knife fighter built around bleed damage: apply it, maintain it, then finish off weakened enemies.',
   hp:620, hpg:94, mp:290, mpg:40, dmg:49, dmgg:5.1, arm:3, armg:.40,
   ms:335, range:145, bat:0.92, ranged:false,
   abilities:[
@@ -280,7 +280,7 @@ shiv:{
 },
 svaar:{
   id:'svaar', name:'SVAAR', title:'The Rogue Knight', col:'#8fb8ff', col2:'#2b4a8a',
-  desc:'A giant with a giant sword. Everything in the arc dies at once, and the ultimate turns every swing into a wrecking ball.',
+  desc:'A greatsword bruiser whose attacks cleave everything in front of him.',
   hp:730, hpg:112, mp:280, mpg:38, dmg:52, dmgg:5.6, arm:4, armg:.50,
   ms:322, range:150, bat:1.10, ranged:false,
   abilities:[
@@ -296,11 +296,11 @@ svaar:{
      desc:'For 20s your attack damage is increased by %d%.', val:[60,90,120]}
   ],
   scepter:{name:'Worldbreaker',
-    desc:'During God’s Strength every swing is a wrecking ball: Great Cleave splashes in a FULL CIRCLE around the target, and everything caught in it is slowed 20% for 1s. There is no safe side of Svaar to stand on.'}
+    desc:'During God’s Strength, Great Cleave splashes in a FULL CIRCLE around the target instead of an arc, and everything caught in it is slowed 20% for 1s.'}
 },
 geist:{
   id:'geist', name:'GEIST', title:'The Pale Countess', col:'#d8a6ff', col2:'#4a2b6d',
-  desc:'An undying noblewoman who spends her own blood like coin. Every wound she deals feeds her, every wound she takes is a debt she intends to collect — and her ultimate simply trades health bars with whoever thought they were winning.',
+  desc:'A blood mage who spends her own health to deal damage and heals from the damage she deals; her ultimate swaps health percentages with an enemy hero.',
   hp:560, hpg:84, mp:400, mpg:56, dmg:43, dmgg:4.3, arm:2.2, armg:.32,
   ms:320, range:545, bat:1.05, ranged:true, projSpeed:1150,
   abilities:[
@@ -314,15 +314,15 @@ geist:{
      desc:'A spiteful bolt dealing %d damage and cursing the victim: they take %p% more damage from ALL sources for 5s.',
      val:[70,110,150,190], val2:[12,16,20,24]},
     {key:'R', name:'Soul Exchange', cast:'point', range:600, ult:true, mana:[150,175,200], cd:[80,70,60],
-     desc:'Swap health PERCENTAGES with the enemy hero nearest the cursor. The victim cannot be left below %d% of their health. Her favourite trick: walk in dying, leave them dying instead.',
+     desc:'Swap health PERCENTAGES with the enemy hero nearest the cursor. The victim cannot be left below %d% of their health.',
      val:[30,25,20]}
   ],
   scepter:{name:'Blood Dividend',
-    desc:'Her flesh becomes an investment. When Essence Bomb damages at least one enemy hero, its entire health cost is repaid on the spot, plus 60 healing per hero caught in the blast. Blood in, blood out — with interest.'}
+    desc:'When Essence Bomb damages at least one enemy hero, its health cost is refunded immediately, plus 60 healing per hero caught in the blast.'}
 },
 drex:{
   id:'drex', name:'DREX', title:'The Demolitionist', col:'#ff7a3c', col2:'#7a3312',
-  desc:'A ranged bomber who owns the ground he has already decided to blow up. Everything he does is telegraphed — and devastating.',
+  desc:'A ranged bomber whose abilities are telegraphed but hit hard: bombs, mines, and a rocket jump.',
   hp:580, hpg:86, mp:360, mpg:50, dmg:44, dmgg:4.5, arm:2.5, armg:.34,
   ms:318, range:540, bat:1.06, ranged:true, projSpeed:1000,
   abilities:[
@@ -340,11 +340,11 @@ drex:{
      val:[180,270,360]}
   ],
   scepter:{name:'Shock and Awe',
-    desc:'He upgrades the payload. Every explosion he sets off — bombs, mines, Blast Off, the whole carpet — hurls enemies 150 units away from its center. Drex now decides where everyone else is standing.'}
+    desc:'Every explosion he sets off (bombs, mines, Blast Off, Carpet Bombing) knocks enemies back 150 units from its center.'}
 },
 ronin:{
   id:'ronin', name:'RONIN', title:'The Maskbearer', col:'#ff9ec4', col2:'#7a2340',
-  desc:'A masked blademaster. Spin through the spells that were meant to stop you, then take the fight apart one blink at a time.',
+  desc:'A blademaster with magic immunity while spinning and burst damage from blinking strikes.',
   hp:640, hpg:96, mp:270, mpg:34, dmg:50, dmgg:5.4, arm:3, armg:.42,
   ms:330, range:145, bat:0.95, ranged:false,
   abilities:[
@@ -362,11 +362,11 @@ ronin:{
      val:[60,85,110]}
   ],
   scepter:{name:'Dance of Death',
-    desc:'Omnislash and Blade Dance become one art: every cut of his ultimate can land a critical strike, and every critical earns him one more cut — up to four extra. A hot blade dances as long as it likes.'}
+    desc:'Every cut of Omnislash can land a critical strike, and each critical hit adds one more cut, up to four extra.'}
 },
 zaal:{
   id:'zaal', name:'ZAAL', title:'The Skyfather', col:'#9fd8ff', col2:'#2a4d7a',
-  desc:'A storm with a temper. Nothing he throws can miss, and every spell he casts bleeds the whole lane a little.',
+  desc:'A lightning mage whose spells chain between enemies and drain current health across the lane.',
   hp:520, hpg:76, mp:430, mpg:60, dmg:40, dmgg:4.0, arm:2, armg:.28,
   ms:315, range:550, bat:1.10, ranged:true, projSpeed:1100,
   abilities:[
@@ -384,11 +384,11 @@ zaal:{
      val:[300,450,600]}
   ],
   scepter:{name:'The Sky Remembers',
-    desc:'Thundergod’s Wrath is only the opening word. 1.5 seconds after it strikes, a full Lightning Bolt falls on the ground where each victim stood — marked, telegraphed, and entirely their problem to outrun.'}
+    desc:'1.5 seconds after Thundergod’s Wrath strikes, a full Lightning Bolt lands on the ground where each victim was standing.'}
 },
 jarak:{
   id:'jarak', name:'JARAK', title:'The Frenzied', col:'#7be0a4', col2:'#1f6b45',
-  desc:'A duellist who gets faster the longer he stays on one throat. Pick a target and never let go of it.',
+  desc:'A duelist whose attack speed climbs the longer he stays on a single target.',
   hp:650, hpg:98, mp:250, mpg:32, dmg:49, dmgg:5.3, arm:3, armg:.42,
   ms:330, range:150, bat:0.98, ranged:false,
   abilities:[
@@ -406,11 +406,11 @@ jarak:{
      val:[70,100,130]}
   ],
   scepter:{name:'Rip and Tear',
-    desc:'At maximum Fervor his hands blur — every attack lands TWICE, the echo hitting for 50%. Staying on one throat was always the point; now it is also the payoff.'}
+    desc:'At maximum Fervor, every attack lands TWICE: the second hit deals 50% damage.'}
 },
 stryg:{
   id:'stryg', name:'STRYG', title:'The Bloodhound', col:'#ff5f7a', col2:'#6b1226',
-  desc:'A hunter who feeds on the lane itself. Every last hit puts him back on his feet, and nothing he has opened up can run away from him.',
+  desc:'A hunter who heals from last hits and denies, and tracks down bleeding enemies with bonus move speed.',
   hp:600, hpg:92, mp:290, mpg:40, dmg:48, dmgg:5.1, arm:3, armg:.38,
   ms:340, range:145, bat:1.00, ranged:false,
   abilities:[
@@ -421,18 +421,18 @@ stryg:{
      desc:'For 8s everything you deal hits %d% harder — and everything you take hits 20% harder.',
      val:[25,35,45,55]},
     {key:'E', name:'Thirst', passive:true, grants:'thirst', mana:[0,0,0,0], cd:[0,0,0,0],
-     desc:'Passive: every creep you last hit or deny restores %d health PLUS 2% of his maximum health, so it never stops mattering. A hero kill restores five times as much. He also runs down the wounded — up to +%p% move speed, scaling on how little health the most beaten enemy hero has left.',
+     desc:'Passive: every creep you last hit or deny restores %d health plus 2% of his maximum health. A hero kill restores five times as much. He also gains up to +%p% move speed, scaling on how little health the most wounded enemy hero has left.',
      val:[30,45,60,75], val2:[10,15,20,25]},
     {key:'R', name:'Rupture', cast:'point', range:750, ult:true, mana:[125,150,175], cd:[65,55,45],
      desc:'The enemy hero nearest the cursor bleeds for 6s, taking %d pure damage for every 80 units they move. Standing still costs nothing.',
      val:[12,18,24]}
   ],
   scepter:{name:'Open Wounds',
-    desc:'Standing still no longer saves you. Every attack Stryg lands on a Ruptured target tears the wound as if they had moved 50 units. Run and bleed, or hold your ground and be bled anyway.'}
+    desc:'Every attack Stryg lands on a Ruptured target now deals damage as if they had moved 50 units, even if they held still.'}
 },
 vosk:{
   id:'vosk', name:'VOSK', title:'The Tormented', col:'#c58aff', col2:'#4a2170',
-  desc:'A walking siege engine. Everything near him is already dying — he only decides how fast.',
+  desc:'An area-damage mage who deals continuous AoE damage to everything nearby.',
   hp:570, hpg:86, mp:400, mpg:56, dmg:43, dmgg:4.3, arm:2.5, armg:.32,
   ms:320, range:550, bat:1.05, ranged:true, projSpeed:1100,
   abilities:[
@@ -450,11 +450,11 @@ vosk:{
      val:[85,125,165]}
   ],
   scepter:{name:'Perpetual Torment',
-    desc:'Pulse Nova feeds on what it hurts: every pulse that catches a hero refunds its own mana cost and heals Vosk for 30% of the pulse per hero struck. In an empty lane it starves — in a fight it never stops.'}
+    desc:'Every Pulse Nova tick that hits a hero refunds its mana cost and heals Vosk for 30% of the pulse damage per hero struck.'}
 },
 dorn:{
   id:'dorn', name:'DORN', title:'The Doorman', col:'#f0e6d2', col2:'#7a2b3a',
-  desc:'A doorman who decides where everyone stands. His doors open where he pleases, his luggage does not stay thrown — and if you were not on the list, you are leaving.',
+  desc:'A control hero who repositions enemies and allies with doors, a returning suitcase, and a forced teleport.',
   hp:680, hpg:100, mp:310, mpg:44, dmg:48, dmgg:5.0, arm:3.5, armg:.44,
   ms:328, range:145, bat:1.00, ranged:false,
   abilities:[
@@ -472,11 +472,11 @@ dorn:{
      val:[250,380,510]}
   ],
   scepter:{name:'Off the Guest List',
-    desc:'His doors stop checking credentials: ANY enemy knocked, yanked or blasted into a Service Door is pulled through and dumped out the far side, slowed 30%. The lane is his lobby now, and everyone in it can be moved.'}
+    desc:'Any enemy knocked, yanked, or blasted into a Service Door is now pulled through it and slowed 30% on the far side.'}
 },
 timber:{
   id:'timber', name:'TIMBER', title:'The Timbersaw', col:'#d98862', col2:'#5a2f1a',
-  desc:'A saw-armored engine of spite. Get close and everything spins: he wants you in blade range, and the longer you hit him the harder he is to cut down.',
+  desc:'A melee bruiser who gains armor from being attacked and wants enemies in blade range.',
   hp:700, hpg:104, mp:340, mpg:48, dmg:46, dmgg:4.6, arm:3, armg:.40,
   ms:322, range:150, bat:1.05, ranged:false,
   abilities:[
@@ -484,21 +484,21 @@ timber:{
      desc:'The saws spin out around him: %d damage and a 25% slow for 2s to everything within 275.',
      val:[90,145,200,255]},
     {key:'W', name:'Timber Chain', cast:'point', range:650, blink:true, mana:[60,65,70,75], cd:[11,10,9,8],
-     desc:'Fire a chain and reel himself to the cursor, sawing everything along the way for %d damage.',
+     desc:'Fire a chain that pulls him to the cursor, dealing %d damage to everything along the way.',
      val:[80,130,180,230]},
     {key:'E', name:'Reactive Armor', passive:true, grants:'reactive', mana:[0,0,0,0], cd:[0,0,0,0],
-     desc:'Passive: every enemy ATTACK that lands on him plates him up — +%d armor and +1 HP regen per stack for 12s, up to 8 stacks. Hitting Timbersaw is how you lose to Timbersaw.',
+     desc:'Passive: every enemy ATTACK that lands on him grants +%d armor and +1 HP regen per stack for 12s, up to 8 stacks.',
      val:[0.5,0.8,1.1,1.4]},
     {key:'R', name:'Chakram', cast:'point', range:700, aoe:180, ult:true, mana:[150,175,200], cd:[24,20,16],
      desc:'Hurl the great blade to a point, where it spins for %d damage per second and slows by 35% within 180. It stays as long as he feeds it 18 mana per second — press R again to recall it, and it saws through everything on the way home. The cooldown starts when the blade returns.',
      val:[70,105,140]}
   ],
   scepter:{name:'Second Chakram',
-    desc:'He built another one. A second Chakram can be deployed alongside the first — two zones the lane simply cannot stand in — and recalling brings both blades home through everything in between.'}
+    desc:'A second Chakram can be deployed alongside the first, and recalling brings both blades home through everything in between.'}
 },
 drift:{
   id:'drift', name:'DRIFT', title:'The Drifter', col:'#b0b8d8', col2:'#3a3f5c',
-  desc:'A stalker who hunts by feel, not by sight. He opens a wound, follows the blood through the dark, and when the lights go out for everyone else — that is when he is most at home.',
+  desc:'A melee assassin who tracks bleeding enemies and fights best when vision is limited.',
   hp:570, hpg:88, mp:280, mpg:38, dmg:45, dmgg:4.4, arm:2.5, armg:.36,
   ms:340, range:150, bat:0.95, ranged:false,
   abilities:[
@@ -512,11 +512,11 @@ drift:{
      desc:'Passive: his attacks and abilities tear %d% harder into anything still bleeding from Bloodtrail, and a bleeding enemy that dies feeds him 90 health.',
      val:[12,16,20,24]},
     {key:'R', name:'Blackout', cast:'self', ult:true, mana:[140,170,200], cd:[90,80,70],
-     desc:'The lights go out for the other side: for %d s every enemy hero is night-blind, able to see only 180 units around themselves. The lane, the wave, the man with the claws — all of it gone dark.',
+     desc:'For %d s every enemy hero is night-blind, able to see only 180 units around themselves.',
      val:[5,6.5,8]}
   ],
   scepter:{name:'Pitch Black',
-    desc:'The dark gets teeth. Blackout also slows its victims 25% for its full duration, and Drift’s attacks and abilities deal 20% more damage to the night-blind. The dark is his.'}
+    desc:'Blackout also slows its victims 25% for its full duration, and Drift’s attacks and abilities deal 20% more damage to night-blind enemies.'}
 }};
 export const HERO_IDS = Object.keys(HEROES);
 

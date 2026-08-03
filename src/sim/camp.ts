@@ -109,15 +109,15 @@ function campThink(S, e, dt){
     if (dist(e.x,e.y,tgt.x,tgt.y) <= reach) attackWith(S,e,tgt,dt);
     else moveToward(S,e,tgt.x,tgt.y,dt);
   } else {
-    // trot home and shake the fight off — an abandoned camp resets to full
+    // returns home and heals; an abandoned camp resets to full
     if (dist(e.x,e.y,CAMP_X,cy) > 30+e.r) moveToward(S,e,CAMP_X,cy,dt);
     else if (e.hp < e.maxHp) heal(S, e, e.maxHp*0.25*dt);
   }
 }
 
-/* A timid creature never swings back — once wounded it skitters around the
-   pocket rim away from whoever is closest, so catching it takes a slow, a
-   ranged hit, or a corner. Left alone at home it heals like any camp. */
+/* Never attacks. Once wounded it flees around the pocket rim away from the
+   nearest threat, so catching it requires a slow, a ranged hit, or a corner.
+   Left alone at home it heals like any camp. */
 function timidThink(S, e, dt, cy){
   let threat=null, bd=1e9;
   if (e.hp < e.maxHp){

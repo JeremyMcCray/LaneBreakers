@@ -297,7 +297,7 @@ export function stepZones(S,dt){
         if (z.tickT<=0){ z.tickT=.45; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r, col:'#d98862'}); }
       }
     } else if (z.kind==='chakret'){
-      // the blade coming home — it saws through everything on the way
+      // the blade returning to Timber; damages everything it passes through
       const q = S.players[z.slot], h = q && q.hero;
       if (!h || h.dead){ z.t = 0; if (q) q.cds[3] = z.cd; }
       else {

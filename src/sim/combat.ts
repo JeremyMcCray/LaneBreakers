@@ -60,7 +60,7 @@ export function damage(S, src, tgt, amount, opt){
   if (src && src.brT>0) dmg *= (1 + src.brP);               // Bloodrage — everything hits harder
   // Lacerate — the Drifter tears harder into what is already bleeding from Bloodtrail
   if (src && src.lacer>0 && tgt.dotT>0 && tgt.dotSrc===src.id) dmg *= (1 + src.lacer);
-  // Pitch Black — a night-blind victim never sees the claws coming
+  // Pitch Black: Drift deals 20% more damage to night-blind targets
   if (src && src.heroId==='drift' && src.aghs && tgt.blindT>0) dmg *= 1.2;
   // creeps shrug off 30% of ability damage (pure cuts through; player summons are hero extensions)
   if (opt.ability && !opt.pure && tgt.type==='creep' && !tgt.pet) dmg *= 0.70;

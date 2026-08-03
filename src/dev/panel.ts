@@ -268,7 +268,7 @@ function paneSim(){
     toggle('Freeze bots', () => D.freezeBots, v => {
       D.freezeBots = v;
       if (v && G.S) for (const p of G.S.players) if (p.bot) p.order = {type:'stop'};
-    }, 'Bots stop thinking — they stand still and take it')
+    }, 'Bots stop issuing orders and hold their current position')
   );
   clk.append(frow);
   pane.append(clk);
