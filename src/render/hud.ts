@@ -178,10 +178,13 @@ export function drawHUD(v, own){
       }
     }
     // cooldown
-    if (A.charges && lv>0 && me.chg[i]<=0){
+    if (A.charges && lv>0 && (me.chg[i]<=0 || cd>0)){
+      // out of charges shows the recharge timer; otherwise the short
+      // between-cast gap (castGap) is what is holding the button
+      const t = me.chg[i]<=0 ? Math.max(me.chgT[i], cd) : cd;
       ctx.fillStyle='#000000b0'; rr(x,ay,aw,aw,8); ctx.fill();
       ctx.fillStyle='#fff'; ctx.font='800 20px Segoe UI';
-      ctx.fillText(me.chgT[i]>=10?Math.ceil(me.chgT[i]):me.chgT[i].toFixed(1), x+aw/2, ay+aw/2);
+      ctx.fillText(t>=10?Math.ceil(t):t.toFixed(1), x+aw/2, ay+aw/2);
     } else if (cd>0 && !A.passive && !A.charges){
       ctx.fillStyle='#000000b0'; rr(x,ay,aw,aw,8); ctx.fill();
       ctx.fillStyle='#fff'; ctx.font='800 20px Segoe UI';
@@ -301,8 +304,14 @@ export function drawHUD(v, own){
 
   if (hoverAb){
     const A = HD.abilities[hoverAb.i], lv = Math.max(1, me.sk[hoverAb.i]);
-    let txt = A.desc.replace('%d', A.val[lv-1]);
-    if (A.val2) txt = txt.replace('%p', A.val2[lv-1]);   // a second scaling number in the text
+    // Numbers the sim will multiply by spell amplification are shown at their real
+    // value, so the tooltip matches what the ability actually deals right now.
+    const sp = me.sp || 1, scl = A.scaled || '';
+    const shown = (raw, on) => on && sp!==1 ? Math.round(raw*sp) : raw;
+    let txt = A.desc.replace('%d', shown(A.val[lv-1], scl.indexOf('d')>=0));
+    // a second scaling number in the text
+    if (A.val2) txt = txt.replace('%p', shown(A.val2[lv-1], scl.indexOf('p')>=0));
+    const ampNote = (sp!==1 && scl) ? '  ·  spell amp +'+Math.round((sp-1)*100)+'%' : '';
     // measure the wrapped description first so the box always fits the text
     const w2=340, lh=16;
     ctx.font='600 12px Segoe UI';
@@ -320,9 +329,13 @@ export function drawHUD(v, own){
     ctx.textAlign='left'; ctx.fillStyle=HD.col; ctx.font='800 14px Segoe UI';
     ctx.fillText(A.name+'  ['+A.key+']', x2+12, y2+19);
     ctx.fillStyle='#8b9ab4'; ctx.font='600 11px Segoe UI';
-    ctx.fillText(A.passive ? 'Passive    Lv '+me.sk[hoverAb.i]
-                           : 'Mana '+A.mana[lv-1]+'    Cooldown '+A.cd[lv-1]+'s    Lv '+me.sk[hoverAb.i],
-                 x2+12, y2+38);
+    const meta = A.passive ? 'Passive    Lv '+me.sk[hoverAb.i]
+                           : 'Mana '+A.mana[lv-1]+'    Cooldown '+A.cd[lv-1]+'s    Lv '+me.sk[hoverAb.i];
+    ctx.fillText(meta, x2+12, y2+38);
+    if (ampNote){
+      ctx.fillStyle='#5ef0c8';
+      ctx.fillText(ampNote, x2+12+ctx.measureText(meta).width, y2+38);
+    }
     ctx.fillStyle='#dfe7f5'; ctx.font='600 12px Segoe UI';
     for (let k=0;k<lines.length;k++) ctx.fillText(lines[k], x2+12, y2+58+k*lh);
   }

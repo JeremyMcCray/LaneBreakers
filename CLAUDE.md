@@ -9,7 +9,7 @@ built with LLMs, and a stale brief costs more than a missing one.
 ## What this is
 
 A browser mid-lane MOBA: 1v1, 2v2 or 3v3 on a single lane, creep waves, one tower per
-side, fountain bases, item shop, 24 heroes, classic + neural bots, practice /
+side, fountain bases, item shop, 23 heroes, classic + neural bots, practice /
 online (P2P, no server) / tournament. Vite + TypeScript, Canvas 2D for the world,
 light DOM for menus/shop. No React. Most files start with `// @ts-nocheck` — match
 that; don't start a typing crusade.
@@ -74,7 +74,7 @@ npm run bake:brains      # refresh src/ai/neural/brains/baked.json
 ```
 src/
   data/     world.ts (constants + live tunables + camp geometry), heroes.ts
-            (24 kits + scepter upgrades), items.ts, camps.ts (jungle variants)
+            (23 kits + scepter upgrades), items.ts, camps.ts (jungle variants)
   sim/      headless rules: create, step, hero, creep, tower, attack, combat,
             abilities, zones, projectiles, shop, stats, snapshot, commands,
             waves, camp (jungle camps: spawn cycle, neutral AI, charges),
@@ -94,7 +94,9 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
 
 ## Current game facts (verify here before quoting numbers)
 
-- 24 heroes (`HERO_IDS`), 4 abilities each (R = ult, ranks 3, others 4).
+- 23 heroes (`HERO_IDS`), 4 abilities each (R = ult, ranks 3, others 4).
+  Mara was retired (like Liora before her); `persistence.ts` renders old
+  records as "MARA (retired)".
   Ult unlock levels `ULT_REQ = [6,9,12]`, `MAX_LEVEL = 12`.
 - Win: **2 points in 1v1, 4 in 2v2, 6 in 3v3** (hero kill = 1); the tower falling ends the
   match outright. 15-min cap (`MATCH_LIMIT`), then kills → net worth → last hits.
@@ -154,9 +156,15 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
 - **Passive abilities** use `grants:` in heroes.ts, wired in `updateHeroStats`
   (`stats.ts`) — the stat pass runs every tick, so items and buffs compose there.
 - **Zones** (`zones.ts`): ground effects with a `kind` switch (bomb, mine, trap,
-  quake, firestorm, strike, omni, nova, hive, ...). **Projectiles**
+  quake, firestorm, strike, omni, nova, hive, ...). Not all of them sit still —
+  `charge` carries a hero along a line (Svaar's Battle Cry, the far end of
+  Timber's chain), `arc` is a bolt bouncing one jump at a time (Zaal's Arc
+  Lightning, Vosk's Lightning Storm), and `chakout`/`chakret` fly Timber's blade
+  out and home. A moving zone that the player must read needs a case in
+  `worldDraw.ts drawZones` — the default branch fills a circle of radius `z.r`,
+  which is wrong for anything that is not a standing field. **Projectiles**
   (`projectiles.ts`): homing `atk`/`tower` vs free-flying ability shots with
-  flags (pierce, pull, slow, stun, emb, twin, grow...).
+  flags (pierce, pull, slow, stun, emb, burst, reel, twin, grow...).
 - **FX pipeline**: sim emits `fx(S, {t:'name', ...})` → buffered → rendered by
   the `spawnFx` switch in `render/fx.ts` **and** sounded by the `fxSound` switch
   in `audio/sfx.ts`. A new fx type needs a case in **both** (unknown types are
@@ -239,7 +247,8 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
 ## Recipes for common expansions
 
 - **New hero**: entry in `heroes.ts` (stats, 4 abilities with `%d` descs +
-  val arrays, `scepter:{name,desc}`) → cast cases `'<id>0'..'<id>3'` in
+  val arrays, `scaled:'d'|'p'|'dp'` on every ability whose placeholder is damage
+  the sim passes `{ability:true}` for, `scepter:{name,desc}`) → cast cases `'<id>0'..'<id>3'` in
   `abilities.ts` (passives via `grants` in `stats.ts`) → `BOT_BUILD` entry →
   scepter effect + `smoke:scepter` block → optionally a silhouette in
   `heroPath` (worldDraw). `smoke:heroes` roster checks catch missing pieces.

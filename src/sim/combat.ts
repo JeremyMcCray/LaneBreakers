@@ -44,12 +44,21 @@ export function damage(S, src, tgt, amount, opt){
   if (!tgt || tgt.dead || tgt.hp<=0 || S.over) return 0;
   if (tgt.type==='hero'){ const gp = playerOf(S, tgt); if (gp && gp.god) return 0; }
   if (tgt.invT>0) return 0;                                 // untouchable — Omnislash
-  if (opt.ability && warded(S, tgt)) return 0;              // counterspelled
-  // Healing Ward: spells slide straight off it, and every right click takes exactly
-  // one of its two hit points — no armor, no amplifiers, no splash
+  if (opt.ability && warded(S, tgt)){                       // counterspelled
+    parry(S, tgt, src, opt);
+    return 0;
+  }
+  // Lightning Rod — a HERO's attack on a planted Zaal is turned aside and paid
+  // for. Creep and tower fire still lands: a wave is what punishes him for rooting.
+  if (opt.attack && tgt.parryT>0 && src && src.type==='hero' && src.team!==tgt.team){
+    parry(S, tgt, src, opt);
+    return 0;
+  }
+  // Healing Ward: spells slide straight off it, and every right click by an enemy
+  // HERO takes exactly one of its hit points — no armor, no amplifiers, no splash.
+  // Creeps, summons and towers cannot touch it at all.
   if (tgt.ward){
-    // tower fire is a right click too, it just does not carry the attack flag
-    if (!opt.attack && !(src && src.type==='tower')) return 0;
+    if (!opt.attack || !src || src.type!=='hero') return 0;
     tgt.hp -= 1; tgt.hitFlash = .16;
     fx(S,{t:'dmg', x:tgt.x, y:tgt.y+2, r:tgt.r, v:1, c: src && src.type==='hero' ? 1 : 0});
     if (tgt.hp<=0) kill(S, src, tgt);
@@ -59,7 +68,10 @@ export function damage(S, src, tgt, amount, opt){
   if (opt.ability && src && src.amp>0) dmg *= (1 + src.amp);
   if (src && src.brT>0) dmg *= (1 + src.brP);               // Bloodrage — everything hits harder
   // Lacerate — the Drifter tears harder into what is already bleeding from Bloodtrail
-  if (src && src.lacer>0 && tgt.dotT>0 && tgt.dotSrc===src.id) dmg *= (1 + src.lacer);
+  if (src && src.lacer>0 && tgt.dotT>0 && tgt.dotSrc===src.id){
+    dmg *= (1 + src.lacer);
+    fx(S,{t:'lacerate', x:tgt.x, y:tgt.y});
+  }
   // Pitch Black: Drift deals 20% more damage to night-blind targets
   if (src && src.heroId==='drift' && src.aghs && tgt.blindT>0) dmg *= 1.2;
   // creeps shrug off 30% of ability damage (pure cuts through; player summons are hero extensions)
@@ -69,7 +81,8 @@ export function damage(S, src, tgt, amount, opt){
     dmg = Math.max(0, dmg - tgt.block);
   if (tgt.type==='tower' && towerShielded(S, tgt)) dmg *= 0.15;   // backdoor protection
   if (tgt.illu)     dmg *= (src && src.type==='tower') ? 5 : (tgt.illuTake||1.6);
-  if (src && src.illu && tgt.type==='tower') dmg *= (src.illuTower||0.2);  // no backdoor by copy
+  if (src && src.illu && tgt.type==='tower') dmg *= (src.illuTower||0.1);  // no backdoor by copy
+  if (src && src.brood && tgt.type==='tower') dmg *= 0.5;   // spawnlings chew stone slowly
   if (tgt.markT>0)  dmg *= (1 + tgt.markP);      // Hunter's Mark amplifies everything
   if (tgt.vulT>0)   dmg *= (1 + tgt.vulP);       // Bloodrage
   if (tgt.drT>0)    dmg *= (1 - tgt.drP);        // Bulwark
@@ -81,8 +94,10 @@ export function damage(S, src, tgt, amount, opt){
   }
   // Reactive Armor — every attack that lands on Timbersaw plates him further
   if (opt.attack && tgt.reactOn && src && src.team!==tgt.team){
-    tgt.raN = Math.min(8, (tgt.raN||0) + 1);
+    const before = tgt.raN||0;
+    tgt.raN = Math.min(8, before + 1);
     tgt.raT = 12;
+    if (tgt.raN>before) fx(S,{t:'plate', x:tgt.x, y:tgt.y, n:tgt.raN});
   }
   // shield
   if (tgt.shieldT>0 && tgt.shield>0){
@@ -99,38 +114,20 @@ export function damage(S, src, tgt, amount, opt){
     tgt.deferSrc = src ? src.id : 0;
     dmg -= held;
   }
-  // rage feeds on violence in both directions
+  // Rage feeds on violence in both directions — including a creep wave, so farming
+  // still builds it. Only a hero on the other end of the blow SUSTAINS it though:
+  // rageT is what holds off the drain, and creeps never refresh it.
   if (dmg>0){
-    if (src && src.rageOn){ src.rage = Math.min(100, (src.rage||0) + dmg/12); src.rageT = 2.5; }
-    if (tgt.rageOn){ tgt.rage = Math.min(100, (tgt.rage||0) + dmg/18); tgt.rageT = 2.5; }
+    if (src && src.rageOn){
+      src.rage = Math.min(100, (src.rage||0) + dmg/12);
+      if (tgt.type==='hero') src.rageT = 2.5;
+    }
+    if (tgt.rageOn){
+      tgt.rage = Math.min(100, (tgt.rage||0) + dmg/18);
+      if (src && src.type==='hero') tgt.rageT = 2.5;
+    }
   }
   if (dmg<=0) return 0;
-  // Undying Light — once a minute, the blow that should kill Mara leaves her at 1 HP,
-  // burns off every debuff and detonates a free Judgement around her
-  if (tgt.type==='hero' && tgt.heroId==='mara' && tgt.aghs && !(tgt.undyCd>0) && dmg >= tgt.hp){
-    dmg = Math.max(0, tgt.hp - 1);
-    tgt.undyCd = 60;
-    tgt.stun=0; tgt.rootT=0; tgt.silT=0; tgt.slowT=0; tgt.slowP=0;
-    tgt.dotT=0; tgt.dotDps=0; tgt.rupT=0; tgt.rupV=0;
-    clearEmber(tgt);
-    fx(S,{t:'purge', x:tgt.x, y:tgt.y});
-    const mp2 = playerOf(S, tgt);
-    const RA = HEROES.mara.abilities[3];
-    const lv = mp2 && mp2.sk[3]>0 ? mp2.sk[3] : 1;
-    const prev = S.tag; S.tag = 'i:scepter';
-    let n = 0;
-    fx(S,{t:'blast', x:tgt.x, y:tgt.y, r:RA.aoe, col:'#ffe9a8'});
-    for (const o of S.ents){
-      if (o.dead || o.team===tgt.team || o.type==='tower') continue;
-      if (dist(o.x,o.y,tgt.x,tgt.y) > RA.aoe + o.r) continue;
-      damage(S, tgt, o, RA.val[lv-1], {ability:true});
-      if (!o.dead) applyStun(S, o, 1.1);
-      n++;
-    }
-    S.tag = prev;
-    if (n>0){ heal(S, tgt, 70*n); fx(S,{t:'heal', x:tgt.x, y:tgt.y}); }
-    if (dmg<=0) return 0;
-  }
   // book-keeping for the post-game screen — a summon's work counts for its owner
   {
     const tag = damageTag(S, src, opt);
@@ -163,6 +160,7 @@ export function damage(S, src, tgt, amount, opt){
   if (!opt.silent)
     fx(S,{t:'dmg', x:tgt.x, y:tgt.y+2, r:tgt.r, v:Math.round(dmg),
           c: src && src.type==='hero' ? 1 : 0, ab: !!opt.ability, cr: !!opt.crit});
+  if (opt.crit) fx(S,{t:'crit', x:tgt.x, y:tgt.y-4});
   // thorns
   if (opt.melee && tgt.thorns>0 && src && !src.dead)
     damage(S, tgt, src, dmg*tgt.thorns, {pure:true, silent:true, tag:'thorns'});
@@ -498,6 +496,19 @@ export function warded(S, e){
   // a long immunity (Bladefury) eats a spell every frame — only flash for some of them
   if (!(e.wardFxT>0)){ fx(S,{t:'counter', x:e.x, y:e.y}); e.wardFxT = 0.25; }
   return true;
+}
+/* Lightning Rod: while Zaal is planted, whatever an enemy hero throws at him is
+   turned aside and the thrower eats it instead. `opt.parried` marks the shock
+   itself so two planted heroes cannot bounce it back and forth forever. */
+export function parry(S, def, src, opt){
+  if (!(def.parryT>0) || !src || src.dead || src.type!=='hero' || src.team===def.team) return;
+  if (opt && opt.parried) return;
+  const prev = S.tag; S.tag = 'a2';
+  fx(S,{t:'counter', x:def.x, y:def.y});
+  fx(S,{t:'chain', x:def.x, y:def.y-8, x2:src.x, y2:src.y-8, col:'#9fd8ff'});
+  damage(S, def, src, def.parryV||0, {ability:true, parried:true});
+  applyStun(S, src, 0.5);
+  S.tag = prev;
 }
 export function applySilence(S,e,t){
   if (e.type!=='hero') return;

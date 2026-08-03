@@ -187,23 +187,6 @@ console.log("\n== ASH â€” From the Ashes: eight embers, and heroes erupt ==
      S.zones.some(z => z.kind === "firestorm" && z.tag === "i:scepter"), "");
 }
 
-console.log("\n== MARA â€” Undying Light: the killing blow leaves her at 1 ==");
-{
-  const S = sim("mara", "vex");
-  const p = S.players[0], h = p.hero;
-  const foe = S.players[1].hero;
-  const d = dummy(S, 1, h.x + 100, LANE_Y);        // someone for the free Judgement to hit
-  const dh0 = d.hp;
-  h.hp = 50;
-  damage(S, foe, h, 400, { pure: true });
-  ok("she survived at 1 HP", !h.dead && h.hp >= 1, `hp=${Math.round(h.hp)}`);
-  ok("the light went on cooldown", h.undyCd > 50, `cd=${Math.round(h.undyCd||0)}`);
-  ok("a free Judgement detonated", d.hp < dh0, `${dh0} -> ${Math.round(d.hp)}`);
-  h.hp = 5;
-  damage(S, foe, h, 400, { pure: true });
-  ok("a second blow inside the minute kills her", h.dead, "");
-}
-
 console.log("\n== ORRIN â€” Legs for the Guns: turrets march ==");
 {
   const S = sim("orrin", "vex");
@@ -212,7 +195,8 @@ console.log("\n== ORRIN â€” Legs for the Guns: turrets march ==");
   castAbility(S, p, 2, h.x + 200, LANE_Y);
   const t = S.ents.find(o => o.turret && !o.dead);
   ok("the turret has legs", !!t && !t.static && t.ms > 0, t ? `ms=${t.ms}` : "none");
-  ok("and a longer service life", !!t && Math.abs(t.ttl - 22) < 0.1, t ? `ttl=${t.ttl.toFixed(1)}` : "");
+  const baseTtl = [12, 16, 20, 24][p.sk[2] - 1];
+  ok("and a longer service life", !!t && Math.abs(t.ttl - (baseTtl + 8)) < 0.1, t ? `ttl=${t.ttl.toFixed(1)}` : "");
   const x0 = t.x;
   step(S, 120);
   ok("it actually walks the lane", Math.abs(t.x - x0) > 100, `moved ${Math.round(Math.abs(t.x - x0))}`);
@@ -233,6 +217,7 @@ console.log("\n== NIX â€” Hall of Mirrors: blinks leave an illusion behind 
      `${ill.length} illusions`);
   const px = h.x, py = h.y;
   castAbility(S, p, 2, h.x + 300, LANE_Y);         // Phantom Strike
+  step(S, 32);                                     // past the 0.45s telegraph
   ill = S.ents.filter(o => o.illu && o.team === 0 && !o.dead);
   ok("Phantom Strike left another", ill.length >= 2, `${ill.length} illusions`);
 }
@@ -322,6 +307,7 @@ console.log("\n== GEIST â€” Blood Dividend: a bomb that finds heroes repays
   h.hp = h.maxHp;
   const hp0 = h.hp;
   castAbility(S, p, 0, foe.x, foe.y);              // Essence Bomb dead on a hero
+  step(S, 75);                                     // flight + the 0.6s fuse
   ok("the health cost came straight back (plus 60 a head)", h.hp >= hp0 - 1,
      `${Math.round(hp0)} -> ${Math.round(h.hp)}`);
   const S2 = sim("geist", "vex", true);
@@ -379,7 +365,6 @@ console.log("\n== ZAAL â€” The Sky Remembers: a second bolt follows the ult
 {
   const S = sim("zaal", "vex");
   const p = S.players[0], h = p.hero;
-  p.sk[2] = 0;                                     // keep Static Field out of the reading
   const foe = S.players[1].hero;
   castAbility(S, p, 3, h.x, h.y);
   const z = S.zones.find(q => q.kind === "strike" && q.tag === "i:scepter");
@@ -480,19 +465,21 @@ console.log("\n== TIMBER â€” Second Chakram: two blades in the field ==");
   castAbility(S, p, 3, h.x - 400, LANE_Y);
   h.mp = h.maxMp; p.cds[3] = 0;
   castAbility(S, p, 3, h.x - 200, LANE_Y + 60);
-  ok("two chakrams deployed at once", S.zones.filter(z => z.kind === "chakram").length === 2, "");
+  ok("two chakrams deployed at once",
+     S.zones.filter(z => z.kind === "chakout" || z.kind === "chakram").length === 2, "");
   castAbility(S, p, 3, h.x, h.y);                  // third press = recall everything
   ok("the third press recalls both", S.zones.filter(z => z.kind === "chakret").length === 2, "");
   step(S, 90);
   ok("both came home and the cooldown started",
-     !S.zones.some(z => z.kind === "chakram" || z.kind === "chakret") && p.cds[3] > 5, `cd=${p.cds[3].toFixed(1)}`);
+     !S.zones.some(z => z.kind === "chakout" || z.kind === "chakram" || z.kind === "chakret") &&
+     p.cds[3] > 5, `cd=${p.cds[3].toFixed(1)}`);
   const S2 = sim("timber", "vex", true);           // no scepter â€” one blade only
   const p2 = S2.players[0], h2 = p2.hero;
   castAbility(S2, p2, 3, h2.x - 400, LANE_Y);
   h2.mp = h2.maxMp;
   castAbility(S2, p2, 3, h2.x - 200, LANE_Y);      // second press must be the recall
   ok("without the scepter the second press recalls", S2.zones.some(z => z.kind === "chakret") &&
-     !S2.zones.some(z => z.kind === "chakram"), "");
+     !S2.zones.some(z => z.kind === "chakout" || z.kind === "chakram"), "");
 }
 
 console.log("\n== DRIFT â€” Pitch Black: the dark gets teeth ==");

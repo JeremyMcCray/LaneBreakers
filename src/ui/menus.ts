@@ -3,7 +3,7 @@ import { HEROES, HERO_IDS } from '../data/heroes';
 import { G } from '../app/state';
 import { addToast } from '../render/fx';
 import {
-  Net, netSendCmd, lobbySeat, broadcastLobby, renderLobby, hostInit
+  Net, netSendCmd, lobbySeat, broadcastLobby, renderLobby, hostInit, myLobbySlot
 } from '../app/online';
 import { lbTrainOpen } from '../ai/neural/train';
 import { renderStats } from '../app/persistence';
@@ -44,10 +44,10 @@ export function buildHeroMenu(){
     d.onclick=()=>{
       G.pick=id; G.randomLocked=false;
       for (const el of box.children) el.classList.toggle('sel', el.dataset.id===id);
-      if (Net.open && G.lobby){                 // tell the room what you switched to
-        const seat = lobbySeat(G.mySlot);
+      if (G.lobby){                              // tell the room what you switched to
+        const seat = lobbySeat(myLobbySlot());
         if (seat){ seat.hero = id; seat.rand = 0; }
-        if (Net.mode==='host') broadcastLobby(); else netSendCmd({k:'hello', h:id, nm:G.name});
+        if (Net.mode==='host') broadcastLobby(); else if (Net.open) netSendCmd({k:'hello', h:id, nm:G.name});
         renderLobby();
       }
     };
@@ -62,10 +62,10 @@ export function randomHero(){
   G.pick = id; G.randomLocked = true;
   const box = document.getElementById('heroList');
   if (box) for (const el of box.children) el.classList.remove('sel');
-  if (Net.open && G.lobby){
-    const seat = lobbySeat(G.mySlot);
+  if (G.lobby){
+    const seat = lobbySeat(myLobbySlot());
     if (seat){ seat.hero = id; seat.rand = 1; }
-    if (Net.mode==='host') broadcastLobby(); else netSendCmd({k:'hello', h:id, nm:G.name, r:1});
+    if (Net.mode==='host') broadcastLobby(); else if (Net.open) netSendCmd({k:'hello', h:id, nm:G.name, r:1});
     renderLobby();
   }
   addToast('Random hero locked in — you\'ll meet them when the match starts');

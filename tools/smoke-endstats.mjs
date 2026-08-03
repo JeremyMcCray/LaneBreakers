@@ -33,7 +33,7 @@ const ok = (name, cond, detail) => { if (!cond) fails++; console.log((cond ? "  
 
 function play(a, b, mode) {
   const picks = mode === "2v2"
-    ? [{ h: a, tm: 0 }, { h: b, tm: 1 }, { h: "mara", tm: 0 }, { h: "krell", tm: 1 }]
+    ? [{ h: a, tm: 0 }, { h: b, tm: 1 }, { h: "gruk", tm: 0 }, { h: "krell", tm: 1 }]
     : [{ h: a, tm: 0 }, { h: b, tm: 1 }];
   const S = newSim(picks, mode || "1v1");
   S.noFx = true;

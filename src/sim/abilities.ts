@@ -14,7 +14,7 @@ import {
   BASE_X, LANE_Y, clamp, dist, dist2, clampToLane, heal, rnd
 } from '../data/world';
 import { HEROES } from '../data/heroes';
-import { ent, fx, mkEnt, nearbyHeroes, playerOf, spawnBrood, spawnPet } from './create';
+import { ent, fx, mkEnt, nearbyHeroes, playerOf, spawnBrood, spawnPet, turretDmg } from './create';
 import { damage, kill, addEmber, applyDot, applySlow, applyRoot, applySilence, applyStun,
          clearEmber, disjoint, warded } from './combat';
 import { addZone, aoe, knockback, nearestFoe } from './zones';
@@ -29,8 +29,17 @@ export function chakramRecall(S,p,i){
   const e = p.hero;
   let out = 0;
   for (const z of S.zones)
-    if ((z.kind==='chakram' || z.kind==='chakret') && z.slot===p.slot) out++;
+    if (isChakram(z) && z.slot===p.slot) out++;
   return out >= ((e && e.aghs) ? 2 : 1);
+}
+/* every phase of the blade: flying out, parked, or on its way home */
+export function isChakram(z){
+  return z.kind==='chakout' || z.kind==='chakram' || z.kind==='chakret';
+}
+/* Vosk with Pulse Nova already running: pressing R is the free switch-off. */
+export function novaToggle(S,p,i){
+  if (i!==3 || p.heroId!=='vosk') return false;
+  return S.zones.some(z=>z.kind==='nova' && z.slot===p.slot);
 }
 /* Drift with a Bloodtrail wound still open: pressing W again is the free step
    through the blood — no mana, no cooldown check, the cooldown keeps ticking. */
@@ -42,7 +51,9 @@ export function bloodtrailRecast(S,p,i){
   return !!(mk && !mk.dead);
 }
 /* the free-recast gates that skip mana and cooldown */
-function freeCast(S,p,i){ return chakramRecall(S,p,i) || bloodtrailRecast(S,p,i); }
+function freeCast(S,p,i){
+  return chakramRecall(S,p,i) || bloodtrailRecast(S,p,i) || novaToggle(S,p,i);
+}
 export function canCast(S,p,i){
   const e=p.hero, A=HEROES[p.heroId].abilities[i];
   if (!e || e.dead || e.stun>0 || S.over) return false;
@@ -51,7 +62,9 @@ export function canCast(S,p,i){
   // dev sandbox "free cast": lifts cooldowns and mana only — stun, silence and
   // root still stop you, so what you are testing still behaves like the real thing
   if (!p.devFree && !freeCast(S,p,i)){
-    if (A.charges){ if ((p.chg[i]||0) <= 0) return false; }
+    // charge abilities gate on charges; cds[i] doubles as the short gap
+    // between consecutive casts (A.castGap)
+    if (A.charges){ if ((p.chg[i]||0) <= 0 || p.cds[i]>0) return false; }
     else if (p.cds[i]>0) return false;
     if (e.mp < A.mana[p.sk[i]-1]) return false;
   }
@@ -66,6 +79,7 @@ export function castAbility(S,p,i,tx,ty){
     e.mp -= A.mana[l-1];
     if (A.charges){
       p.chg[i]--;
+      if (A.castGap) p.cds[i] = A.castGap;
       if (!(p.chgT[i]>0)){
         p.chgT[i] = A.cd[l-1] * (1 - (e.cdr||0));
         p.chgM[i] = p.chgT[i];
@@ -93,14 +107,15 @@ export function castAbility(S,p,i,tx,ty){
   switch(K){
   /* ---- VEX ---- */
   case 'vex0': {
-    const ox=e.x, oy=e.y;
-    e.x=tx; e.y=ty; clampToLane(e);
-    fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:H.col});
-    fx(S,{t:'blast', x:e.x, y:e.y, r:A.aoe, col:'#bff3ff'});
-    aoe(S, e.team, e.x, e.y, A.aoe, V, e);
+    // a dash, not a blink: the charge zone carries her down the line with
+    // blades whirling, damaging everything it passes through
+    fx(S,{t:'dash', x:e.x, y:e.y, x2:tx, y2:ty, col:H.col});
+    addZone(S,{kind:'charge', team:e.team, x:e.x, y:e.y, tx:tx, ty:ty,
+      r:A.aoe, sp:1500, t: dist(e.x,e.y,tx,ty)/1500 + 0.25, dmg:V, slot:p.slot,
+      hits:[], col:H.col});
     break; }
   case 'vex1':
-    e.asT=5; e.asP=V; e.lsT=5; e.lsP=.30;
+    e.asT=5; e.asP=V; e.lsT=5; e.lsP=.25;
     fx(S,{t:'buff', x:e.x, y:e.y, col:'#ff9b4a'});
     fx(S,{t:'blast', x:e.x, y:e.y, r:140, col:'#ff9b4a'});
     break;
@@ -233,19 +248,20 @@ export function castAbility(S,p,i,tx,ty){
     fx(S,{t:'blast', x:e.x, y:e.y, r:130, col:'#b78cff'});
     break; }
   case 'vhal1': {
+    // each spawnling's landing spot is marked on the ground; the teleport, the
+    // haste and the slow all land 0.5s later ('unleash' in zones.ts)
     const brood = broodOf(S, e);
-    fx(S,{t:'blast', x:tx, y:ty, r:A.aoe, col:'#c9a6ff'});
+    const spots = [];
     for (const o of brood){
-      const px=o.x, py=o.y;
       const a2 = Math.random()*Math.PI*2;
-      o.x = tx + Math.cos(a2)*rnd(16,86); o.y = ty + Math.sin(a2)*rnd(16,86);
-      clampToLane(o);
-      o.aps = (o.baseAps || 1/0.9) * (1 + V/100);
-      o.ls = .40; o.hasteT = 5;
-      o.tid = 0; o.acqT = 0; o.leashX = undefined;   // re-acquire wherever they land
-      fx(S,{t:'dash', x:px, y:py, x2:o.x, y2:o.y, col:'#b78cff'});
+      const B = {x: tx + Math.cos(a2)*rnd(16,86), y: ty + Math.sin(a2)*rnd(16,86)};
+      clampToLane(B);
+      spots.push({id:o.id, x:B.x, y:B.y});
+      fx(S,{t:'telegraph', x:B.x, y:B.y, r:26, life:.5, col:'#b78cff'});
     }
-    aoe(S, e.team, tx, ty, A.aoe, 0, e, o=> applySlow(o,.30,2));
+    fx(S,{t:'telegraph', x:tx, y:ty, r:A.aoe, life:.5, col:'#c9a6ff'});
+    addZone(S,{kind:'unleash', team:e.team, x:tx, y:ty, r:A.aoe, t:.5, mt:.5,
+      spots:spots, asP:V/100, slot:p.slot});
     break; }
   case 'vhal2': break;                         // Symbiosis is passive
   case 'vhal3':
@@ -284,30 +300,6 @@ export function castAbility(S,p,i,tx,ty){
       dps:V, src:e.id, tickT:0, embT:0});
     fx(S,{t:'blast', x:tx, y:ty, r:A.aoe, col:'#ff8a4a'});
     break;
-  /* ---- MARA ---- */
-  case 'mara0': {
-    const tg = nearestFoe(S, e.team, tx, ty, 300);
-    if (tg){
-      fx(S,{t:'blast', x:tg.x, y:tg.y, r:70, col:'#ffe9a8'});
-      const dealt = damage(S, e, tg, V, {ability:true});
-      heal(S, e, dealt*.6);
-      fx(S,{t:'heal', x:e.x, y:e.y});
-    }
-    break; }
-  case 'mara1':
-    addZone(S,{kind:'light', team:e.team, x:tx, y:ty, r:A.aoe, t:4,
-      dps:V, slow:.20, src:e.id, tickT:0});
-    break;
-  case 'mara2':
-    e.shield=V; e.shieldT=3; e.shieldRef=0;
-    e.slowT=0; e.slowP=0; e.msT=2; e.msP=.15;
-    fx(S,{t:'buff', x:e.x, y:e.y, col:'#ffe9a8'});
-    break;
-  case 'mara3': {
-    fx(S,{t:'blast', x:e.x, y:e.y, r:A.aoe, col:'#ffe9a8'});
-    const n = aoe(S, e.team, e.x, e.y, A.aoe, V, e, o=>{ applyStun(S,o,1.1); });
-    if (n>0){ heal(S, e, 70*n); fx(S,{t:'heal', x:e.x, y:e.y}); }
-    break; }
   /* ---- CORVICK (id: orrin) ---- */
   case 'orrin0': {
     const a = Math.atan2(ty-e.y, tx-e.x);
@@ -326,10 +318,12 @@ export function castAbility(S,p,i,tx,ty){
     break;
   case 'orrin2': {
     const thp = 320 + Math.round(e.maxHp*0.25);          // the turret is built from Corvick's stats
-    // Legs for the Guns — a scepter turret marches the lane and holds together longer
-    const t2 = spawnPet(S, e.team, tx, ty, e.aghs?22:14, {static:!e.aghs, ranged:true, r:15,
-      hp:thp, maxHp:thp, dmg:V + Math.round(e.dmg*0.4), armor:2 + Math.round(e.armor*0.5),
-      range:520, bat:1.1, ms: e.aghs?235:0, turret:true, oslot:p.slot});
+    // Longer at higher ranks, and the cooldown drops faster than the duration
+    // does, so a maxed Corvick can keep two guns standing at once.
+    const life = [12,16,20,24][l-1] + (e.aghs?8:0);      // Legs for the Guns adds 8s
+    const t2 = spawnPet(S, e.team, tx, ty, life, {static:!e.aghs, ranged:true, r:15,
+      hp:thp, maxHp:thp, dmg:turretDmg(e, V), armor:2 + Math.round(e.armor*0.5),
+      range:520, bat:1.1, ms: e.aghs?235:0, turret:true, owner:e.id, tv:V, oslot:p.slot});
     fx(S,{t:'blast', x:t2.x, y:t2.y, r:90, col:'#e0c477'});
     break; }
   case 'orrin3': {
@@ -352,6 +346,22 @@ export function castAbility(S,p,i,tx,ty){
     fx(S,{t:'blast', x:e.x, y:e.y, r:110, col:'#ff7fd0'});
     break; }
   case 'nix1': {
+    // Displace sheds every eye on her: creeps drop the chase, towers lose the
+    // lock, and the creep-pull forgets she ever swung
+    for (const o of S.ents){
+      if (o.dead || o.team===e.team) continue;
+      if (o.type==='tower'){
+        if (o.tid===e.id || o.lockId===e.id){
+          o.tid=0; o.lockT=0; o.lockId=0; o.ramp=0;
+          o.heroThreatLockT = Math.max(o.heroThreatLockT||0, 1.0);
+        }
+      } else if (o.tid===e.id){
+        o.tid=0; o.acqT=0; o.leashX=undefined;
+        if (o.type==='creep') o.noHeroT=1.5;
+      }
+    }
+    const ag = S.aggro[1-e.team];
+    if (ag && ag.id===e.id) S.aggro[1-e.team] = null;
     let bestI=null, bd=1e9;
     for (const o of S.ents){
       if (o.dead || !o.illu || o.team!==e.team) continue;
@@ -373,21 +383,12 @@ export function castAbility(S,p,i,tx,ty){
     e.msT=2; e.msP=V/100;
     break; }
   case 'nix2': {
-    const ox=e.x, oy=e.y;
-    e.x=tx; e.y=ty; clampToLane(e);
-    fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:'#ff7fd0'});
-    fx(S,{t:'blast', x:e.x, y:e.y, r:A.aoe, col:'#ffb0e4'});
-    aoe(S, e.team, e.x, e.y, A.aoe, V, e);
-    // Hall of Mirrors — she leaves an illusion at the spot she struck from
-    if (e.aghs) spawnIllusion(S, p, ox, oy, 8, .30, Math.max(1,p.sk[0]), false);
-    for (const o of S.ents){
-      if (o.dead || !o.illu || o.team!==e.team) continue;
-      const a2 = Math.random()*Math.PI*2;
-      const px2=o.x, py2=o.y;
-      o.x = e.x + Math.cos(a2)*60; o.y = e.y + Math.sin(a2)*60; clampToLane(o);
-      o.aps = (o.baseAps||o.aps)*1.6; o.hasteT = 4;
-      fx(S,{t:'dash', x:px2, y:py2, x2:o.x, y2:o.y, col:'#ff7fd0'});
-    }
+    // the strike is telegraphed: the arrival point is marked for 0.45s, then
+    // the blink, the slash and the illusion recall all fire from the zone
+    e.castLock = 0.45;
+    addZone(S,{kind:'phantom', team:e.team, x:e.x, y:e.y, tx:tx, ty:ty, r:A.aoe,
+      t:.45, mt:.45, dmg:V, slot:p.slot});
+    fx(S,{t:'telegraph', x:tx, y:ty, r:A.aoe, life:.45, col:'#ff7fd0'});
     break; }
   /* ---- SHIV ---- */
   case 'shiv0': {
@@ -398,7 +399,7 @@ export function castAbility(S,p,i,tx,ty){
       const a = a0 + off;
       S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
         vx:Math.cos(a)*1400, vy:Math.sin(a)*1400, life:760/1400, dmg:V, src:e.id, r:13,
-        vhits:vhits, dot:{dps:V*0.16, t:5, stack:true}, col:'#ff8f8f'});
+        vhits:vhits, dot:{dps:A.val2[l-1], t:5, stack:true}, col:'#ff8f8f'});
     }
     break; }
   case 'shiv1': {
@@ -426,17 +427,17 @@ export function castAbility(S,p,i,tx,ty){
     const a = Math.atan2(ty-e.y, tx-e.x);
     S.projs.push({id:S.nextId++, kind:'boulder', team:e.team, x:e.x, y:e.y-8,
       vx:Math.cos(a)*1150, vy:Math.sin(a)*1150, life:780/1150, dmg:V, src:e.id, r:24,
-      stun:1.4, col:'#8fb8ff'});
+      stun:1.4, burst:A.aoe, col:'#8fb8ff'});
     break; }
   case 'svaar1': {
-    for (const q of S.players){
-      if (q.team!==e.team || !q.hero || q.hero.dead) continue;
-      if (dist(q.hero.x, q.hero.y, e.x, e.y) > A.aoe) continue;
-      q.hero.armT = 8; q.hero.armB = V;
-      q.hero.msT = 8; q.hero.msP = .20;
-      fx(S,{t:'buff', x:q.hero.x, y:q.hero.y, col:'#8fb8ff'});
-    }
-    fx(S,{t:'blast', x:e.x, y:e.y, r:A.aoe, col:'#8fb8ff'});
+    // the roar, then the charge — the charge zone carries him and saws the line
+    e.cryN = 1; e.cryT = 6; e.cryP = A.val2[l-1]/100;
+    updateHeroStats(S,p);
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#bcd4ff'});
+    fx(S,{t:'blast', x:e.x, y:e.y, r:200, col:'#8fb8ff'});
+    fx(S,{t:'dash', x:e.x, y:e.y, x2:tx, y2:ty, col:'#8fb8ff'});
+    addZone(S,{kind:'charge', team:e.team, x:e.x, y:e.y, tx:tx, ty:ty,
+      r:120, sp:1250, t:1.0, dmg:V, slot:p.slot, hits:[]});
     break; }
   case 'svaar2': break;                        // Great Cleave is passive
   case 'svaar3':
@@ -446,24 +447,18 @@ export function castAbility(S,p,i,tx,ty){
     break;
   /* ---- GEIST ---- */
   case 'geist0': {
-    // Essence Bomb — the blast is paid for in her own flesh
+    // Essence Bomb — paid for in her own flesh at cast. The globe flies to the
+    // point, plants a telegraphed zone there, and the blast lands 0.6s later
+    // ('essence' in zones.ts, which also settles the Blood Dividend refund).
     const cost = e.maxHp*0.07;
     e.hp = Math.max(1, e.hp - cost);
-    fx(S,{t:'blast', x:tx, y:ty, r:A.aoe, col:'#d8a6ff'});
-    let heroesHit = 0;
-    for (const o of S.ents){
-      if (o.dead || o.team===e.team || o.type==='tower') continue;
-      if (dist(o.x,o.y,tx,ty) > A.aoe + o.r) continue;
-      damage(S, e, o, V, {ability:true});
-      if (o.type==='hero') heroesHit++;
-    }
-    // Blood Dividend — a bomb that finds heroes repays the flesh it cost
-    if (e.aghs && heroesHit>0){
-      const prev = S.tag; S.tag = 'i:scepter';
-      heal(S, e, cost + 60*heroesHit);
-      S.tag = prev;
-      fx(S,{t:'heal', x:e.x, y:e.y});
-    }
+    const a = Math.atan2(ty-e.y, tx-e.x);
+    const d = Math.max(40, dist(e.x,e.y,tx,ty));
+    S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
+      vx:Math.cos(a)*950, vy:Math.sin(a)*950, life:d/950, dmg:0, src:e.id, r:16,
+      ghost:1, col:'#d8a6ff',
+      plant:{kind:'essence', team:e.team, r:A.aoe, t:.6, mt:.6, dmg:V, src:e.id,
+             cost:cost, aghs: e.aghs?1:0}});
     break; }
   case 'geist1': {
     // Life Drain — the tether itself ticks in heroTimers, half-second sips
@@ -480,10 +475,16 @@ export function castAbility(S,p,i,tx,ty){
     }
     break; }
   case 'geist2': {
-    const a = Math.atan2(ty-e.y, tx-e.x);
-    S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
-      vx:Math.cos(a)*1150, vy:Math.sin(a)*1150, life:750/1150, dmg:V, src:e.id, r:15,
-      mark:{p:A.val2[l-1]/100, t:5}, col:'#d8a6ff'});
+    // a fan of knives; the shared ledger means one knife per victim per cast
+    const a0 = Math.atan2(ty-e.y, tx-e.x);
+    const n = A.knives[l-1];
+    const vhits = [];
+    for (let k=0;k<n;k++){
+      const a = a0 + (k-(n-1)/2)*0.16;
+      S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
+        vx:Math.cos(a)*1150, vy:Math.sin(a)*1150, life:750/1150, dmg:V, src:e.id, r:15,
+        vhits:vhits, vall:1, mark:{p:A.val2[l-1]/100, t:5}, col:'#d8a6ff'});
+    }
     break; }
   case 'geist3': {
     // Soul Exchange — health percentages trade owners; the floor is all the mercy they get
@@ -539,7 +540,7 @@ export function castAbility(S,p,i,tx,ty){
   case 'thorne0': {
     const mine = S.zones.filter(z=>z.kind==='trap' && z.team===e.team);
     if (mine.length>=3) S.zones.splice(S.zones.indexOf(mine[0]),1);   // oldest one goes
-    addZone(S,{kind:'trap', team:e.team, x:tx, y:ty, r:A.aoe, t:45, arm:1, dmg:V, src:e.id,
+    addZone(S,{kind:'trap', team:e.team, x:tx, y:ty, r:A.aoe, t:20, arm:1, dmg:V, src:e.id,
       regrow: e.aghs?1:0});                     // Wild Growth — it grows back once
     fx(S,{t:'buff', x:tx, y:ty, col:'#7fdc6a'});
     break; }
@@ -554,8 +555,10 @@ export function castAbility(S,p,i,tx,ty){
       dps:V, slow:.35, src:e.id, tickT:0, grow: e.aghs?1:0, rMax:tr+130});
     break; }
   case 'thorne3':
-    fx(S,{t:'blast', x:tx, y:ty, r:A.aoe, col:'#7fdc6a'});
-    aoe(S, e.team, tx, ty, A.aoe, 0, e, o=>{ applyRoot(S,o,2); applyDot(S,o,V/2,2,e.id); });
+    // the prison is telegraphed: the ring is marked for 0.7s before it snaps shut
+    addZone(S,{kind:'strike', team:e.team, x:tx, y:ty, r:A.aoe, t:.7, mt:.7,
+      dmg:0, root:2, dotDps:V/2, dotSec:2, src:e.id, col:'#7fdc6a'});
+    fx(S,{t:'telegraph', x:tx, y:ty, r:A.aoe, life:.7, col:'#7fdc6a'});
     break;
   /* ---- KRELL ---- */
   case 'krell0': {
@@ -610,11 +613,13 @@ export function castAbility(S,p,i,tx,ty){
     fx(S,{t:'buff', x:e.x, y:e.y, col:'#ff9ec4'});
     break;
   case 'ronin1': {
-    // 2 HP and spell-proof: damage() turns every right click on it into exactly 1
+    // spell-proof, and only an enemy HERO can touch it: damage() turns every one
+    // of their right clicks into exactly 1 of its rank-scaled hit points
+    const hits = A.val2[l-1];
     const w = spawnPet(S, e.team, tx, ty, 9, {static:true, ward:true, r:11,
-      hp:2, maxHp:2, dmg:0, armor:0, range:0, bat:9, ms:0});
+      hp:hits, maxHp:hits, dmg:0, armor:0, range:0, bat:9, ms:0});
     addZone(S,{kind:'hward', team:e.team, follow:w.id, x:w.x, y:w.y, r:A.aoe, t:9,
-      hps:V, tickT:0});
+      hpct:V/100, tickT:0});
     fx(S,{t:'buff', x:w.x, y:w.y, col:'#8affd4'});
     break; }
   case 'ronin2': break;                        // Blade Dance is passive
@@ -631,14 +636,23 @@ export function castAbility(S,p,i,tx,ty){
     break; }
   /* ---- ZAAL ---- */
   case 'zaal0':
-    chainLightning(S, e, tx, ty, V, 5, .22, A.aoe, '#9fd8ff');
+    arcBolt(S, e, tx, ty, V, 5, .22, A.aoe, '#9fd8ff', .16);
     break;
   case 'zaal1':
     addZone(S,{kind:'strike', team:e.team, x:tx, y:ty, r:A.aoe, t:.5, mt:.5,
       dmg:V, stun:0.7, bolt:1, src:e.id, col:'#cfe9ff'});
     fx(S,{t:'telegraph', x:tx, y:ty, r:A.aoe, life:.5, col:'#9fd8ff'});
     break;
-  case 'zaal2': break;                         // Static Field is passive
+  case 'zaal2':
+    // Lightning Rod — planted, untouchable, and every blow thrown at him is
+    // turned around on whoever threw it (resolved in combat.ts parry)
+    e.parryT = 2; e.parryV = V;
+    e.csT = Math.max(e.csT||0, 2);
+    e.rootT = Math.max(e.rootT||0, 2);          // set directly: the ward would eat applyRoot
+    fx(S,{t:'counter', x:e.x, y:e.y});
+    fx(S,{t:'static', x:e.x, y:e.y, r:200});
+    fx(S,{t:'root', x:e.x, y:e.y});
+    break;
   case 'zaal3': {
     for (const q of S.players){
       if (q.team===e.team || !q.hero || q.hero.dead) continue;
@@ -724,14 +738,23 @@ export function castAbility(S,p,i,tx,ty){
     fx(S,{t:'buff', x:e.x, y:e.y, col:'#9b5cff'});
     break;
   case 'vosk2':
-    chainLightning(S, e, tx, ty, V, 4, .18, A.aoe, '#d8b0ff', o=> applySlow(o,.50,1));
+    arcBolt(S, e, tx, ty, V, 4, .18, A.aoe, '#d8b0ff', .14, .50, 1);
     break;
-  case 'vosk3':
-    addZone(S,{kind:'nova', team:e.team, follow:e.id, x:e.x, y:e.y, r:A.aoe, t:12,
-      iv:0.8, tickT:0.05, dmg:V, cost:22, slot:p.slot,
-      aghs: e.aghs?1:0});                       // Perpetual Torment
-    fx(S,{t:'blast', x:e.x, y:e.y, r:A.aoe, col:'#ff7ae0'});
-    break;
+  case 'vosk3': {
+    // a toggle — pressing R while it runs switches it off and starts the clock
+    const running = S.zones.filter(z=>z.kind==='nova' && z.slot===p.slot);
+    if (running.length){
+      for (const z of running){ z.t = 0; p.cds[3] = z.cd; }
+      fx(S,{t:'buff', x:e.x, y:e.y, col:'#ff7ae0'});
+    } else {
+      addZone(S,{kind:'nova', team:e.team, follow:e.id, x:e.x, y:e.y, r:A.aoe, t:999,
+        iv:0.8, tickT:0.05, dmg:V, cost:22, slot:p.slot,
+        cd: A.cd[l-1] * (1 - (e.cdr||0)),
+        aghs: e.aghs?1:0});                     // Perpetual Torment
+      p.cds[3] = 0;                             // the clock only starts when it stops
+      fx(S,{t:'blast', x:e.x, y:e.y, r:A.aoe, col:'#ff7ae0'});
+    }
+    break; }
   /* ---- DORN ---- */
   case 'dorn0': {
     // Revolving Door — a wide swing that shoves everything in front of him
@@ -810,33 +833,27 @@ export function castAbility(S,p,i,tx,ty){
     aoe(S, e.team, e.x, e.y, A.aoe, V, e, o=> applySlow(o,.25,2));
     break;
   case 'timber1': {
-    // pulls Timber to the cursor, damaging everything along the path
-    const ox=e.x, oy=e.y;
-    e.x=tx; e.y=ty; clampToLane(e);
-    fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:'#d98862'});
-    const len2 = Math.max(1, (e.x-ox)*(e.x-ox) + (e.y-oy)*(e.y-oy));
-    for (const o of S.ents){
-      if (o.dead || o.team===e.team || o.type==='tower') continue;
-      const t2 = clamp(((o.x-ox)*(e.x-ox) + (o.y-oy)*(e.y-oy)) / len2, 0, 1);
-      const px = ox + (e.x-ox)*t2, py = oy + (e.y-oy)*t2;
-      if (dist(px,py,o.x,o.y) > 110 + o.r) continue;
-      damage(S, e, o, V, {ability:true});
-    }
+    // the chain is thrown, not blinked: it anchors on the first thing it reaches
+    // (or where it runs out) and the reel drags him there — see reelIn
+    const a = Math.atan2(ty-e.y, tx-e.x);
+    S.projs.push({id:S.nextId++, kind:'chain', team:e.team, x:e.x, y:e.y-8,
+      vx:Math.cos(a)*1400, vy:Math.sin(a)*1400, life:A.range/1400, dmg:0, src:e.id, r:16,
+      reel:p.slot, reelDmg:V, col:'#d98862'});
     break; }
   case 'timber2': break;                        // Reactive Armor is passive
   case 'timber3': {
-    const mine = S.zones.filter(z=>(z.kind==='chakram' || z.kind==='chakret') && z.slot===p.slot);
+    const mine = S.zones.filter(z=>isChakram(z) && z.slot===p.slot);
     if (mine.length >= (e.aghs ? 2 : 1)){
-      // recall: both blades return, damaging everything on the way back
-      for (const z of mine) if (z.kind==='chakram'){ z.kind='chakret'; z.hits=[]; }
+      // recall: every blade turns for home, mid-flight ones included
+      for (const z of mine) if (z.kind==='chakram' || z.kind==='chakout'){ z.kind='chakret'; z.hits=[]; }
       fx(S,{t:'buff', x:e.x, y:e.y, col:'#d98862'});
     } else {
-      addZone(S,{kind:'chakram', team:e.team, x:tx, y:ty, r:A.aoe, t:999,
+      // it flies out from his hands, sawing the line, and parks where he aimed
+      addZone(S,{kind:'chakout', team:e.team, x:e.x, y:e.y, tx:tx, ty:ty, r:A.aoe, t:999,
         dps:V, drain:18, slot:p.slot, tickT:0, hits:[],
         cd: A.cd[l-1] * (1 - (e.cdr||0))});
       p.cds[3] = 0;                             // the clock only starts when it returns
       fx(S,{t:'dash', x:e.x, y:e.y, x2:tx, y2:ty, col:'#d98862'});
-      fx(S,{t:'blast', x:tx, y:ty, r:A.aoe, col:'#d98862'});
     }
     break; }
   /* ---- DRIFT ---- */
@@ -919,49 +936,17 @@ export function castAbility(S,p,i,tx,ty){
     for (let j=0;j<4;j++) if (q.cds[j]>0) q.cds[j] = Math.max(0, q.cds[j]-1);
     S.tag = null;
   }
-  // Zaal's Static Field bleeds everything nearby every single time he casts
-  if (H.id==='zaal' && p.sk[2]>0){
-    const staticA = H.abilities[2];
-    const pct = staticA.val[p.sk[2]-1]/100;
-    let n2 = 0;
-    S.tag = 'a2';                                // the field, not the spell that set it off
-    for (const o of S.ents){
-      if (o.dead || o.team===e.team || o.type==='tower') continue;
-      if (dist(o.x,o.y,e.x,e.y) > staticA.aoe) continue;
-      damage(S, e, o, o.hp*pct, {ability:true});
-      n2++;
-    }
-    if (n2) fx(S,{t:'static', x:e.x, y:e.y, r:staticA.aoe});
-  }
   S.tag = null;
   if (A.blink && (e.x!==wasX || e.y!==wasY)) disjoint(S, e);
 }
-/* A bolt that leaps from body to body, losing power with every jump.
-   The first arc reaches out from the cast point; every one after it from the last body hit. */
-export function chainLightning(S, src, x, y, dmg, jumps, fall, jumpR, col, onHit){
-  const seen = [];
-  let fromX = src.x, fromY = src.y - 8;
-  let cx = x, cy = y, cur = dmg, n = 0;
-  for (let k=0; k<jumps; k++){
-    let best=null, bd = k===0 ? 320 : jumpR;
-    for (const o of S.ents){
-      if (o.dead || o.team===src.team || o.type==='tower') continue;
-      if (seen.indexOf(o.id)>=0) continue;
-      const d = dist(o.x,o.y,cx,cy);
-      if (d<bd){ bd=d; best=o; }
-    }
-    if (!best) break;
-    seen.push(best.id);
-    fx(S,{t:'chain', x:fromX, y:fromY, x2:best.x, y2:best.y-6, col:col});
-    fromX = best.x; fromY = best.y-6;
-    cx = best.x; cy = best.y;
-    damage(S, src, best, cur, {ability:true});
-    if (onHit && !best.dead) onHit(best);
-    cur *= (1 - fall);
-    n++;
-  }
-  if (!n) fx(S,{t:'chain', x:src.x, y:src.y-8, x2:x, y2:y, col:col});
-  return n;
+/* A bolt that BOUNCES from body to body, one jump every `iv` seconds, losing
+   power on the way. The first jump reaches out from the cast point; every one
+   after it from the last body hit. The 'arc' zone stepper does the travelling. */
+export function arcBolt(S, src, x, y, dmg, jumps, fall, jumpR, col, iv, slowP, slowSec){
+  return addZone(S,{kind:'arc', team:src.team, x:src.x, y:src.y-8, tx:x, ty:y,
+    r:0, jr:jumpR, n:jumps, dmg:dmg, fall:fall, iv:iv, tickT:0, first:1,
+    seen:[], src:src.id, col:col, slowP:slowP||0, slowSec:slowSec||0,
+    t:(jumps+1)*iv});
 }
 /* Every spawnling still answering to this hero. */
 export function broodOf(S, e){
@@ -1008,7 +993,7 @@ export function illuScale(lvl, ult){
     hp:    ult ? 0.62 + 0.06*lvl : 0.42 + 0.06*lvl,   // .68–.80  /  .48–.66
     aps:   ult ? 0.80 + 0.05*lvl : 0.65 + 0.05*lvl,   // .85–.95  /  .70–.85
     take:  ult ? 1.75 - 0.15*lvl : 2.05 - 0.15*lvl,   // 1.60–1.30 / 1.90–1.45
-    tower: [0.20,0.22,0.24,0.26][Math.min(3,lvl-1)]    // 20% – 26% damage to buildings
+    tower: [0.10,0.11,0.12,0.13][Math.min(3,lvl-1)]    // 10% – 13% damage to buildings
   };
 }
 export function spawnIllusion(S, p, x, y, ttl, pct, lvl, ult){

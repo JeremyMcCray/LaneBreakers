@@ -2,7 +2,7 @@
 import {
   clamp, clampToLane, dist, heal, now
 } from '../data/world';
-import { sliceAndDice } from './abilities';
+import { sliceAndDice, spawnIllusion } from './abilities';
 import { addEmber, applyDot, applyRoot, applySilence, applySlow, applyStun, damage, disjoint } from './combat';
 import { ent, fx, spawnBrood } from './create';
 
@@ -71,6 +71,58 @@ export function stepZones(S,dt){
         if (q && q.hero) sliceAndDice(S, q, z.ox, z.oy, z.tx, z.ty, z.dmg, true);
         fx(S,{t:'echodash', x:z.ox, y:z.oy, x2:z.tx, y2:z.ty});
       }
+    } else if (z.kind==='charge'){
+      // A hero being carried along a line at speed: Svaar's Battle Cry, and the
+      // far end of Timber's chain. He cannot act while it runs, and a stun drops
+      // him where he stands.
+      const q = S.players[z.slot], h = q && q.hero;
+      if (!h || h.dead || h.stun>0){ z.t = 0; if (h) h.castLock = 0; }
+      else {
+        const d = dist(h.x,h.y,z.tx,z.ty) || 1;
+        const stepD = z.sp*dt;
+        if (d <= stepD){ h.x = z.tx; h.y = z.ty; z.t = 0; }
+        else { h.x += (z.tx-h.x)/d*stepD; h.y += (z.ty-h.y)/d*stepD; }
+        clampToLane(h);
+        z.x = h.x; z.y = h.y;
+        if (z.dmg>0) for (const o of S.ents){
+          if (o.dead || o.team===z.team || o.type==='tower') continue;
+          if (z.hits.indexOf(o.id)>=0) continue;
+          if (dist(o.x,o.y,h.x,h.y) > z.r + o.r) continue;
+          z.hits.push(o.id);
+          damage(S, h, o, z.dmg, {ability:true});
+        }
+        if (z.t<=0){ h.castLock = 0; disjoint(S, h); }
+        else h.castLock = Math.max(h.castLock||0, 0.06);
+      }
+    } else if (z.kind==='arc'){
+      // A bolt bouncing from body to body one jump at a time — Arc Lightning and
+      // Lightning Storm. z.x/z.y is where the bolt is sitting between jumps; the
+      // first jump reaches out from the cast point instead.
+      z.tickT -= dt;
+      if (z.tickT<=0){
+        z.tickT = z.iv;
+        const src = ent(S,z.src);
+        const cx = z.first ? z.tx : z.x, cy = z.first ? z.ty : z.y;
+        let best=null, bd = z.first ? 320 : z.jr;
+        for (const o of S.ents){
+          if (o.dead || o.team===z.team || o.type==='tower') continue;
+          if (z.seen.indexOf(o.id)>=0) continue;
+          const d = dist(o.x,o.y,cx,cy);
+          if (d<bd){ bd=d; best=o; }
+        }
+        if (!best){
+          if (z.first) fx(S,{t:'chain', x:z.x, y:z.y, x2:z.tx, y2:z.ty, col:z.col});
+          z.t = 0;                                     // nothing left to jump to
+        } else {
+          z.seen.push(best.id);
+          fx(S,{t:'chain', x:z.x, y:z.y, x2:best.x, y2:best.y-6, col:z.col});
+          z.x = best.x; z.y = best.y-6; z.first = 0;
+          damage(S, src, best, z.dmg, {ability:true});
+          if (z.slowP>0 && !best.dead) applySlow(best, z.slowP, z.slowSec);
+          z.dmg *= (1 - z.fall);
+          if (--z.n <= 0) z.t = 0;
+        }
+      }
     } else if (z.kind==='killingblow'){
       if (z.t<=0){
         const q = S.players[z.slot], e2 = q && q.hero;
@@ -111,7 +163,7 @@ export function stepZones(S,dt){
           z.t = 0;                              // sprung
           // Wild Growth — the trap grows back once, three seconds later
           if (z.regrow)
-            addZone(S,{kind:'trap', team:z.team, x:z.x, y:z.y, r:z.r, t:48, arm:3,
+            addZone(S,{kind:'trap', team:z.team, x:z.x, y:z.y, r:z.r, t:23, arm:3,
               dmg:z.dmg, src:z.src, tag:z.tag});
           break;
         }
@@ -122,7 +174,7 @@ export function stepZones(S,dt){
       else {
         for (const q of S.players){
           if (q.team!==z.team || !q.hero || q.hero.dead) continue;
-          if (dist(q.hero.x,q.hero.y,z.x,z.y) < z.r) heal(S, q.hero, z.hps*dt);
+          if (dist(q.hero.x,q.hero.y,z.x,z.y) < z.r) heal(S, q.hero, q.hero.maxHp*z.hpct*dt);
         }
         z.tickT -= dt;
         if (z.tickT<=0){ z.tickT=.5; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r, col:'#8affd4'}); }
@@ -182,13 +234,15 @@ export function stepZones(S,dt){
         }
       }
     } else if (z.kind==='nova'){
+      // Pulse Nova is a toggle: it runs until he switches it off, dies, or runs
+      // dry. However it ends, that is when the cooldown starts.
       const q = S.players[z.slot], h = q && q.hero;
-      if (!h || h.dead){ z.t = 0; }
+      if (!h || h.dead){ z.t = 0; if (q) q.cds[3] = z.cd; }
       else {
         z.tickT -= dt;
         if (z.tickT<=0){
           z.tickT = z.iv;
-          if (h.mp < z.cost) z.t = 0;                   // the nova stops when he runs dry
+          if (h.mp < z.cost){ z.t = 0; q.cds[3] = z.cd; }   // the nova stops when he runs dry
           else {
             h.mp -= z.cost;
             fx(S,{t:'nova', x:z.x, y:z.y, r:z.r});
@@ -280,6 +334,30 @@ export function stepZones(S,dt){
           else if (dist(o.x,o.y,z.tx,z.ty) < z.r + o.r) port(o, z.x, z.y, true);
         }
       }
+    } else if (z.kind==='chakout'){
+      // the blade on its way OUT: it saws through everything it passes, then
+      // parks at the target point and becomes the standing kill zone
+      const q = S.players[z.slot], h = q && q.hero;
+      if (!h || h.dead){ z.t = 0; if (q) q.cds[3] = z.cd; }
+      else {
+        h.mp -= z.drain*dt;
+        if (h.mp <= 0){ h.mp = 0; z.kind = 'chakret'; z.hits = []; }   // dry mid-flight: it turns around
+        else {
+          const d = dist(z.x,z.y,z.tx,z.ty) || 1;
+          const step2 = 950*dt;
+          if (d <= step2){ z.x = z.tx; z.y = z.ty; z.kind = 'chakram'; z.hits = []; }
+          else { z.x += (z.tx-z.x)/d*step2; z.y += (z.ty-z.y)/d*step2; }
+          for (const o of S.ents){
+            if (o.dead || o.team===z.team || o.type==='tower') continue;
+            if (z.hits.indexOf(o.id)>=0) continue;
+            if (dist(o.x,o.y,z.x,z.y) > 110 + o.r) continue;
+            z.hits.push(o.id);
+            damage(S, h, o, z.dps*0.8, {ability:true});
+          }
+          z.tickT -= dt;
+          if (z.tickT<=0){ z.tickT=.45; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r, col:'#d98862'}); }
+        }
+      }
     } else if (z.kind==='chakram'){
       // Timbersaw's blade, parked and spinning — fed by his mana until recalled
       const q = S.players[z.slot], h = q && q.hero;
@@ -321,8 +399,67 @@ export function stepZones(S,dt){
         if (z.stun) applyStun(S,o,z.stun);
         if (z.slow) applySlow(o, z.slow, z.slowT||2);
         if (z.sil)  applySilence(S,o,z.sil);
+        if (z.root) applyRoot(S,o,z.root);
+        if (z.dotDps) applyDot(S,o,z.dotDps,z.dotSec,z.src);
       });
-    } else if (z.kind==='quake' || z.kind==='light' || z.kind==='thicket' || z.kind==='spin'){
+    } else if (z.kind==='phantom'){
+      // Nix's Phantom Strike after its telegraph: blink, slash, illusion recall
+      if (z.t<=0){
+        const q = S.players[z.slot], h = q && q.hero;
+        if (h && !h.dead){
+          const ox=h.x, oy=h.y;
+          h.x=z.tx; h.y=z.ty; clampToLane(h);
+          h.castLock = 0;
+          disjoint(S, h);
+          fx(S,{t:'dash', x:ox, y:oy, x2:h.x, y2:h.y, col:'#ff7fd0'});
+          fx(S,{t:'blast', x:h.x, y:h.y, r:z.r, col:'#ffb0e4'});
+          aoe(S, z.team, h.x, h.y, z.r, z.dmg, h);
+          // Hall of Mirrors — she leaves an illusion at the spot she struck from
+          if (h.aghs) spawnIllusion(S, q, ox, oy, 8, .30, Math.max(1,q.sk[0]), false);
+          for (const o of S.ents){
+            if (o.dead || !o.illu || o.team!==h.team) continue;
+            const a2 = Math.random()*Math.PI*2;
+            const px2=o.x, py2=o.y;
+            o.x = h.x + Math.cos(a2)*60; o.y = h.y + Math.sin(a2)*60; clampToLane(o);
+            o.aps = (o.baseAps||o.aps)*1.6; o.hasteT = 4;
+            fx(S,{t:'dash', x:px2, y:py2, x2:o.x, y2:o.y, col:'#ff7fd0'});
+          }
+        }
+      }
+    } else if (z.kind==='unleash'){
+      // Vhal's Unleash after its telegraph: each spawnling teleports to its
+      // marked spot, hasted, and everything near the landing is slowed
+      if (z.t<=0){
+        const q = S.players[z.slot], h = q && q.hero;
+        for (const sp of z.spots){
+          const o = ent(S, sp.id);
+          if (!o || o.dead || !o.brood) continue;
+          const px=o.x, py=o.y;
+          o.x = sp.x; o.y = sp.y; clampToLane(o);
+          o.aps = (o.baseAps || 1/0.9) * (1 + z.asP);
+          o.ls = .40; o.hasteT = 5;
+          o.tid = 0; o.acqT = 0; o.leashX = undefined;   // re-acquire wherever they land
+          fx(S,{t:'dash', x:px, y:py, x2:o.x, y2:o.y, col:'#b78cff'});
+        }
+        fx(S,{t:'blast', x:z.x, y:z.y, r:z.r, col:'#c9a6ff'});
+        aoe(S, z.team, z.x, z.y, z.r, 0, h, o=> applySlow(o,.30,2));
+      }
+    } else if (z.kind==='essence'){
+      // Geist's Essence Bomb after its fuse — the blast, and the Blood Dividend
+      if (z.t<=0){
+        const src = ent(S,z.src);
+        fx(S,{t:'blast', x:z.x, y:z.y, r:z.r, col:'#d8a6ff'});
+        let heroesHit = 0;
+        aoe(S, z.team, z.x, z.y, z.r, z.dmg, src, o=>{ if (o.type==='hero') heroesHit++; });
+        // Blood Dividend — a bomb that finds heroes repays the flesh it cost
+        if (z.aghs && heroesHit>0 && src && !src.dead){
+          const prev = S.tag; S.tag = 'i:scepter';
+          heal(S, src, (z.cost||0) + 60*heroesHit);
+          S.tag = prev;
+          fx(S,{t:'heal', x:src.x, y:src.y});
+        }
+      }
+    } else if (z.kind==='quake' || z.kind==='thicket' || z.kind==='spin'){
       z.tickT -= dt;
       const src = ent(S,z.src);
       // Wild Growth — Thorne's thicket keeps spreading while it lives
@@ -334,11 +471,12 @@ export function stepZones(S,dt){
           damage(S, src, o, z.dps*dt, {ability:true, silent:true});
         }
       }
-      if (z.kind==='light' && src && !src.dead && dist(src.x,src.y,z.x,z.y) < z.r)
-        heal(S, src, z.dps*1.2*dt);
-      if (z.tickT<=0){ z.tickT=.5; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r,
-        col: z.kind==='light' ? '#ffe9a8' : (z.kind==='thicket' ? '#7fdc6a' :
-             (z.kind==='spin' ? '#ff9ec4' : '#c8945a'))}); }
+      if (z.tickT<=0){
+        z.tickT=.5;
+        if (z.kind==='quake') fx(S,{t:'rumble', x:z.x, y:z.y, r:z.r});
+        else if (z.kind==='thicket') fx(S,{t:'thornpulse', x:z.x, y:z.y, r:z.r});
+        else fx(S,{t:'quake', x:z.x, y:z.y, r:z.r, col:'#ff9ec4'});
+      }
     } else if (z.kind==='mine'){
       z.arm -= dt;
       if (z.arm<=0){

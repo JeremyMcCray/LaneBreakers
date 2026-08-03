@@ -39,13 +39,15 @@ function bench(a, b) {
   }
   return S;
 }
-/* Vex Q is a point blast — cast it on the enemy and read what came off. */
+/* Vex Q is a short dash — cast it onto the enemy, let it travel, read the damage. */
 function vexQ(valOverride) {
   if (valOverride !== null) setTuning(abKey("vex", 0, "val", 3), valOverride);
   const S = bench("vex", "gruk");
+  step(S, 2);                                     // settle the lvl-12 stat pass
   const foe = S.players[1].hero;
   const before = foe.hp;
   castAbility(S, S.players[0], 0, foe.x, foe.y);
+  step(S, 10);                                    // the dash crosses the foe
   return before - foe.hp;
 }
 
@@ -66,19 +68,23 @@ console.log("\n== CAST RANGE IS LIVE ==");
 {
   resetAll();
   const S = bench("vex", "gruk");
+  step(S, 2);                                   // settle the lvl-12 stat pass
   const foe = S.players[1].hero;
   foe.x = S.players[0].hero.x + 900;            // far outside Q's 430
   const far = foe.hp;
   castAbility(S, S.players[0], 0, foe.x, foe.y);
-  ok("out of range, the blast does not reach", foe.hp === far);
+  step(S, 45);
+  ok("out of range, the dash does not reach", Math.abs(foe.hp - far) < 5);
 
   setTuning(abKey("vex", 0, "range"), 1000);
   const S2 = bench("vex", "gruk");
+  step(S2, 2);                                  // settle the lvl-12 stat pass
   const foe2 = S2.players[1].hero;
   foe2.x = S2.players[0].hero.x + 900;
   const before2 = foe2.hp;
   castAbility(S2, S2.players[0], 0, foe2.x, foe2.y);
-  ok("with the range widened it lands", foe2.hp < before2,
+  step(S2, 50);
+  ok("with the range widened it lands", foe2.hp < before2 - 20,
      "took " + Math.round(before2 - foe2.hp));
   resetAll();
 }
@@ -161,6 +167,7 @@ console.log("\n== SANDBOX CHEATS ==");
 {
   resetAll();
   const S = bench("vex", "gruk");
+  step(S, 2);                                    // settle the lvl-12 stat pass
   const p = S.players[0];
 
   p.cds = [9, 9, 9, 9];
@@ -172,8 +179,9 @@ console.log("\n== SANDBOX CHEATS ==");
   const foe = S.players[1].hero;
   const hp0 = foe.hp;
   castAbility(S, p, 0, foe.x, foe.y);
-  ok("it casts with no mana and a full cooldown", foe.hp < hp0);
   ok("and neither mana nor the cooldown was spent", p.hero.mp === 0 && p.cds[0] === 9);
+  step(S, 10);                                   // the dash crosses the foe
+  ok("it casts with no mana and a full cooldown", foe.hp < hp0);
   applyCmd(S, 0, { a: "dbg", w: "free" });
   ok("free cast toggles back off", p.devFree === false);
   p.cds = [9, 9, 9, 9]; p.hero.mp = 9999;

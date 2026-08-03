@@ -20,6 +20,7 @@ export function heroThink(S,p,dt){
       e.fervN=0; e.fervTid=0; e.fervT=0; e.hiveT=0; e.stanceR=false;
       e.fbN=0; e.fbT=0; e.fbCd=0; e.raN=0; e.raT=0;
       e.blindT=0; e.btT=0; e.btId=0; e.drainT=0; e.drainId=0;
+      e.parryT=0; e.parryV=0; e.cryT=0; e.cryN=0;
       clearEmber(e);
       updateHeroStats(S,p);
       e.hp=e.maxHp; e.mp=e.maxMp;
@@ -100,7 +101,10 @@ export function heroTimers(S,p,dt){
    'castLock','hitFlash','swing','drT','markT','rendT','hcT','shredT',
    'rootT','silT','barbT','bleedT','gsT','csT','banT',
    'spinT','invT','brT','vulT','bzT','fervT','wardFxT','hiveT',
-   'undyCd','fbT','fbCd','doorCd','shovedT','raT','blindT','btT','drainT'].forEach(dec);
+   'undyCd','fbT','fbCd','doorCd','shovedT','raT','blindT','btT','drainT',
+   'parryT','cryT'].forEach(dec);
+  if (e.parryT<=0) e.parryV = 0;                 // Lightning Rod grounded out
+  if (e.cryT<=0) e.cryN = 0;                     // the charged swing went unused
   if (e.fbT<=0) e.fbN = 0;                       // Frostbite thaws if Ilva lets up
   if (e.raT<=0) e.raN = 0;                       // Reactive Armor plates fall off together
   tickDot(S,e,dt);
@@ -109,7 +113,7 @@ export function heroTimers(S,p,dt){
   // Life Drain — Geist's tether pays out in half-second sips, healed straight back
   if (e.drainT>0 && !e.dead){
     const tg = ent(S, e.drainId);
-    if (!tg || tg.dead || dist(e.x,e.y,tg.x,tg.y) > 700){ e.drainT = 0; }
+    if (!tg || tg.dead || dist(e.x,e.y,tg.x,tg.y) > 575){ e.drainT = 0; }
     else {
       e.drainTick -= dt;
       if (e.drainTick<=0){

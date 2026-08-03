@@ -5,7 +5,7 @@ import {
 import { HEROES } from '../data/heroes';
 import { ITEMS, itemStats } from '../data/items';
 import { damage } from './combat';
-import { broodStats, fx, symbiosisRank, teamOf } from './create';
+import { broodStats, fx, symbiosisRank, teamOf, turretDmg } from './create';
 
 export function updateHeroStats(S,p,init){
   const e = p.hero, H = HEROES[p.heroId], l = p.lvl, it = itemStats(p.items);
@@ -67,6 +67,8 @@ export function updateHeroStats(S,p,init){
   e.aps = (1 + asB/100) / H.bat;
   if (e.banT>0){ e.dmg += e.banDmg||0; e.armor += e.banArm||0; e.ms += e.banMs||0; }  // War Banner
   if (e.gsT>0) e.dmg *= (1 + e.gsP);            // God's Strength
+  // Battle Cry — one charged swing carries the ult's bonus; it never doubles with the ult itself
+  else if (e.cryN>0 && e.cryT>0) e.dmg *= (1 + (e.cryP||0));
   if (H.id==='shiv'){
     e.rageOn = true;
     e.deferPct = p.sk[1]>0 ? H.abilities[1].val[p.sk[1]-1]/100 : 0;
@@ -74,12 +76,24 @@ export function updateHeroStats(S,p,init){
   }
   // Deep Freeze: Ilva's ability damage stacks Frostbite (resolved in combat.ts)
   e.frostTouch = (H.id==='ilva' && e.aghs);
-  // Ash's EMBERS: Wildfire is what makes them stack deep, burn hard and spread
+  // Ash's EMBERS: six-deep stacks and the jump off a corpse are innate. Wildfire
+  // only decides how hard each ember burns and how often his swings light one.
   if (H.id==='ash'){
     const lv = p.sk[1];
-    e.embPow    = lv>0 ? H.abilities[1].val[lv-1] : 5;
-    e.embCap    = (lv>0 ? 6 : 3) + (e.aghs ? 2 : 0);   // From the Ashes — eight deep
-    e.embSpread = lv>0;
+    e.embPow    = lv>0 ? H.abilities[1].val2[lv-1] : 5;
+    e.embAtk    = lv>0 ? H.abilities[1].val[lv-1]/100 : 0;
+    e.embCap    = 6 + (e.aghs ? 2 : 0);               // From the Ashes — eight deep
+    e.embSpread = true;
+  }
+  // Corvick's standing turrets track his spell power and armor, so items he buys
+  // after deploying them still reach the guns already on the field
+  if (H.id==='orrin'){
+    for (const o of S.ents){
+      if (o.dead || !o.turret || o.owner!==e.id) continue;
+      o.bdmg = turretDmg(e, o.tv||0);
+      o.dmg  = o.bdmg + (o.buffT>0 ? (o.buffDmg||0) : 0);
+      o.armor = 2 + Math.round(e.armor*0.5);
+    }
   }
   // Symbiosis: the brood is rebuilt from Vhal every tick, so her items reach it
   if (H.id==='vhal'){

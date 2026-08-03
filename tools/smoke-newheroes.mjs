@@ -1,7 +1,8 @@
 // @ts-nocheck
 /* Focused checks on the newer kits — each one asserts the mechanic that
    defines the hero, not just "it did not crash". */
-import { newSim, simStep, castAbility, mkEnt, kill, damage } from "../src/sim/engine.ts";
+import { newSim, simStep, castAbility, mkEnt, kill, damage,
+         buildSnapshot, updateHeroStats } from "../src/sim/engine.ts";
 import { HEROES, HERO_IDS } from "../src/data/heroes.ts";
 import { BOT_BUILD } from "../src/ai/bot.ts";
 import { LANE_Y, armorMult } from "../src/data/world.ts";
@@ -108,37 +109,61 @@ console.log("\n== STRYG — Rupture bites while moving, not while still ==");
   ok("it expires after 6s", !(foe.hero.rupT > 0), `rupT=${foe.hero.rupT}`);
 }
 
-console.log("\n== ZAAL — Arc Lightning chains, Static Field bleeds on every cast ==");
+console.log("\n== ZAAL — Arc Lightning bounces from body to body ==");
 {
   const S = sim("zaal", "vex");
   const p = S.players[0], h = p.hero;
-  p.sk[2] = 0;                                     // isolate the chain from Static Field
+  S.players[1].hero.x = 3200;                      // keep the enemy hero out of the jump pool
   const ds = [];
   for (let i = 0; i < 5; i++) ds.push(dummy(S, 1, h.x + 260 + i * 120, LANE_Y + (i % 2 ? 40 : -40)));
   const hp0 = ds.map(d => d.hp);
   castAbility(S, p, 0, ds[0].x, ds[0].y);
+  ok("a bouncing bolt was launched", S.zones.some(z => z.kind === "arc"), "");
+  step(S, 6);                                      // 0.1s in — one jump, not the whole line
+  const early = ds.filter((d, i) => d.hp < hp0[i]).length;
+  ok("it does not strike everything at once", early < 5, `${early} of 5 already hit`);
+  step(S, 80);
   const hurt = ds.filter((d, i) => d.hp < hp0[i]).length;
-  ok("the bolt jumped across several bodies", hurt >= 4, `hit ${hurt} of 5`);
+  ok("the bolt bounced across several bodies", hurt >= 4, `hit ${hurt} of 5`);
   const dmgs = ds.map((d, i) => hp0[i] - d.hp).filter(v => v > 0).sort((a, b) => b - a);
   ok("damage falls off with each jump", dmgs[0] > dmgs[dmgs.length - 1] * 1.4,
      `first=${dmgs[0].toFixed(0)} last=${dmgs[dmgs.length - 1].toFixed(0)}`);
+}
 
-  const S2 = sim("zaal", "vex");
-  const p2 = S2.players[0], h2 = p2.hero;
-  const near = dummy(S2, 1, h2.x + 300, LANE_Y);
-  const nh0 = near.hp;
-  castAbility(S2, p2, 3, h2.x, h2.y);              // ult hits heroes only — creep loss must be Static Field
-  const pct = HEROES.zaal.abilities[2].val[3] / 100;
-  ok("Static Field tore into a nearby creep", near.hp < nh0, `${nh0} -> ${Math.round(near.hp)}`);
-  ok("and it scaled off current health", (nh0 - near.hp) <= nh0 * pct + 1,
-     `took ${(nh0 - near.hp).toFixed(0)} of a ${(nh0 * pct).toFixed(0)} ceiling`);
+console.log("\n== ZAAL — Lightning Rod parries what touches him and shocks the thrower ==");
+{
+  const S = sim("zaal", "vex");
+  const p = S.players[0], h = p.hero;
+  const fh = S.players[1].hero;
+  fh.x = h.x + 120; fh.y = LANE_Y;
+  step(S, 2);
+  castAbility(S, p, 2, h.x, h.y);
+  ok("he plants himself, rooted and untouchable",
+     h.rootT > 1 && h.csT > 1 && h.parryT > 1,
+     `root=${h.rootT.toFixed(1)} cs=${h.csT.toFixed(1)} parry=${h.parryT.toFixed(1)}`);
+  const zhp = h.hp, fhp = fh.hp;
+  damage(S, fh, h, 300, { attack: true });         // a right click into the rod
+  ok("the attack was turned aside", h.hp === zhp, `hp=${Math.round(h.hp)}`);
+  ok("and the attacker was shocked", fh.hp < fhp, `${Math.round(fhp)} -> ${Math.round(fh.hp)}`);
+  ok("and stunned", fh.stun > 0, `stun=${(fh.stun || 0).toFixed(2)}`);
+  fh.stun = 0;
+  const zhp2 = h.hp, fhp2 = fh.hp;
+  damage(S, fh, h, 300, { ability: true });
+  ok("a spell is parried the same way", h.hp === zhp2 && fh.hp < fhp2,
+     `zaal ${Math.round(h.hp)}, vex ${Math.round(fhp2)} -> ${Math.round(fh.hp)}`);
+  const c = dummy(S, 1, h.x + 40, LANE_Y);         // the wave is what punishes him for standing still
+  const zhp3 = h.hp;
+  damage(S, c, h, 120, { attack: true });
+  ok("but a creep's swing still lands", h.hp < zhp3, `${Math.round(zhp3)} -> ${Math.round(h.hp)}`);
+  step(S, 60 * 3);
+  ok("it lapses after 2s", !(h.parryT > 0) && !(h.rootT > 0),
+     `parry=${h.parryT} root=${h.rootT}`);
 }
 
 console.log("\n== ZAAL — Lightning Bolt telegraphs for 0.5s, then lands ==");
 {
   const S = sim("zaal", "vex");
   const p = S.players[0], h = p.hero;
-  p.sk[2] = 0;                                     // keep Static Field out of the reading
   const d = dummy(S, 1, h.x + 400, LANE_Y);
   const hp0 = d.hp;
   castAbility(S, p, 1, d.x, d.y);
@@ -173,19 +198,27 @@ console.log("\n== RONIN — Bladefury: spell immune, cannot swing, damages aroun
   ok("spin ends and he can swing again", !(h.spinT > 0), `spinT=${h.spinT}`);
 }
 
-console.log("\n== RONIN — Healing Ward heals, and dies when shot ==");
+console.log("\n== RONIN — Healing Ward pays a share of max health, and only heroes can break it ==");
 {
   const S = sim("ronin", "vex");
   const p = S.players[0], h = p.hero;
-  h.hp = 400;
+  step(S, 2);                                      // settle the lvl-12 stat pass
+  h.hp = h.maxHp * 0.4;
   castAbility(S, p, 1, h.x + 60, LANE_Y);
   const w = S.ents.find(e => e.ward);
-  ok("a ward was planted", !!w, w ? `hp=${w.hp}` : "none");
+  const hits = HEROES.ronin.abilities[1].val2[3];
+  ok("the ward carries rank-scaled hit points", !!w && w.hp === hits, w ? `hp=${w.hp} want ${hits}` : "none");
   ok("a heal field followed it", S.zones.some(z => z.kind === "hward"), "");
-  const hp0 = h.hp;
-  step(S, 120);
-  ok("it healed the hero standing on it", h.hp > hp0 + 30, `${hp0} -> ${Math.round(h.hp)}`);
-  w.hp = 0; w.dead = true;
+  const hp0 = h.hp, pct = HEROES.ronin.abilities[1].val[3] / 100;
+  step(S, 120);                                    // 2s standing in it
+  ok("it healed a share of his maximum health", h.hp > hp0 + h.maxHp * pct * 1.5,
+     `${Math.round(hp0)} -> ${Math.round(h.hp)} at ${(pct * 100).toFixed(1)}%/s of ${Math.round(h.maxHp)}`);
+  const c = dummy(S, 1, w.x, w.y);
+  damage(S, c, w, 500, { attack: true });
+  ok("a creep cannot scratch it", w.hp === hits, `hp=${w.hp}`);
+  const foe = S.players[1].hero;
+  for (let k = 0; k < hits; k++) damage(S, foe, w, 500, { attack: true });
+  ok("an enemy hero takes it down in exactly its hit points", w.dead, `hp=${w.hp}`);
   step(S, 10);
   ok("killing the ward removes the field", !S.zones.some(z => z.kind === "hward"), "");
 }
@@ -239,21 +272,36 @@ console.log("\n== VOSK — Split Earth stuns, Edict pulses, Pulse Nova drains ma
   step(S3, 60 * 3);                                // ~3 pulses at 22 mana, regen is only ~3/s
   ok("nova pulses hurt and cost mana", d3.hp < h30 && h3.mp < mp0 - 40,
      `mp ${Math.round(mp0)} -> ${Math.round(h3.mp)}, dummy took ${Math.round(h30 - d3.hp)}`);
-  h3.mp = 0;
-  step(S3, 60);
-  ok("it shuts off when the mana runs dry", !S3.zones.some(z => z.kind === "nova"), "");
+  ok("it runs as a toggle, with no clock ticking", p3.cds[3] === 0, `cd=${p3.cds[3]}`);
+  castAbility(S3, p3, 3, h3.x, h3.y);              // press R again
+  step(S3, 2);
+  ok("pressing R again switches it off and starts the cooldown",
+     !S3.zones.some(z => z.kind === "nova") && p3.cds[3] > 5, `cd=${p3.cds[3].toFixed(1)}`);
+
+  const S4 = sim("vosk", "vex");
+  const p4 = S4.players[0], h4 = p4.hero;
+  dummy(S4, 1, h4.x + 150, LANE_Y);
+  castAbility(S4, p4, 3, h4.x, h4.y);
+  step(S4, 30);                                    // let the lvl-12 stat pass settle the mana pool
+  h4.mp = 0;
+  step(S4, 60);
+  ok("it also shuts off on its own when the mana runs dry",
+     !S4.zones.some(z => z.kind === "nova") && p4.cds[3] > 5, `cd=${p4.cds[3].toFixed(1)}`);
 }
 
-console.log("\n== VOSK — Lightning Storm chains and slows ==");
+console.log("\n== VOSK — Lightning Storm bounces and slows ==");
 {
   const S = sim("vosk", "vex");
   const p = S.players[0], h = p.hero;
+  S.players[1].hero.x = 3200;                      // keep the enemy hero out of the jump pool
   const ds = [];
   for (let i = 0; i < 4; i++) ds.push(dummy(S, 1, h.x + 260 + i * 110, LANE_Y + (i % 2 ? 30 : -30)));
   const hp0 = ds.map(d => d.hp);
   castAbility(S, p, 2, ds[0].x, ds[0].y);
+  ok("a bouncing bolt was launched", S.zones.some(z => z.kind === "arc"), "");
+  step(S, 40);
   const hurt = ds.filter((d, i) => d.hp < hp0[i]).length;
-  ok("the storm jumped between bodies", hurt >= 3, `hit ${hurt} of 4`);
+  ok("the storm bounced between bodies", hurt >= 3, `hit ${hurt} of 4`);
   ok("and slowed what it touched", ds.filter(d => d.slowT > 0).length >= 3,
      `slowed ${ds.filter(d => d.slowT > 0).length}`);
 }
@@ -288,7 +336,7 @@ console.log("\n== ASH — embers stack, burn, detonate and spread ==");
   ok("a bolt lit 2 embers", d.embN === 2, `embN=${d.embN}`);
   const hp0 = d.hp;
   step(S, 60);                                     // 1s of burning
-  const perStack = HEROES.ash.abilities[1].val[3] * CREEP_RESIST;
+  const perStack = HEROES.ash.abilities[1].val2[3] * CREEP_RESIST;
   const burned = hp0 - d.hp;
   ok("they burn for stacks x rank each second", Math.abs(burned - 2 * perStack) < perStack * 0.6,
      `took ${burned.toFixed(0)}/s, expected ~${(2 * perStack).toFixed(0)}`);
@@ -323,15 +371,36 @@ console.log("\n== ASH — Wildfire throws embers off a corpse ==");
   step(S, 150);                                    // the burn itself finishes it
   ok("it died to the burn", dying.dead, `hp=${Math.round(dying.hp)}`);
   ok("its embers leapt to the neighbour", neighbour.embN > 0, `embN=${neighbour.embN}`);
-  // without Wildfire levelled there is no spread and a shallower cap
+  // the deep stack and the jump off a corpse are innate — Wildfire only decides
+  // how hard an ember burns and how often his swings light one
   const S2 = sim("ash", "vex");
   const p2 = S2.players[0]; p2.sk[1] = 0;
-  const a2 = dummy(S2, 1, p2.hero.x + 300, LANE_Y, 1);
-  const b2 = dummy(S2, 1, p2.hero.x + 340, LANE_Y + 30);
-  castAbility(S2, p2, 0, a2.x, a2.y);
-  step(S2, 120);
-  ok("no spread without Wildfire", !(b2.embN > 0), `embN=${b2.embN || 0}`);
-  ok("and the cap is only three", (p2.hero.embCap || 0) === 3, `cap=${p2.hero.embCap}`);
+  step(S2, 2);
+  ok("the six-deep cap is innate", (p2.hero.embCap || 0) === 6, `cap=${p2.hero.embCap}`);
+  ok("embers burn at the base rate without Wildfire", p2.hero.embPow === 5, `pow=${p2.hero.embPow}`);
+  ok("and his swings light nothing", !(p2.hero.embAtk > 0), `chance=${p2.hero.embAtk || 0}`);
+}
+
+console.log("\n== ASH — Wildfire sets his swings alight ==");
+{
+  const realRandom = Math.random;
+  const S = sim("ash", "vex");
+  const p = S.players[0], h = p.hero;
+  const d = dummy(S, 1, h.x + 200, LANE_Y, 60000);
+  p.order = { type: "attack", tid: d.id };
+  Math.random = () => 0.0;                         // every swing rolls the proc
+  step(S, 180);
+  Math.random = realRandom;
+  ok("his attacks light embers", d.embN > 0, `embN=${d.embN}`);
+  const S2 = sim("ash", "vex");
+  const p2 = S2.players[0], h2 = p2.hero;
+  p2.sk[1] = 0;
+  const d2 = dummy(S2, 1, h2.x + 200, LANE_Y, 60000);
+  p2.order = { type: "attack", tid: d2.id };
+  Math.random = () => 0.0;
+  step(S2, 180);
+  Math.random = realRandom;
+  ok("without Wildfire they never do", !(d2.embN > 0), `embN=${d2.embN || 0}`);
 }
 
 console.log("\n== ASH — Firestorm feeds embers and holds them lit ==");
@@ -385,6 +454,9 @@ console.log("\n== VHAL — Unleash flings the swarm and hastes it ==");
   const baseAps = brood[0].aps;
   const tx = h.x + 500, ty = LANE_Y;
   castAbility(S, p, 1, tx, ty);
+  ok("the landing is telegraphed — nobody moved yet",
+     brood.every(o => Math.hypot(o.x - tx, o.y - ty) > 130), "");
+  step(S, 35);                                     // past the 0.5s telegraph
   ok("every spawnling teleported to the cursor",
      brood.every(o => Math.hypot(o.x - tx, o.y - ty) < 130), "");
   const V = HEROES.vhal.abilities[1].val[3];
@@ -493,17 +565,22 @@ console.log("\n== TIMBER — spin, chain, plates ==");
 {
   const S = sim("timber", "vex");
   const p = S.players[0], h = p.hero;
-  const d = dummy(S, 1, h.x + 150, LANE_Y);
+  const foe = S.players[1].hero;
+  foe.x = 3200;                                    // clear the chain's flight path
+  const d = dummy(S, 1, h.x + 150, LANE_Y - 150);  // in the spin, off the chain's line
   const hp0 = d.hp;
   castAbility(S, p, 0, h.x, h.y);                  // Whirling Death
   ok("the spin chewed the target and slowed it", d.hp < hp0 && d.slowT > 0,
      `${hp0} -> ${Math.round(d.hp)} slowT=${d.slowT.toFixed(1)}`);
-  const d2 = dummy(S, 1, h.x + 400, LANE_Y + 40);
+  // the chain is thrown, not blinked: it flies out, bites, and only then reels him in
+  const d2 = dummy(S, 1, h.x + 560, LANE_Y + 40);
   const d2hp = d2.hp, hx0 = h.x;
-  castAbility(S, p, 1, h.x + 500, LANE_Y + 40);    // Timber Chain
+  castAbility(S, p, 1, h.x + 620, LANE_Y + 40);    // Timber Chain
+  ok("a chain was thrown and he has not moved yet",
+     S.projs.some(q => q.kind === "chain") && Math.abs(h.x - hx0) < 1, `x=${Math.round(h.x)}`);
+  step(S, 60);
   ok("the chain reeled him across the lane", h.x > hx0 + 400, `${Math.round(hx0)} -> ${Math.round(h.x)}`);
-  ok("and sawed what he passed", d2.hp < d2hp, `${d2hp} -> ${Math.round(d2.hp)}`);
-  const foe = S.players[1].hero;
+  ok("and sawed what he was dragged past", d2.hp < d2hp, `${d2hp} -> ${Math.round(d2.hp)}`);
   step(S, 2);                                      // a stats pass so Reactive Armor is armed
   const arm0 = h.armor;
   for (let k = 0; k < 5; k++) damage(S, foe, h, 10, { attack: true });
@@ -514,14 +591,18 @@ console.log("\n== TIMBER — spin, chain, plates ==");
   ok("the plates fall off after 12s", !(h.raN > 0), `raN=${h.raN}`);
 }
 
-console.log("\n== TIMBER — the Chakram parks, drains, and comes home ==");
+console.log("\n== TIMBER — the Chakram flies out, parks, drains, and comes home ==");
 {
   const S = sim("timber", "vex");
   const p = S.players[0], h = p.hero;
   const d = dummy(S, 1, h.x - 400, LANE_Y);        // behind him, away from the enemy hero
+  const dhp0 = d.hp;
   castAbility(S, p, 3, d.x, d.y);
-  ok("the blade is parked with no cooldown ticking", S.zones.some(z => z.kind === "chakram") && p.cds[3] === 0,
-     `cd=${p.cds[3]}`);
+  ok("the blade flies out with no cooldown ticking",
+     S.zones.some(z => z.kind === "chakout") && p.cds[3] === 0, `cd=${p.cds[3]}`);
+  step(S, 40);                                     // 400 units at 950/s
+  ok("it parks where he aimed", S.zones.some(z => z.kind === "chakram"), "");
+  ok("and sawed what it passed on the way out", d.hp < dhp0, `${dhp0} -> ${Math.round(d.hp)}`);
   const hp0 = d.hp, mp0 = h.mp;
   step(S, 60);
   ok("it grinds and slows what stands in it", d.hp < hp0 - 30 && d.slowT > 0,
@@ -531,7 +612,7 @@ console.log("\n== TIMBER — the Chakram parks, drains, and comes home ==");
   ok("R again recalls it", S.zones.some(z => z.kind === "chakret"), "");
   step(S, 90);
   ok("it returns and only then starts the cooldown",
-     !S.zones.some(z => z.kind === "chakram" || z.kind === "chakret") && p.cds[3] > 5,
+     !S.zones.some(z => z.kind === "chakout" || z.kind === "chakram" || z.kind === "chakret") && p.cds[3] > 5,
      `cd=${p.cds[3].toFixed(1)}`);
 }
 
@@ -605,7 +686,9 @@ console.log("\n== GEIST — blood in, blood out ==");
   castAbility(S, p, 0, d.x, d.y);                  // Essence Bomb
   ok("Essence Bomb cost her 7% of herself", Math.abs((hp0 - h.hp) - h.maxHp * 0.07) < 2,
      `paid ${Math.round(hp0 - h.hp)}`);
-  ok("and the blast landed", Math.abs((4000 - d.hp) - V * CREEP_RESIST) < 3,
+  ok("the globe flies before it lands — nothing hit yet", d.hp === 4000, `hp=${Math.round(d.hp)}`);
+  step(S, 80);                                     // flight to the point + the 0.6s fuse
+  ok("and the blast landed after the fuse", Math.abs((4000 - d.hp) - V * CREEP_RESIST) < 3,
      `took ${Math.round(4000 - d.hp)} want ~${Math.round(V * CREEP_RESIST)}`);
   h.hp = 500;
   const d1 = d.hp, mine = h.hp;
@@ -680,6 +763,127 @@ console.log("\n== ORRIN — Siege Bolt mends the wave, hurls theirs into their h
      "no bolt died on the creep");
 }
 
+console.log("\n== ORRIN — turrets shoot his target, scale with spell power, and stack up ==");
+{
+  const S = sim("orrin", "vex");
+  const p = S.players[0], h = p.hero;
+  const V = HEROES.orrin.abilities[2].val[3];
+  step(S, 1);
+  castAbility(S, p, 2, h.x + 120, LANE_Y);
+  const t = S.ents.find(o => o.turret && !o.dead);
+  ok("the turret is built off the rank value alone", !!t && t.dmg === V, t ? `dmg=${t.dmg} want ${V}` : "none");
+  ok("it lasts the rank-4 duration", !!t && Math.abs(t.ttl - 24) < 0.1, t ? `ttl=${t.ttl.toFixed(1)}` : "");
+  // spell power reaches the guns already standing
+  p.items.push({ id: "orb" });
+  step(S, 2);
+  ok("spell power raises its damage", t.dmg > V, `${V} -> ${t.dmg} (amp ${h.amp})`);
+  ok("his attack damage does not", Math.abs(t.dmg - Math.round(V * (1 + h.amp))) < 1,
+     `dmg=${t.dmg} want ${Math.round(V * (1 + h.amp))}`);
+  // two bodies in reach: the far one is what Corvick is hitting, so the gun swings to it
+  const near = dummy(S, 1, t.x + 60, LANE_Y), far = dummy(S, 1, t.x + 320, LANE_Y);
+  h.x = far.x - 100;
+  p.order = { type: "attack", tid: far.id };
+  step(S, 30);
+  ok("the turret fires at whatever Corvick is attacking", t.tid === far.id,
+     `turret tid=${t.tid} far=${far.id} near=${near.id}`);
+  ok("and the untargeted body is untouched", near.hp === near.maxHp, `near hp=${Math.round(near.hp)}`);
+  // the cooldown is shorter than the duration at max rank, so a second gun joins the first
+  p.cds[2] = 0;
+  castAbility(S, p, 2, h.x + 120, LANE_Y);
+  const up = S.ents.filter(o => o.turret && !o.dead).length;
+  ok("a maxed Corvick keeps two turrets standing", up === 2, `${up} up`);
+  ok("the cooldown is shorter than the duration", HEROES.orrin.abilities[2].cd[3] < 24,
+     `cd=${HEROES.orrin.abilities[2].cd[3]} ttl=24`);
+}
+
+console.log("\n== SHIV — knives are cheap and fast, and creeps do not sustain rage ==");
+{
+  const S = sim("shiv", "vex");
+  const p = S.players[0], h = p.hero;
+  S.players[1].hero.x = 3200;
+  const Q = HEROES.shiv.abilities[0];
+  ok("the recharge scales 7 down to 4 seconds", Q.cd.join("/") === "7/6/5/4", Q.cd.join("/"));
+  ok("and casts are spaced 0.9s apart", Q.castGap === 0.9, `castGap=${Q.castGap}`);
+  const d = dummy(S, 1, h.x + 300, LANE_Y, 60000);
+  castAbility(S, p, 0, d.x, d.y);
+  step(S, 30);
+  const impact = 60000 - d.hp;
+  ok("the impact is the small half of the knife", Math.abs(impact - Q.val[3] * CREEP_RESIST) < 2,
+     `took ${Math.round(impact)} want ~${Math.round(Q.val[3] * CREEP_RESIST)}`);
+  ok("and it opened a bleed", d.dotT > 0 && Math.abs(d.dotDps - Q.val2[3]) < 0.01,
+     `dps=${(d.dotDps || 0).toFixed(1)} want ${Q.val2[3]}`);
+  // 0.5s after the first throw the gap is still running: the recast must not fire
+  const dpsBefore = d.dotDps;
+  castAbility(S, p, 0, d.x, d.y);
+  ok("a recast inside the 0.9s gap is refused", Math.abs(d.dotDps - dpsBefore) < 0.01,
+     `dps=${d.dotDps.toFixed(1)}`);
+  // wait out the gap between throws: the bleed stacks knife by knife
+  for (let k = 0; k < 2; k++) { step(S, 30); castAbility(S, p, 0, d.x, d.y); step(S, 30); }
+  ok("stacking knives deepen the same bleed", d.dotDps > Q.val2[3] * 2.5,
+     `dps=${d.dotDps.toFixed(1)}`);
+
+  // rage: farming builds it, but only a hero on the other end holds off the drain
+  const S2 = sim("shiv", "vex");
+  const p2 = S2.players[0], h2 = p2.hero;
+  S2.players[1].hero.x = 3200;
+  const c = dummy(S2, 1, h2.x + 80, LANE_Y, 60000);
+  p2.order = { type: "attack", tid: c.id };
+  step(S2, 60);
+  ok("hitting creeps builds rage", h2.rage > 0, `rage=${h2.rage.toFixed(1)}`);
+  ok("but creeps never refresh the sustain window", !(h2.rageT > 0), `rageT=${(h2.rageT || 0).toFixed(2)}`);
+  step(S2, 300);                                   // five more seconds of farming
+  const farmed = h2.rage;
+  ok("so farming alone never builds toward full rage", farmed < 40, `rage=${farmed.toFixed(1)}`);
+
+  const S3 = sim("shiv", "vex");
+  const p3 = S3.players[0], h3 = p3.hero, fh = S3.players[1].hero;
+  fh.x = h3.x + 80; fh.y = LANE_Y;
+  S3.players[1].order = { type: "stop" };
+  p3.order = { type: "attack", tid: fh.id };
+  step(S3, 480);
+  ok("fighting a hero holds the window open", h3.rageT > 0, `rageT=${h3.rageT.toFixed(2)}`);
+  ok("and rage climbs far past anything farming reaches", h3.rage > farmed + 25,
+     `hero ${h3.rage.toFixed(1)} vs creep ${farmed.toFixed(1)}`);
+}
+
+console.log("\n== SVAAR — the hammer bursts, the cry charges ==");
+{
+  const S = sim("svaar", "vex");
+  const p = S.players[0], h = p.hero;
+  S.players[1].hero.x = 3200;
+  const onIt = dummy(S, 1, h.x + 400, LANE_Y);
+  const beside = dummy(S, 1, h.x + 400, LANE_Y + 110);   // off the flight line, inside the burst
+  const away = dummy(S, 1, h.x + 400, LANE_Y - 260);     // well outside it
+  castAbility(S, p, 0, onIt.x, onIt.y);
+  step(S, 40);
+  ok("the hammer struck what it hit", onIt.hp < 4000 && onIt.stun > 0, `stun=${onIt.stun.toFixed(2)}`);
+  ok("and burst onto the body beside it", beside.hp < 4000 && beside.stun > 0,
+     `${Math.round(beside.hp)} stun=${(beside.stun || 0).toFixed(2)}`);
+  ok("but not one standing clear of the blast", away.hp === 4000, `hp=${Math.round(away.hp)}`);
+
+  const S2 = sim("svaar", "vex");
+  const p2 = S2.players[0], h2 = p2.hero;
+  S2.players[1].hero.x = 3200;
+  step(S2, 2);
+  const line = dummy(S2, 1, h2.x + 250, LANE_Y, 60000);
+  const hx0 = h2.x, plainDmg = h2.dmg;
+  castAbility(S2, p2, 1, h2.x + 500, LANE_Y);
+  ok("the cry charges his next swing", h2.cryN === 1 && h2.dmg > plainDmg,
+     `dmg ${Math.round(plainDmg)} -> ${Math.round(h2.dmg)}`);
+  ok("he has not teleported — the charge has to carry him", Math.abs(h2.x - hx0) < 40,
+     `x=${Math.round(h2.x)}`);
+  step(S2, 40);
+  ok("the charge carried him to the cursor", h2.x > hx0 + 400, `${hx0} -> ${Math.round(h2.x)}`);
+  ok("cutting what he ran through", line.hp < 60000, `${60000} -> ${Math.round(line.hp)}`);
+  const V2 = HEROES.svaar.abilities[1].val2[3] / 100;
+  ok("the bonus is the ultimate's, at this rank", Math.abs(h2.cryP - V2) < 1e-9, `cryP=${h2.cryP}`);
+  const beforeSwing = line.hp;
+  p2.order = { type: "attack", tid: line.id };
+  step(S2, 120);
+  ok("landing a hit spends the charge", h2.cryN === 0, `cryN=${h2.cryN}`);
+  ok("and the swing actually hurt", line.hp < beforeSwing, `${Math.round(beforeSwing)} -> ${Math.round(line.hp)}`);
+}
+
 console.log("\n== ROSTER — nothing on the new heroes is half-wired ==");
 {
   const missing = HERO_IDS.filter(id => !BOT_BUILD[id]);
@@ -692,9 +896,44 @@ console.log("\n== ROSTER — nothing on the new heroes is half-wired ==");
     if (A.val.length !== want || A.mana.length !== want || A.cd.length !== want) bad.push(id + i + ":ranks");
     if (!A.desc.includes("%d")) bad.push(id + i + ":desc");
     if (A.passive && !A.grants) bad.push(id + i + ":grants");
+    // `scaled` tells the HUD which placeholder to multiply by spell amplification,
+    // so it may only name placeholders the description actually has
+    if (A.scaled !== undefined){
+      if (!/^d?p?$/.test(A.scaled) || !A.scaled) bad.push(id + i + ":scaled");
+      else {
+        if (A.scaled.includes("p") && (!A.val2 || !A.desc.includes("%p"))) bad.push(id + i + ":scaled-p");
+      }
+    }
   });
   ok("rank tables and tooltips are well formed", bad.length === 0, bad.join(",") || "ok");
-  ok("all 24 heroes are registered", HERO_IDS.length === 24, `${HERO_IDS.length} heroes`);
+
+  // The tooltip must show real damage: a hero with spell amp sees the flagged
+  // numbers multiplied, and unflagged ones (shields, healing, percentages) left alone.
+  const scaledCount = HERO_IDS.reduce((n, id) =>
+    n + HEROES[id].abilities.filter(A => A.scaled).length, 0);
+  ok("the roster marks amp-scaled ability numbers", scaledCount > 40, `${scaledCount} flagged`);
+}
+
+console.log("\n== HUD TOOLTIP — hovering an ability shows what it really deals ==");
+{
+  const S = newSim(["vex", "ilva"], "1v1");
+  const p = S.players[0];
+  p.sk = [4, 4, 4, 3]; p.lvl = 12;
+  p.items = [{ id: "scepter", cd: 0, bought: 0 }];
+  updateHeroStats(S, p);
+  const sp = buildSnapshot(S).ps[0].sp;
+  ok("the snapshot carries the caster's spell power", typeof sp === "number", `sp=${sp}`);
+  const Q = HEROES.vex.abilities[0], E = HEROES.vex.abilities[2];
+  ok("Blink Slash is flagged as amp-scaled", Q.scaled === "d", `scaled=${Q.scaled}`);
+  ok("Riposte's shield is not", !E.scaled, `scaled=${E.scaled}`);
+
+  // give him real spell amplification and check the number moves with it
+  p.hero.amp = 0.25;
+  const sp2 = buildSnapshot(S).ps[0].sp;
+  ok("spell power tracks the caster's amp", Math.abs(sp2 - 1.25) < 1e-6, `sp=${sp2}`);
+  ok("the tooltip number is amplified", Math.round(Q.val[3] * sp2) === 338,
+     `${Q.val[3]} -> ${Math.round(Q.val[3] * sp2)}`);
+  ok("all 23 heroes are registered", HERO_IDS.length === 23, `${HERO_IDS.length} heroes`);
 }
 
 console.log(fails === 0 ? "\nALL CHECKS PASSED" : `\n${fails} CHECK(S) FAILED`);

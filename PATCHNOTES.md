@@ -7,6 +7,248 @@ looks, or connects, it belongs on this list.
 
 ---
 
+## 2026-08-03 · v0.9.0
+
+A six-hero balance and readability pass, and a roster change. Several instant
+effects now telegraph before they land, so they can be read and dodged.
+
+### Mara retired
+- **Mara has left the roster** (23 heroes remain). As with Liora, old match
+  records still load and list her as "MARA (retired)".
+
+### Vex
+- **Blade Rush (Q, renamed from Blink Slash) is now a dash, not a blink.** Vex
+  charges to the cursor with her blades whirling and damages everything along
+  the path, instead of teleporting and hitting only the arrival point. The dash
+  can be interrupted by a stun.
+- **Bladestorm (W) attack speed reduced** to 60/85/110/135% (from
+  80/110/140/170%), and its lifesteal reduced to 25% (from 30%).
+
+### Nix
+- **Illusions deal half as much damage to towers** as before (10–13% of Nix's
+  damage, down from 20–26%).
+- **Displace (W) now drops all aggro on Nix**: creeps chasing her let go and
+  ignore her for a moment, towers lose their lock on her, and pulled creeps
+  forget the pull.
+- **Phantom Strike (E) is telegraphed.** The arrival point is marked on the
+  ground for 0.45s before Nix blinks in and slashes, so the strike can be
+  dodged. The illusion recall and the Hall of Mirrors illusion fire when the
+  blink lands.
+
+### Geist
+- **Essence Bomb (Q) is now a thrown globe with a delayed blast.** The globe
+  flies to the target point and the marked area detonates 0.6s after it lands.
+  The health cost is still paid at cast; the Blood Dividend refund pays out
+  when the blast catches a hero.
+- **Life Drain (W) leash shortened** — the tether now breaks at 575 range
+  (from 700).
+- **Malice (E) is now a fan of knives** — 3/4/4/5 knives with rank, thrown in
+  an arc. Each knife carries the full damage and curse, but a target can be
+  struck by only one knife per cast.
+- **Soul Exchange (R) cast range reduced by 75%**, from 600 to 150.
+
+### Vhal
+- **Spawnlings deal 50% less damage to towers.**
+- **Unleash (W) is telegraphed.** Each spawnling's landing spot is marked on
+  the ground, and the brood teleports in 0.5s later. The haste, lifesteal and
+  the landing slow all apply when they arrive.
+
+### Thorne
+- **Bramble Trap (Q) now times out after 20s** (from 45s). A Wild Growth
+  regrown trap uses the same lifespan.
+- **Barbed Hide (W) is now visible**: a rotating ring of thorns surrounds
+  Thorne while the reflect is active, on his body and over the network.
+- **Overgrowth (E) radius reduced by 45% at all ranks** — 95/105/115/125
+  (from 170/190/210/230).
+- **Verdant Prison (R) is telegraphed.** The ring is marked on the ground for
+  0.7s before the root snaps shut.
+
+---
+
+## 2026-08-03 · v0.8.1
+
+### Shiv — Serrated Knives pacing
+- **Charges refill on a 7/6/5/4 second clock again**, replacing the flat 1-second
+  refill from v0.8.0.
+- **Knives are now thrown at most once every 0.9 seconds.** Holding three charges
+  still lets Shiv front-load a burst, but the knives come out one at a time
+  instead of all in the same instant. The Full Rage triple throw is unchanged and
+  still spends a single charge.
+- The hero book now lists a "between casts" time on abilities that have one, and
+  the HUD shows the short lockout on the ability button while it runs.
+
+---
+
+## 2026-08-03 · v0.8.0
+
+A seven-hero rework pass. Four abilities were rebuilt from scratch and several
+more now travel instead of resolving instantly, so what a spell is doing is
+readable on screen while it happens.
+
+### Ash — Wildfire rebuilt
+- **Six-deep ember stacks and the jump off a corpse are now innate.** They no
+  longer wait on Wildfire, so Ash keeps his identity from level 1.
+- **Wildfire is now an on-hit passive.** His attacks have a 15/20/25/30% chance
+  to light 2 EMBERS on whatever they land on, and the passive still sets how hard
+  each ember burns: 7/10/13/16 damage per second, up from a base of 5. The burn
+  numbers are unchanged from the old ranks, so nothing he already had got weaker.
+
+### Shiv — Serrated Knives, and how Rage is fed
+- **Knives are cheap and constant now.** Impact damage is cut 70% to 18/30/42/54,
+  the bleed is broken out as its own 10/16/22/29 per second, and the charge
+  refills every second instead of every 7/6/5/4. Mana is the only thing rationing
+  him: at 35-50 a knife he cannot hold the bleed up forever.
+- **Rage still builds on creeps, but creeps no longer sustain it.** Farming feeds
+  the bar exactly as before; only a blow landed on or taken from a HERO holds off
+  the drain. Full Rage is now something a fight earns, not something a wave does.
+
+### Svaar — Storm Hammer bursts, Warcry becomes Battle Cry
+- **Storm Hammer now bursts where it lands**, dealing its damage and 1.4s stun to
+  everything within 150 rather than to the one body it struck.
+- **Warcry is gone; Battle Cry replaces it.** He roars and charges to the cursor,
+  cutting everything along the path for 70/115/160/205, and the next attack he
+  lands carries God's Strength for +40/60/80/100% attack damage. The charge takes
+  time to cross the ground and a stun drops him where he stands. The bonus does
+  nothing while the ultimate is already running.
+
+### Ronin — Bladefury and Healing Ward
+- **Bladefury damage nearly doubled**: 100/165/230/295 per second, up from
+  55/85/115/145.
+- **The Healing Ward now heals a share of your health**: 1.2/1.7/2.2/2.7% of an
+  allied hero's maximum health per second, so it keeps up in the late game.
+- **Only enemy heroes can break it**, and it takes 2/3/4/5 right clicks by rank.
+  Creeps, summons and towers cannot touch it and no longer even target it.
+
+### Zaal — Arc Lightning bounces, Static Field replaced
+- **Arc Lightning bounces from body to body** over about a fifth of a second per
+  jump instead of striking the whole line at once, and its cast range is cut from
+  800 to 620. Damage and falloff are unchanged.
+- **Static Field is gone. Lightning Rod takes its place.** He plants his feet for
+  2 seconds: rooted, and untouchable. Every spell and every attack an enemy hero
+  lands on him is parried, and whoever threw it is shocked for 110/175/240/305 and
+  stunned for 0.5s. Creep and tower fire still lands — a wave is what punishes him
+  for standing still.
+
+### Timber — the chain is thrown, the blade travels
+- **Timber Chain is a throwable now.** It flies out, bites the first enemy it
+  reaches (or anchors where it runs out if it reaches nobody), and reels him along
+  the line, sawing what he passes. No more instant blink.
+- **Chakram flies out instead of appearing.** It saws everything on the way to the
+  point he aimed at, and its kill radius is drawn around the blade the whole trip
+  — out, parked, and home again.
+
+### Vosk — Pulse Nova is a toggle
+- **Pulse Nova has no duration.** Press R to switch it on, press R again to switch
+  it off for free; the cooldown starts when it stops. It still shuts off on its own
+  the moment he runs dry.
+- **Lightning Storm bounces** between its targets one at a time rather than hitting
+  them all at once, and its cast range drops from 800 to 700.
+- **Diabolic Edict damage up** to 26/42/58/74 per explosion, from 22/36/50/64.
+
+---
+
+## 2026-08-03 · v0.7.2
+
+### Fixed: Random Hero button not working from the pre-game room
+
+Rolling Random Hero (or picking a hero directly) while waiting in the Hideout
+warm-up room was writing your pick to the wrong lobby seat, so it looked like
+the button did nothing. It now updates your actual lobby seat correctly.
+
+Hosting a lobby and rolling Random Hero (or switching hero) before a second
+player had joined also failed to update your seat, since the lobby only
+updates once a connection to another player is open. Your own seat now
+updates immediately regardless of whether anyone else has joined yet.
+
+---
+
+## 2026-08-03 · v0.7.1
+
+### Ability tooltips show your real damage
+
+Hovering an ability in the HUD now shows the damage it will actually deal with
+your current items and buffs, instead of the base rank value. When spell
+amplification is raising the number, the tooltip header adds a "spell amp +X%"
+note so it is clear why the figure is higher than the hero book says.
+
+Only numbers that spell amplification really multiplies change. Shield sizes,
+healing, mana costs, percentages, bonus attack damage and non-amplified damage
+such as Barbed Hide and Rupture are still shown at their base value.
+
+---
+
+## 2026-08-03 · v0.7.0
+
+### Corvick — Deploy Turret
+- **The turret now shoots what Corvick is shooting.** While a turret is standing,
+  it fires at Corvick's current attack target whenever that target is inside its
+  range, instead of picking its own. With nothing of his to follow it acquires
+  targets as before.
+- **Duration and cooldown both scale with rank.** Duration is now 12/16/20/24s
+  (was a flat 14s) and the cooldown is 24/20/16/12s (was 22/20/18/16s). At rank 3
+  the durations start to overlap, and at rank 4 Corvick can keep two turrets on
+  the field at once.
+- **Turrets scale with spell power instead of attack damage.** Turret damage is
+  now 30/42/54/66 (was 26/38/50/62) increased by Corvick's spell power, and no
+  longer adds 40% of his attack damage. Caster items reach turrets that are
+  already deployed; weapon damage no longer does. Health and armor still scale
+  with his.
+- **Legs for the Guns** (Ascendant Scepter) now adds 8 seconds to the turret's
+  duration rather than setting it to a flat 22s, so it scales with the rank.
+
+---
+
+## 2026-08-03 · v0.6.5
+
+### Fixes
+- **Spells cast while standing against a wall are no longer eaten.** A hero
+  pressed flush against the north edge of the lane, or against the rim of a
+  jungle pocket, lost the shot the instant it was fired: the projectile spawned
+  slightly above the caster, which put it outside the playable area, and the
+  out-of-bounds check removed it on the first frame. Projectiles now get a small
+  margin outside the walls before that check applies, so hugging a wall costs
+  you nothing. A shot deliberately aimed into a wall still stops at the wall.
+
+---
+
+## 2026-08-03 · v0.6.4
+
+### Visuals
+- **Corvick's Warbanner buff now shows on the buffed unit instead of above it.**
+  The small gold pennant that floated over every rallied hero and creep is gone;
+  a rallied unit is now outlined by a pulsing gold glow on its own body. A full
+  wave standing in the banner reads as one warm mass rather than a row of
+  floating icons.
+
+---
+
+## 2026-08-03 · v0.6.3
+
+### Visuals
+- **Gruk's Quake now looks like the ground is actually breaking.** The field
+  shows animated cracks radiating out from the center and dust kicking up off
+  the ground, instead of a flat static circle. The screen also shakes slightly
+  on each damage pulse.
+- **Thorne's Wild Growth grows visible thorned vines.** The thicket now shows
+  vines creeping outward from the center with thorn tips, instead of a flat
+  green circle.
+- **Corvick's Warbanner is now a planted flag.** The ability visibly plants a
+  banner on a pole at the target spot instead of just tinting the ground, and
+  every ally (hero or creep) standing inside it now shows a small gold pennant
+  above their head so it is clear who is getting the buff.
+- **Mara's Holy Smite strikes down as a column of light** instead of a generic
+  colored flash, matching its name.
+- **Critical hits get their own visual and sound.** Landing a crit now shows a
+  distinct flash on the target in addition to the bigger damage number,
+  benefiting Ronin's Blade Dance and Svaar's crit-chaining Omnislash scepter.
+- **Timbersaw's Reactive Armor stacks are now visible.** Each plate he gains
+  from being attacked shows as a small steel segment above his head, and
+  gaining one flashes briefly.
+- **Vhal's Symbiosis brood carries a faint purple mark** so it reads as
+  buffed/linked to her at a glance.
+- **Drift's Lacerate has its own bleed-tearing effect** distinct from a normal
+  bleed tick, so the bonus damage against already-bleeding targets is visible.
+
 ## 2026-08-02 · v0.6.2
 
 ### UI

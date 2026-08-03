@@ -28,7 +28,9 @@ export function buildSnapshot(S, forTeam){
         ST_TOWER = 32768, ST_VEX_BLADESTORM = 65536, ST_VEX_RIPOSTE = 131072,
         ST_GRUK_STONE_SKIN = 262144, ST_SVAAR_ULT = 524288,
         ST_SPIN = 1048576, ST_INVULN = 2097152, ST_BLOODRAGE = 4194304, ST_RUPTURE = 8388608,
-        ST_BLIND = 16777216;   // Drift's Blackout — the client draws its own darkness from this
+        ST_BLIND = 16777216,
+        ST_BANNER = 33554432,  // Corvick's Warbanner rally — creeps and heroes both can carry it
+        ST_BARBS = 67108864;   // Thorne's Barbed Hide — the thorn ring the attacker must read
   for (const o of S.ents)
     if (o.type==='tower' && !o.dead && o.tid) towerAim[o.tid] = o.id;
   for (const e of S.ents){
@@ -43,8 +45,8 @@ export function buildSnapshot(S, forTeam){
       x:Math.round(e.x*10)/10, y:Math.round(e.y*10)/10, h:Math.round(e.hp), mh:Math.round(e.maxHp),
       r:e.r, fa:Math.round((e.facing||0)*100)/100, pv:pv, ih:inc, pet:e.pet?1:0,
       il:e.illu?1:0, tu:e.turret?1:0, wa:e.ward?1:0, br:e.brood?1:0, im:imm, dm:e.dummy?1:0,
-      eb:e.embN||0, ng:e.neutral?1:0, jg:e.jungle||0,
-      st:(e.stun>0?ST_STUN:0)|(e.slowT>0?ST_SLOW:0)|(e.shieldT>0&&e.shield>0?ST_SHIELD:0)|(e.colT>0?ST_COL:0)|(e.moving?ST_MOVING:0)|((e.hitFlash>0)?ST_HITFLASH:0)|((e.swing>0)?ST_SWING:0)|((e.markT>0)?ST_MARK:0)|((e.drT>0)?ST_DR:0)|((e.dotT>0)?ST_DOT:0)|((e.windT>0)?ST_WIND:0)|((e.rootT>0)?ST_ROOT:0)|((e.silT>0)?ST_SIL:0)|((e.csT>0)?ST_CS:0)|((e.bd>0)?ST_BD:0)|(towerAim[e.id]?ST_TOWER:0)|((e.heroId==='vex'&&e.asT>0)?ST_VEX_BLADESTORM:0)|((e.heroId==='vex'&&e.shieldT>0&&e.shield>0)?ST_VEX_RIPOSTE:0)|((e.heroId==='gruk'&&e.armT>0)?ST_GRUK_STONE_SKIN:0)|((e.heroId==='svaar'&&e.gsT>0)?ST_SVAAR_ULT:0)|((e.spinT>0)?ST_SPIN:0)|((e.invT>0)?ST_INVULN:0)|((e.brT>0)?ST_BLOODRAGE:0)|((e.rupT>0)?ST_RUPTURE:0)|((e.blindT>0)?ST_BLIND:0),
+      eb:e.embN||0, ng:e.neutral?1:0, jg:e.jungle||0, rn:e.raN||0,
+      st:(e.stun>0?ST_STUN:0)|(e.slowT>0?ST_SLOW:0)|(e.shieldT>0&&e.shield>0?ST_SHIELD:0)|(e.colT>0?ST_COL:0)|(e.moving?ST_MOVING:0)|((e.hitFlash>0)?ST_HITFLASH:0)|((e.swing>0)?ST_SWING:0)|((e.markT>0)?ST_MARK:0)|((e.drT>0)?ST_DR:0)|((e.dotT>0)?ST_DOT:0)|((e.windT>0)?ST_WIND:0)|((e.rootT>0)?ST_ROOT:0)|((e.silT>0)?ST_SIL:0)|((e.csT>0)?ST_CS:0)|((e.bd>0)?ST_BD:0)|(towerAim[e.id]?ST_TOWER:0)|((e.heroId==='vex'&&e.asT>0)?ST_VEX_BLADESTORM:0)|((e.heroId==='vex'&&e.shieldT>0&&e.shield>0)?ST_VEX_RIPOSTE:0)|((e.heroId==='gruk'&&e.armT>0)?ST_GRUK_STONE_SKIN:0)|((e.heroId==='svaar'&&(e.gsT>0||e.cryN>0))?ST_SVAAR_ULT:0)|((e.spinT>0)?ST_SPIN:0)|((e.invT>0)?ST_INVULN:0)|((e.brT>0)?ST_BLOODRAGE:0)|((e.rupT>0)?ST_RUPTURE:0)|((e.blindT>0)?ST_BLIND:0)|(((e.buffT>0)||(e.banT>0))?ST_BANNER:0)|((e.barbT>0)?ST_BARBS:0),
       hi:e.heroId, sl:isHero?e.slot:-1,
       fv:isHero?(e.fervN||0):0, fvm:isHero?(e.fervMax||0):0,
       mp:isHero?Math.round(e.mp):0, mmp:isHero?Math.round(e.maxMp):0,
@@ -75,7 +77,10 @@ export function buildSnapshot(S, forTeam){
     dh:Math.round(p.dmgHero), da:Math.round(p.dmgAll), hl:Math.round(p.healed),
     rs:Math.max(0,Math.round(p.respawn*10)/10), dead:p.hero.dead, hid:p.heroId, nw:Math.round(netWorth(p)),
     ms:Math.round(p.hero.ms), dmg:Math.round(p.hero.dmg), arm:Math.round(p.hero.armor*10)/10,
-    aps:Math.round(p.hero.aps*100)/100
+    aps:Math.round(p.hero.aps*100)/100,
+    // everything that multiplies this hero's ability damage before it leaves him,
+    // so the HUD can show real numbers in the ability tooltip
+    sp:Math.round((1+(p.hero.amp||0)) * (p.hero.brT>0 ? 1+(p.hero.brP||0) : 1) * 1000)/1000
   }));
 
   return {k:'s', t:Math.round(S.t*100)/100, e:ents,

@@ -6,6 +6,14 @@ import { addEmber, applyDot, applySilence, applySlow, applyStun, damage } from '
 import { addZone } from './zones';
 import { ent, fx } from './create';
 
+/* How far past the walls a free-flying shot may live before the wall eats it.
+   Ability projectiles spawn 8px above their caster, and a hero pressed flush
+   against a wall already stands 10px outside the walkable region, so an
+   unpadded test killed every spell cast while hugging the north wall on the
+   tick it was fired. The pad covers that gap with a few pixels to spare; a
+   shot aimed into a wall still dies, just barely past the wall line. */
+const WALL_PAD = 22;
+
 export function stepProjectiles(S,dt){
   for (let i=S.projs.length-1;i>=0;i--){
     const pr = S.projs[i];
@@ -17,6 +25,8 @@ export function stepProjectiles(S,dt){
       const step = pr.speed*dt;
       if (d<=step+4){
         const src = ent(S,pr.src);
+        // Wildfire — the shot was thrown alight; the embers land before the blow
+        if (pr.atkEmb) addEmber(S, tg, pr.atkEmb, src);
         damage(S, src, tg, pr.dmg, {attack:pr.kind==='atk', crit:pr.crit, blame:pr.ps});
         if (pr.kind==='atk' && !tg.dead){
           if (pr.rend)  applySlow(tg, .25, 1.5);
@@ -45,16 +55,18 @@ export function stepProjectiles(S,dt){
         }
       }
       let hitE = null;
-      for (const o of S.ents){
+      // a ghost shot (Geist's globe) sails over everything and only matters where it lands
+      if (!pr.ghost) for (const o of S.ents){
         if (o.dead || o.team===pr.team) continue;
         if (o.type==='tower' && !pr.siege) continue;
         if (pr.hits && pr.hits.indexOf(o.id)>=0) continue;
-        // a rage volley spends at most one knife per hero — the rest fly past
-        if (pr.vhits && o.type==='hero' && pr.vhits.indexOf(o.id)>=0) continue;
+        // a shared volley ledger spends at most one knife per victim — the rest
+        // fly past (Shiv's rage volley counts heroes only; `vall` counts everything)
+        if (pr.vhits && (pr.vall || o.type==='hero') && pr.vhits.indexOf(o.id)>=0) continue;
         if (dist(o.x,o.y,pr.x,pr.y) < o.r + pr.r){ hitE=o; break; }
       }
       if (hitE){
-        if (pr.vhits && hitE.type==='hero') pr.vhits.push(hitE.id);
+        if (pr.vhits && (pr.vall || hitE.type==='hero')) pr.vhits.push(hitE.id);
         const src = ent(S,pr.src);
         const amt = pr.dmg * (hitE.type==='tower' ? (pr.twr||1) : 1);
         // embers land BEFORE the blow, so a killing bolt still passes the fire on
@@ -64,6 +76,18 @@ export function stepProjectiles(S,dt){
         if (pr.stun) applyStun(S, hitE, pr.stun);
         if (pr.sil)  applySilence(S, hitE, pr.sil);
         if (pr.dot)  applyDot(S, hitE, pr.dot.dps, pr.dot.t, pr.src, pr.dot.stack);
+        // a shot that bursts where it lands — Storm Hammer. Everything else in the
+        // blast takes the same damage and the same riders the direct hit did.
+        if (pr.burst){
+          fx(S,{t:'blast', x:hitE.x, y:hitE.y, r:pr.burst, col:pr.col});
+          for (const o of S.ents){
+            if (o===hitE || o.dead || o.team===pr.team || o.type==='tower') continue;
+            if (dist(o.x,o.y,hitE.x,hitE.y) > pr.burst + o.r) continue;
+            damage(S, src, o, amt, {ability:true});
+            if (pr.stun) applyStun(S, o, pr.stun);
+            if (pr.slow) applySlow(o, pr.slow.p, pr.slow.t);
+          }
+        }
         // Bloodtrail — a wound worth a fixed slice of the victim, and a beacon
         // the Drifter can recast to step through the blood to
         if (pr.phdot && hitE.type!=='tower' && !hitE.dead){
@@ -102,6 +126,11 @@ export function stepProjectiles(S,dt){
             fx(S,{t:'dash', x:ox, y:oy, x2:hitE.x, y2:hitE.y, col:'#ff9b6a'});
           }
         }
+        // Timber Chain — it bit something, so the anchor is just short of that body
+        if (pr.reel!==undefined){
+          const sp2 = Math.hypot(pr.vx, pr.vy) || 1;
+          reelIn(S, pr, hitE.x - pr.vx/sp2*(hitE.r + 30), hitE.y - pr.vy/sp2*(hitE.r + 30));
+        }
         fx(S,{t:'blast', x:pr.x, y:pr.y, r:pr.r*2.2, col:pr.col});
         // Siege Bolt — lane creeps are hurled down the bolt's flight line and
         // the bolt punches on through the wave; heroes and towers still stop it.
@@ -128,13 +157,36 @@ export function stepProjectiles(S,dt){
         }
         else { S.projs.splice(i,1); continue; }
       }
-      if (pr.life<=0 || !walkable(pr.x,pr.y)){
+      if (pr.life<=0 || !walkable(pr.x,pr.y,WALL_PAD)){
+        // a chain that reached nobody still anchors where it stopped, so the
+        // hero is never left standing there with the mana spent for nothing
+        if (pr.reel!==undefined) reelIn(S, pr, pr.x, pr.y);
+        // a shot carrying a zone plants it where it stopped (Geist's globe)
+        if (pr.plant){
+          const z = Object.assign({}, pr.plant);
+          z.x = pr.x; z.y = pr.y; z.tag = pr.tag;
+          addZone(S, z);
+          fx(S,{t:'telegraph', x:z.x, y:z.y, r:z.r, life:z.t, col:pr.col});
+        }
         fx(S,{t:'blast', x:pr.x, y:pr.y, r:pr.r*1.5, col:pr.col});
         S.projs.splice(i,1);
       }
     }
   }
   S.tag = null;
+}
+
+/* Timber Chain's anchor: the chain has stopped, so hand the reeling itself to a
+   charge zone. That is what drags the hero along the line and saws what he passes,
+   and it is the same zone Svaar's Battle Cry runs on. */
+function reelIn(S, pr, ax, ay){
+  const src = ent(S, pr.src);
+  if (!src || src.dead) return;
+  const B = {x:ax, y:ay};
+  clampToLane(B);
+  fx(S,{t:'chain', x:src.x, y:src.y-8, x2:B.x, y2:B.y, col:pr.col});
+  addZone(S,{kind:'charge', team:pr.team, x:src.x, y:src.y, tx:B.x, ty:B.y,
+    r:110, sp:1500, t:1.2, dmg:pr.reelDmg||0, slot:pr.reel, hits:[], tag:pr.tag});
 }
 
 /* Siege Bolt's shove: the creep is hurled along the bolt's flight line; the

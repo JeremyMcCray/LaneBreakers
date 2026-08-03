@@ -108,6 +108,12 @@ export function spawnPet(S, team, x, y, ttl, o){
   return e;
 }
 
+/* Corvick's turrets fire off his spell power rather than his attack damage, so
+   caster items carry them and his own weapon does not. V is the rank value. */
+export function turretDmg(h, V){
+  return Math.round(V * (1 + (h.amp||0)));
+}
+
 /* One of Vhal's spawnlings. Symbiosis derives its stats from her own damage and
    health, so her items scale the whole brood. Kept in sync with her by
    updateHeroStats for as long as it lives. */

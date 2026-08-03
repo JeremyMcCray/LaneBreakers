@@ -15,7 +15,6 @@ export const BOT_BUILD = {
   sable:['boots','blade','quick','fang','scepter','arc'],
   vhal: ['boots','blade','arc','sunder','scepter','orb'],   // Symbiosis turns her damage into the brood's
   ash:  ['boots','arc','orb','scepter','vit','wither'],     // pure ability damage now — embers do the work
-  mara: ['boots','vit','blade','titan','scepter','quick'],
   orrin:['boots','arc','blade','orb','scepter','quick'],
   nix:  ['boots','blade','quick','fang','scepter','reaver'],
   thorne:['boots','vit','blade','plate','scepter','quick'],
@@ -111,7 +110,10 @@ export function botThink(S,p,dt){
       if (p.heroId==='jarak' && i===1) continue;   // handled above, it is a stance not a nuke
       // a deployed Chakram is already working — don't recall it out of reflex
       if (p.heroId==='timber' && i===3 &&
-          S.zones.some(z=>(z.kind==='chakram'||z.kind==='chakret') && z.slot===p.slot)) continue;
+          S.zones.some(z=>(z.kind==='chakout'||z.kind==='chakram'||z.kind==='chakret') && z.slot===p.slot)) continue;
+      // same for a running Pulse Nova — pressing R again would switch it off
+      if (p.heroId==='vosk' && i===3 &&
+          S.zones.some(z=>z.kind==='nova' && z.slot===p.slot)) continue;
       if (!canCast(S,p,i)) continue;
       const A = HEROES[p.heroId].abilities[i];
       const need = A.cast==='self' ? 260 : (A.range||400);

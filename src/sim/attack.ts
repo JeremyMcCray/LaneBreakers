@@ -3,7 +3,7 @@ import {
   AUTO_ACQ, CLEAVE_ARC, CLEAVE_R, armorMult, clamp, clampToLane, dist, effArmor, nearCamp, now
 } from '../data/world';
 import { HEROES } from '../data/heroes';
-import { applyDot, applyRoot, applySlow, damage } from './combat';
+import { addEmber, applyDot, applyRoot, applySlow, damage } from './combat';
 import { ent, fx } from './create';
 
 export function moveToward(S,e,tx,ty,dt){
@@ -55,17 +55,23 @@ export function releaseAttack(S,e){
   if (e.quell>0 && tgt.type==='creep' && tgt.team!==e.team) amt += e.quell;  // Quelling Blade — never on a deny
   if (e.siege>0 && tgt.type==='tower') amt *= e.siege;      // Barrow Ram — born to break gates
   if (e.crit>0 && Math.random() < e.crit){ amt *= 1.9; crit = true; }
+  // Wildfire — Ash's swings sometimes carry fire. Rolled here so a ranged shot
+  // decides at release and delivers the embers when it actually lands.
+  const embAtk = (e.embAtk>0 && tgt.team!==e.team && Math.random() < e.embAtk) ? 2 : 0;
+  // Battle Cry — this is the one swing that carries God's Strength; spend it
+  if (e.cryN>0 && tgt.team!==e.team){ e.cryN--; if (e.cryN<=0) e.cryT = 0; }
   if (e.ranged){
     const sp = e.type==='hero' ? (HEROES[e.heroId].projSpeed||900) : 850;
     S.projs.push({id:S.nextId++, kind:'atk', team:e.team, x:e.x, y:e.y-10,
       tid:tgt.id, dmg:amt, src:e.id, speed:sp, r:7,
       ps: e.type==='hero' ? e.slot : (e.oslot!==undefined ? e.oslot : -1),
-      rend:e.rendT>0, chill:e.chill>0, ven:e.venom||0, crit:crit,
+      rend:e.rendT>0, chill:e.chill>0, ven:e.venom||0, crit:crit, atkEmb:embAtk,
       // Rip and Tear rides the shot out — resolved when it lands
       twin: (e.aghs && e.heroId==='jarak' && e.fervMax>0 && e.fervN>=e.fervMax) ? .5 : 0});
   } else {
     fx(S,{t:'slash', x:e.x, y:e.y, a:e.facing, team:e.team, rng:e.range});
     S.tag = 'atk';
+    if (embAtk) addEmber(S, tgt, embAtk, e);     // fire first, so a killing blow still passes it on
     damage(S, e, tgt, amt, {attack:true, melee:true, crit:crit});
     S.tag = null;
     if (e.cleave>0 && tgt.team!==e.team)                   // melee only, and never on a deny

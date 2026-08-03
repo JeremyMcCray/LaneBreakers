@@ -184,6 +184,12 @@ const BANK = {
   respawn:  (t,v,pan,pit)=>{ tone(t,{f:440, f2:880, d:.35, v:.15*v, pan});
                              tone(t+.08,{f:660, f2:1320, d:.3, v:.1*v, pan});
                              noise(t,{d:.3, v:.05*v, hp:1500, pan}); },
+  crit:     (t,v,pan,pit)=>{ tone(t,{f:1500*pit, f2:400, type:'sawtooth', d:.09, v:.14*v, pan});
+                             noise(t,{d:.03, v:.12*v, hp:3200, pan}); },
+  lacerate: (t,v,pan,pit)=>{ noise(t,{d:.1, v:.18*v, lp:900, pan});
+                             tone(t,{f:340*pit, f2:120, d:.14, v:.14*v, pan}); },
+  plate:    (t,v,pan,pit)=>{ tone(t,{f:220*pit, f2:120, type:'square', d:.1, v:.16*v, pan});
+                             noise(t,{d:.05, v:.1*v, hp:1600, pan}); },
 
   // jungle camps — every variant event reads differently by ear
   jspawn:   (t,v,pan,pit)=>{ tone(t,{f:130*pit, f2:65, type:'sawtooth', d:.5, v:.22*v, pan});   // low guttural horn
@@ -240,7 +246,7 @@ const BANK = {
 const GAP = { dmg:.07, hit:.06, slash:.07, cleave:.09, die:.05, gold:.11, deny:.09,
               towerfire:.1, chain:.06, static:.12, emberjump:.09,
               thirst:.14, cast:.05, dash:.07, windup:.25, bleed:.22,
-              jbolt:.15, jheal:.35, jcharge:.2 };
+              jbolt:.15, jheal:.35, jcharge:.2, crit:.1, lacerate:.16, plate:.4 };
 
 export function playSfx(name, opt){
   if (cfg.mute || cfg.vol <= 0) return;
@@ -284,6 +290,11 @@ export function fxSound(f){
     case 'nova':     sfxAt('nova', f.x, f.y); break;
     case 'detonate': sfxAt('blast', f.x, f.y, {vol: Math.min(1, .5 + (f.v || 1)*.15)}); break;
     case 'quake':    sfxAt('quake', f.x, f.y); break;
+    case 'rumble':   sfxAt('quake', f.x, f.y); break;
+    case 'thornpulse': sfxAt('root', f.x, f.y, {vol:.7}); break;
+    case 'crit':     sfxAt('crit', f.x, f.y); break;
+    case 'lacerate': sfxAt('lacerate', f.x, f.y); break;
+    case 'plate':    sfxAt('plate', f.x, f.y); break;
     case 'rupture':  sfxAt('rupture', f.x, f.y); break;
     case 'blackout': sfxAt('nova', f.x, f.y, {vol:1.4}); break;   // Drift's lights-out
     case 'stun':     sfxAt('stun', f.x, f.y); break;

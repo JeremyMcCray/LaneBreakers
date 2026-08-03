@@ -58,6 +58,7 @@ export function towerThink(S,e,dt){
       let best=null, bd=1e9;
       for (const o of S.ents){
         if (o.dead || o.team===e.team || o.type==='tower') continue;
+        if (o.ward) continue;                 // towers cannot touch a Healing Ward
         const d = dist(e.x,e.y,o.x,o.y);
         if (d > e.range) continue;
         const score = d;

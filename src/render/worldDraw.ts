@@ -214,9 +214,80 @@ export function drawZones(v){
   for (const z of v.z){
     ctx.save();
     if (z.kd==='frost'){ ctx.fillStyle='#7fd4ff20'; ctx.strokeStyle='#7fd4ff70'; }
-    else if (z.kd==='quake'){ ctx.fillStyle='#d8a66a22'; ctx.strokeStyle='#d8a66a80'; }
-    else if (z.kd==='banner'){ ctx.fillStyle='#e0c47718'; ctx.strokeStyle='#e0c47780'; }
-    else if (z.kd==='thicket'){ ctx.fillStyle='#7fdc6a20'; ctx.strokeStyle='#7fdc6a80'; }
+    else if (z.kd==='quake'){                     // Gruk's Quake — the ground itself cracks open
+      // the whole patch of earth judders in place — one shared jitter, not per-element,
+      // so the ring/cracks/rubble read as ONE shaking piece of ground
+      const jx = Math.sin(G.time*31)*2.2, jy = Math.cos(G.time*27)*2.2;
+      const cx = z.x+jx, cy = z.y+jy;
+      const grd = ctx.createRadialGradient(cx,cy,z.r*0.1,cx,cy,z.r);
+      grd.addColorStop(0,'#4a301855'); grd.addColorStop(1,'#4a301800');
+      ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(cx,cy,z.r,0,7); ctx.fill();
+      ctx.strokeStyle='#d8a66a70'; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(cx,cy,z.r,0,7); ctx.stroke();
+      // fissures: fixed jagged paths (seeded off the loop index, not time) so they
+      // read as cracked ground rather than crawling tendrils — only their ember
+      // glow pulses with time
+      ctx.lineCap='round';
+      const nCr = 8;
+      for (let k=0;k<nCr;k++){
+        const baseA = k*2.399963;               // golden-angle spread — evenly spaced, never even
+        const maxLen = z.r*(0.55+0.42*((k*0.618)%1));
+        ctx.beginPath(); ctx.moveTo(cx,cy);
+        for (let s=1;s<=4;s++){
+          const rr2 = 16+(maxLen-16)*(s/4);
+          const a = baseA + Math.sin(k*3.1+s*1.7)*0.32;
+          ctx.lineTo(cx+Math.cos(a)*rr2, cy+Math.sin(a)*rr2);
+        }
+        const glow = 0.35+0.45*(0.5+0.5*Math.sin(G.time*9+k*1.3));
+        ctx.strokeStyle = `rgba(255,138,74,${glow.toFixed(2)})`;
+        ctx.lineWidth = 2.6; ctx.stroke();
+        ctx.strokeStyle = '#2a1c0d99'; ctx.lineWidth = 1; ctx.stroke();
+      }
+      // rubble chunks hopping in place, each on its own beat
+      for (let k=0;k<6;k++){
+        const a = k/6*Math.PI*2 + 0.5;
+        const rr3 = z.r*(0.35+0.45*((k*0.53)%1));
+        const bx = cx+Math.cos(a)*rr3, by = cy+Math.sin(a)*rr3;
+        const hop = Math.abs(Math.sin(G.time*8+k*1.9))*6;
+        ctx.fillStyle='#00000055';
+        ctx.beginPath(); ctx.ellipse(bx,by+4,4,1.6,0,0,7); ctx.fill();
+        ctx.fillStyle='#c8945a'; ctx.strokeStyle='#5a3d1e'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.arc(bx,by-hop,3,0,7); ctx.fill(); ctx.stroke();
+      }
+      ctx.restore(); continue; }
+    else if (z.kd==='banner'){                    // Corvick's Warbanner — a planted rally flag
+      ctx.fillStyle='#e0c47714'; ctx.strokeStyle='#e0c47770';
+      ctx.lineWidth=2; ctx.setLineDash([11,9]); ctx.lineDashOffset=-G.time*10;
+      ctx.beginPath(); ctx.arc(z.x,z.y,z.r,0,7); ctx.fill(); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle='#5a4520'; ctx.lineWidth=4; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(z.x,z.y+8); ctx.lineTo(z.x,z.y-58); ctx.stroke();
+      const wave = Math.sin(G.time*3)*5;
+      ctx.fillStyle='#e0c477'; ctx.strokeStyle='#6b5420'; ctx.lineWidth=2;
+      ctx.beginPath();
+      ctx.moveTo(z.x, z.y-56);
+      ctx.quadraticCurveTo(z.x+26+wave, z.y-50, z.x+42, z.y-40);
+      ctx.quadraticCurveTo(z.x+24+wave, z.y-32, z.x, z.y-24);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#00000055'; ctx.beginPath(); ctx.ellipse(z.x,z.y+9,14,5,0,0,7); ctx.fill();
+      ctx.restore(); continue; }
+    else if (z.kd==='thicket'){                   // Thorne's Wild Growth — thorned vines climbing out
+      ctx.fillStyle='#7fdc6a18'; ctx.strokeStyle='#7fdc6a80';
+      ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(z.x,z.y,z.r,0,7); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle='#5fae4a'; ctx.lineCap='round';
+      for (let k=0;k<7;k++){
+        const a = k/7*Math.PI*2 + k*0.9;
+        const rr2 = z.r*(0.3+0.62*((k*0.41+G.time*0.22)%1));
+        const vx = z.x+Math.cos(a)*rr2, vy = z.y+Math.sin(a)*rr2;
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(z.x+Math.cos(a)*8, z.y+Math.sin(a)*8);
+        ctx.quadraticCurveTo(z.x+Math.cos(a+.3)*rr2*.6, z.y+Math.sin(a+.3)*rr2*.6, vx, vy);
+        ctx.stroke();
+        ctx.fillStyle='#c9f06a';                  // a thorn tip at the end of each vine
+        ctx.beginPath(); ctx.arc(vx, vy, 2.4, 0, 7); ctx.fill();
+      }
+      ctx.restore(); continue; }
     else if (z.kd==='killingblow'){
       ctx.strokeStyle='#ff6b6bcc'; ctx.lineWidth=5; ctx.setLineDash([10,8]);
       ctx.lineDashOffset = -G.time*50;
@@ -277,11 +348,49 @@ export function drawZones(v){
     }
     else if (z.kd==='omni'){ ctx.restore(); continue; }   // the slashes speak for themselves
     else if (z.kd==='yank'){ ctx.restore(); continue; }   // the suitcase does its own talking
-    else if (z.kd==='chakram' || z.kd==='chakret'){       // Timbersaw's blade, out working
-      if (z.kd==='chakram'){                              // the kill zone it patrols
-        ctx.fillStyle='#d9886218'; ctx.strokeStyle='#d9886288';
-        ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(z.x,z.y,z.r,0,7); ctx.fill(); ctx.stroke();
+    else if (z.kd==='arc'){ ctx.restore(); continue; }    // the chain fx is the whole spell
+    else if (z.kd==='charge'){                            // a hero being carried down a line
+      ctx.strokeStyle=(z.c||'#8fb8ff')+'88'; ctx.lineWidth=3; ctx.setLineDash([12,9]);
+      ctx.lineDashOffset = -G.time*90;
+      ctx.beginPath(); ctx.moveTo(z.x,z.y); ctx.lineTo(z.tx,z.ty); ctx.stroke();
+      ctx.setLineDash([]);
+      if (z.c){                       // a colored charge is Vex's Blade Rush — blades whirl around her
+        ctx.strokeStyle=z.c; ctx.lineWidth=3;
+        for (let k=0;k<3;k++){
+          const a = G.time*14 + k/3*Math.PI*2;
+          ctx.beginPath(); ctx.arc(z.x, z.y, z.r*0.55, a-0.55, a+0.55); ctx.stroke();
+        }
       }
+      ctx.restore(); continue;
+    }
+    else if (z.kd==='phantom'){                           // Nix's marked strike — dodge it or eat it
+      ctx.strokeStyle='#ff7fd0aa'; ctx.lineWidth=3; ctx.setLineDash([10,8]);
+      ctx.lineDashOffset = -G.time*50;
+      ctx.beginPath(); ctx.moveTo(z.x,z.y); ctx.lineTo(z.tx,z.ty); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#ff7fd018'; ctx.strokeStyle='#ff7fd0aa'; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(z.tx,z.ty,z.r,0,7); ctx.fill(); ctx.stroke();
+      const k2 = clamp(1 - z.t/(z.mt||0.45), 0, 1);       // fuse ring shrinking toward the blink
+      ctx.beginPath(); ctx.arc(z.tx,z.ty,z.r*k2,0,7); ctx.strokeStyle='#ffffffcc'; ctx.stroke();
+      ctx.restore(); continue;
+    }
+    else if (z.kd==='unleash'){                           // Vhal's marked landing — the brood is inbound
+      ctx.fillStyle='#b78cff14'; ctx.strokeStyle='#b78cff88';
+      ctx.lineWidth=2.5; ctx.setLineDash([9,8]); ctx.lineDashOffset=-G.time*40;
+      ctx.beginPath(); ctx.arc(z.x,z.y,z.r,0,7); ctx.fill(); ctx.stroke();
+      ctx.setLineDash([]);
+      const k2 = clamp(1 - z.t/(z.mt||0.5), 0, 1);
+      ctx.beginPath(); ctx.arc(z.x,z.y,z.r*k2,0,7); ctx.strokeStyle='#ffffffcc'; ctx.stroke();
+      ctx.restore(); continue;
+    }
+    else if (z.kd==='chakout' || z.kd==='chakram' || z.kd==='chakret'){   // Timbersaw's blade, out working
+      // the kill zone travels WITH the blade, so you can read where it will bite
+      // on the way out and on the way home, not just where it parks
+      ctx.fillStyle='#d9886218'; ctx.strokeStyle= z.kd==='chakram' ? '#d9886288' : '#d9886255';
+      ctx.lineWidth=2.5; ctx.setLineDash(z.kd==='chakram' ? [] : [9,8]);
+      ctx.lineDashOffset = -G.time*40;
+      ctx.beginPath(); ctx.arc(z.x,z.y,z.r,0,7); ctx.fill(); ctx.stroke();
+      ctx.setLineDash([]);
       ctx.save();
       ctx.translate(z.x,z.y); ctx.rotate(G.time*14);
       ctx.fillStyle='#5a2f1a'; ctx.strokeStyle='#ffd9b0'; ctx.lineWidth=2.5;
@@ -393,14 +502,14 @@ export function drawZones(v){
     }
     else if (z.kd==='strike'){ ctx.fillStyle=(z.c||'#bfe9ff')+'22'; ctx.strokeStyle=(z.c||'#bfe9ff')+'cc'; }
     else if (z.kd==='bomb' || z.kd==='blastoff'){ ctx.fillStyle='#ff7a3c26'; ctx.strokeStyle='#ff7a3caa'; }
-    else if (z.kd==='light'){ ctx.fillStyle='#ffe9a81e'; ctx.strokeStyle='#ffe9a880'; }
+    else if (z.kd==='essence'){ ctx.fillStyle='#d8a6ff26'; ctx.strokeStyle='#d8a6ffaa'; }
     else { ctx.fillStyle='#bfe9ff26'; ctx.strokeStyle='#bfe9ffaa'; }
     ctx.lineWidth=3;
     ctx.beginPath(); ctx.arc(z.x,z.y,z.r,0,7); ctx.fill(); ctx.stroke();
     if (z.kd==='azero'){
       ctx.beginPath(); ctx.arc(z.x,z.y,z.r*(1-z.t/0.65),0,7); ctx.strokeStyle='#ffffffcc'; ctx.stroke();
     }
-    if (z.kd==='bomb' || z.kd==='strike' || z.kd==='blastoff'){  // fuse ring shrinking toward the blast
+    if (z.kd==='bomb' || z.kd==='strike' || z.kd==='blastoff' || z.kd==='essence'){  // fuse ring shrinking toward the blast
       const k2 = clamp(1 - z.t/(z.mt||0.9), 0, 1);
       ctx.beginPath(); ctx.arc(z.x,z.y,z.r*k2,0,7); ctx.strokeStyle='#ffffffcc'; ctx.stroke();
     }
@@ -501,8 +610,6 @@ export function heroPath(hi, r){
   else if (hi==='sable'){ ctx.moveTo(r*1.25,0); ctx.lineTo(-r*.3,r*.6); ctx.lineTo(-r*.9,0); ctx.lineTo(-r*.3,-r*.6); }
   else if (hi==='ash'){ ctx.moveTo(r*1.1,0); ctx.lineTo(0,r*.75); ctx.lineTo(-r*.8,r*.4);
                         ctx.lineTo(-r*.45,0); ctx.lineTo(-r*.8,-r*.4); ctx.lineTo(0,-r*.75); }
-  else if (hi==='mara'){ ctx.moveTo(r*1.05,0); ctx.lineTo(r*.25,r*.9); ctx.lineTo(-r*.8,r*.55);
-                         ctx.lineTo(-r*.8,-r*.55); ctx.lineTo(r*.25,-r*.9); }
   else if (hi==='orrin'){ ctx.moveTo(r*1.1,0); ctx.lineTo(r*.35,r*.55); ctx.lineTo(-r*.35,r*.95);
                           ctx.lineTo(-r*.95,0); ctx.lineTo(-r*.35,-r*.95); ctx.lineTo(r*.35,-r*.55); }
   else if (hi==='shiv'){ ctx.moveTo(r*1.25,0); ctx.lineTo(r*.1,r*.42); ctx.lineTo(-r*.55,r*.9);
@@ -568,6 +675,36 @@ export function emberPips(e){
     ctx.lineTo(cx - 3.1, y + 3);
     ctx.closePath(); ctx.fill();
   }
+  ctx.restore();
+}
+/* Reactive Armor — Timbersaw's plating, one steel segment per stack (max 8),
+   in the same row as the ember pips so it reads the same way at a glance. */
+export function armorPips(e){
+  const n = e.rn||0;
+  if (n<=0) return;
+  const w = 9, y = e.y - e.r - 68;
+  const x0 = e.x - (n*w)/2;
+  ctx.save();
+  for (let k=0;k<n;k++){
+    const cx = x0 + k*w + w/2;
+    ctx.fillStyle = '#9fb0c4'; ctx.strokeStyle = '#48576c'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.rect(cx-3.4, y-4, 6.8, 8); ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+}
+/* Corvick's Warbanner rally — a gold glow on the body of anything (hero or
+   creep) standing in the banner. It sits on the unit rather than floating
+   above it, so a whole rallied wave reads as one warm mass instead of a row
+   of icons. */
+export function bannerAura(e){
+  if (!(e.st&33554432)) return;
+  const pulse = .5 + .5*Math.sin(G.time*3 + (e.i||0));
+  ctx.save();
+  ctx.fillStyle = '#e0c47726';
+  ctx.beginPath(); ctx.arc(e.x, e.y, e.r+5, 0, 7); ctx.fill();
+  ctx.globalAlpha = .40 + .30*pulse;
+  ctx.strokeStyle = '#e0c477'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(e.x, e.y, e.r+2, 0, 7); ctx.stroke();
   ctx.restore();
 }
 /* Debuff badges — same philosophy as the ember pips: what is WRONG with a unit
@@ -801,10 +938,18 @@ export function drawEntity(e, v, own){
     if (e.st&512){ ctx.fillStyle='#b78cff44'; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,7); ctx.fill(); }
     if (e.st&128){ ctx.strokeStyle='#c9f06a'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.arc(e.x,e.y,e.r+9,0,7); ctx.stroke(); }
+    bannerAura(e);
+    if (e.br){                                  // Symbiosis — the brood carries Vhal's mark
+      ctx.strokeStyle='#b78cff'; ctx.lineWidth=2;
+      ctx.globalAlpha = .35+.25*Math.sin(G.time*3+e.i);
+      ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,7); ctx.stroke();
+      ctx.globalAlpha=1;
+    }
     hpBar(e, Math.max(46, e.r*2.9), 8, 15, {preview:prev, hpText:prev>0});
     emberPips(e);
     // no debuff badges on creeps — a whole slowed wave wearing icons is noise;
-    // the subtle tints above are enough. Badges are for heroes only.
+    // the subtle tints above are enough. Badges are for heroes only. The
+    // Warbanner rally shows the same way: a glow on the body, drawn above.
     return;
   }
   // hero
@@ -862,6 +1007,22 @@ export function drawEntity(e, v, own){
     ctx.beginPath(); ctx.arc(0,0,e.r+14,0,7); ctx.stroke();
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.arc(0,0,e.r+18,0,7); ctx.stroke();
+    ctx.restore();
+  }
+  if (e.hi==='thorne' && (e.st & 67108864)){
+    // Barbed Hide — a rotating ring of thorns, so the attacker can read the reflect
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+    ctx.strokeStyle = '#7fdc6a88'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0,0,e.r+8,0,7); ctx.stroke();
+    ctx.strokeStyle = '#7fdc6a'; ctx.lineWidth = 2.4; ctx.lineCap='round';
+    for (let k=0;k<10;k++){
+      const a = k/10*Math.PI*2 + G.time*1.5;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*(e.r+8), Math.sin(a)*(e.r+8));
+      ctx.lineTo(Math.cos(a)*(e.r+17), Math.sin(a)*(e.r+17));
+      ctx.stroke();
+    }
     ctx.restore();
   }
   if (e.hi==='gruk' && (e.st & 262144)){
@@ -933,6 +1094,7 @@ export function drawEntity(e, v, own){
     ctx.beginPath(); ctx.arc(e.x,e.y,e.r+10,0,7); ctx.stroke(); ctx.globalAlpha=1; }
   if (e.st&512){ ctx.fillStyle='#b78cff33';
     ctx.beginPath(); ctx.arc(e.x,e.y,e.r+8,0,7); ctx.fill(); }
+  bannerAura(e);
   if (e.st&2048){                                  // rooted — vines at the feet
     ctx.strokeStyle='#7fdc6a'; ctx.lineWidth=3;
     for (let k=0;k<4;k++){
@@ -1053,6 +1215,7 @@ export function drawEntity(e, v, own){
   ctx.strokeText(H.name, e.x, e.y-e.r-40);
   ctx.fillText(H.name, e.x, e.y-e.r-40);
   emberPips(e);
+  armorPips(e);
   debuffBadges(e);
 }
 
@@ -1063,6 +1226,10 @@ export function drawProjectiles(v){
       ctx.beginPath(); ctx.ellipse(0,0,10,4,0,0,7); ctx.fill(); }
     else if (q.kd==='tower'){ ctx.fillStyle='#ffd28a'; ctx.shadowColor='#ffb347'; ctx.shadowBlur=14;
       ctx.beginPath(); ctx.arc(0,0,8,0,7); ctx.fill(); }
+    else if (q.kd==='chain'){                     // Timbersaw's grapple head, biting forward
+      ctx.fillStyle='#d98862'; ctx.strokeStyle='#5a2f1a'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(15,0); ctx.lineTo(-7,8); ctx.lineTo(-2,0); ctx.lineTo(-7,-8);
+      ctx.closePath(); ctx.fill(); ctx.stroke(); }
     else { ctx.fillStyle=q.c||'#fff'; ctx.shadowColor=q.c||'#fff'; ctx.shadowBlur=16;
       ctx.beginPath(); ctx.ellipse(0,0,q.r*1.2,q.r*.7,0,0,7); ctx.fill(); }
     ctx.restore();

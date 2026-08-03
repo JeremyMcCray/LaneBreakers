@@ -10,6 +10,7 @@ export function abilityCard(A){
   const meta = A.passive ? 'passive'
     : (A.charges ? A.charges+' charges · ' : '') +
       'mana ' + A.mana.join('/') + ' · cd ' + A.cd.join('/') + 's' +
+      (A.castGap ? ' · '+A.castGap+'s between casts' : '') +
       (A.range ? ' · range '+A.range : '') + (A.blink ? ' · blink' : '');
   return '<div class="abrow">'+
     '<div class="abk">'+A.key+'</div>'+

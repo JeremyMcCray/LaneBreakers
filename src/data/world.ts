@@ -103,11 +103,16 @@ export function laneHalf(x){
   if (x > WORLD_W-edge)  return lerp(LANE_FLARE, LANE_HALF, (WORLD_W-x)/edge);
   return LANE_HALF;
 }
-export function walkable(x,y){
-  if (x < 46 || x > WORLD_W-46) return false;
-  if (Math.abs(y - LANE_Y) < laneHalf(x) - 10) return true;
+/* Is this point on legal ground? `pad` widens every boundary by that many
+   pixels — callers that test something which only sits near a unit (a
+   projectile, drawn lifted off its owner) pass a pad so standing flush
+   against a wall does not put it out of bounds. */
+export function walkable(x,y,pad){
+  const p = pad || 0;
+  if (x < 46-p || x > WORLD_W-46+p) return false;
+  if (Math.abs(y - LANE_Y) < laneHalf(x) - 10 + p) return true;
   const s = y < LANE_Y ? 0 : 1;
-  return CAMP_OPEN[s] && dist(x, y, CAMP_X, campY(s)) < CAMP_R - 10;
+  return CAMP_OPEN[s] && dist(x, y, CAMP_X, campY(s)) < CAMP_R - 10 + p;
 }
 export function clampToLane(e){
   e.x = clamp(e.x, 46, WORLD_W-46);

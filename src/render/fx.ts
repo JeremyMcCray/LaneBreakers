@@ -82,6 +82,21 @@ export function spawnFx(f){
       }
       ring(f.x2,f.y2,60,'#ff6b6b',.35,3); break; }
     case 'quake':ring(f.x,f.y,f.r,'#c8945a',.45,3); break;
+    // Gruk's Quake — a rumbling pulse: dust kicked up off the shaking ground
+    case 'rumble': ring(f.x,f.y,f.r,'#d8a66a',.4,4);
+                   part(f.x,f.y,'#8a5a2b',10,f.r*0.7,.5,3.4,16);
+                   G.shake=Math.max(G.shake,4); break;
+    // Thorne's Wild Growth — thorns bursting up out of the thicket
+    case 'thornpulse': ring(f.x,f.y,f.r,'#7fdc6a',.4,3);
+                        part(f.x,f.y,'#c9f06a',9,f.r*0.6,.55,3,18); break;
+    // a crit lands — a sharper flash than a normal hit
+    case 'crit': ring(f.x,f.y,30,'#ff9b4a',.28,3); part(f.x,f.y,'#ffcf8f',7,170,.3,2.6);
+                 G.shake=Math.max(G.shake,3); break;
+    // Drift's Lacerate — a bleeding target torn open harder than usual
+    case 'lacerate': ring(f.x,f.y,34,'#ff2f4f',.28,3); part(f.x,f.y+4,'#ff2f4f',6,140,.4,3);
+                      break;
+    // Timbersaw's Reactive Armor — a new plate slams into place
+    case 'plate': ring(f.x,f.y,40,'#9fb0c4',.3,3); part(f.x,f.y,'#c9d6e4',6,120,.35,2.8); break;
     case 'chain':{                                  // a bolt leaping from body to body
       const col=f.col||'#bfe9ff';
       const dx=f.x2-f.x, dy=f.y2-f.y, L=Math.hypot(dx,dy)||1;
