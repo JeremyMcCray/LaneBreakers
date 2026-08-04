@@ -7,6 +7,41 @@ looks, or connects, it belongs on this list.
 
 ---
 
+## 2026-08-04 · v0.14.4
+
+### Automatic web deploys
+- Every push to `main` now builds the game and publishes it to GitHub Pages
+  automatically, so the playable web version always matches the latest code.
+  The first run enables Pages on the repository by itself; no settings to
+  touch.
+
+## 2026-08-04 · v0.14.3
+
+### Visual overhaul — the battlefield gets its fantasy look
+- **The world is repainted.** The lane is now a moonlit meadow with a worn
+  cobblestone road running base to base, cliff edges with jutting rock, and a
+  pine forest with glowing mushrooms on the heights. An ancient rune circle
+  marks mid-map and carved waymarker stones line the road.
+- **Bases are arcane sanctums.** Each fountain is a stone plaza ringed by
+  rune-carved standing stones, with a hovering team-colored crystal at its
+  heart and a slowly wheeling ward ring marking the heal radius.
+- **Towers are stone keeps.** Round masonry walls, a crenellated parapet, a
+  streaming war-banner, and a pulsing war-crystal in the courtyard replace the
+  old hexagon.
+- **Lane creeps have bodies.** Melee creeps are men-at-arms with helm,
+  pauldrons, sword and a team-colored kite shield; ranged creeps are hooded
+  acolytes carrying an orb-tipped staff. Summoned pets are spectral wisps.
+- **Heroes read as armored figures.** Hero silhouettes are unchanged (shape is
+  gameplay information) but now render with lit gradient bodies, an inner
+  armor-trim line, and a soft magic under-glow in the hero's color.
+- **Projectiles got an armory pass.** Auto-attacks are fletched arrows, tower
+  shots are gouts of crystal-fire with a flame tail, and ability shots are
+  comets with streaming tails.
+- **Living light.** Jungle grove totems glow and shed spores, mist creeps over
+  the cliffs, and faint magic motes drift down the lane.
+- Terrain is painted once to an offscreen texture and reused every frame, so
+  the richer scene does not cost per-frame performance.
+
 ## 2026-08-04 · v0.14.2
 
 ### Jarak

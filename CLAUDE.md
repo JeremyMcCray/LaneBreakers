@@ -83,7 +83,8 @@ src/
   app/      state.ts (G), shell.ts (loop/beginMatch), netplay.ts, lobbyUi.ts,
             tournament.ts, boot.ts, persistence.ts, online.ts (barrel),
             hideout.ts (enter/exit the pre-game warm-up room)
-  render/   canvas.ts, worldDraw.ts (entities/zones/badges), hud.ts, fx.ts, view.ts, devOverlay.ts
+  render/   canvas.ts, terrain.ts (cached world texture + animated overlays),
+            worldDraw.ts (entities/zones/badges), hud.ts, fx.ts, view.ts, devOverlay.ts
   audio/    sfx.ts — procedural WebAudio; sim fx events → sounds, no asset files
   ui/       menus, shop panel, books (hero/item), endCard, matchStats, input
   dev/      F4 sandbox — live balance tuning, time control, dummies
