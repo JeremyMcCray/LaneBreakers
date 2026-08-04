@@ -12,79 +12,17 @@ import { previewHit, incomingDps, imminentHits } from '../sim/engine';
 import { G } from '../app/state';
 import { predictOwn } from '../app/shell';
 import { part, ring, line } from './fx';
-import { cv, ctx, camScale, w2s, ownHeroView, DECOR } from './canvas';
+import { cv, ctx, camScale, w2s, ownHeroView } from './canvas';
 
-export function drawTerrain(){
-  const x0 = G.cam.x - G.cw/camScale()/2 - 80, x1 = G.cam.x + G.cw/camScale()/2 + 80;
-  // cliffs
-  ctx.fillStyle = '#0a0e17';
-  ctx.fillRect(x0, LANE_Y-1000, x1-x0, 2000);
-  // lane floor
-  ctx.beginPath();
-  ctx.moveTo(0, LANE_Y-laneHalf(0));
-  for (let x=0;x<=WORLD_W;x+=40) ctx.lineTo(x, LANE_Y-laneHalf(x));
-  for (let x=WORLD_W;x>=0;x-=40) ctx.lineTo(x, LANE_Y+laneHalf(x));
-  ctx.closePath();
-  const g = ctx.createLinearGradient(0,LANE_Y-300,0,LANE_Y+300);
-  g.addColorStop(0,'#141c2b'); g.addColorStop(.5,'#1a2434'); g.addColorStop(1,'#141c2b');
-  ctx.fillStyle = g; ctx.fill();
-  ctx.strokeStyle = '#2a3a4a'; ctx.lineWidth = 3; ctx.stroke();
+export { drawTerrain } from './terrain';
 
-  // jungle camp pockets — walkable alcoves carved off the lane edge
-  for (let s=0;s<2;s++){
-    if (!CAMP_OPEN[s]) continue;
-    const cy = campY(s);
-    if (CAMP_X < x0-300 || CAMP_X > x1+300) continue;
-    ctx.beginPath(); ctx.arc(CAMP_X, cy, CAMP_R, 0, 7);
-    ctx.fillStyle = '#16241f'; ctx.fill();                       // mossier floor than the lane
-    ctx.strokeStyle = '#2a3a4a'; ctx.lineWidth = 3; ctx.stroke();
-    ctx.strokeStyle = '#2f4a3a55'; ctx.lineWidth = 10;
-    ctx.beginPath(); ctx.arc(CAMP_X, cy, CAMP_R-14, 0, 7); ctx.stroke();
-    // spawn totem at the anchor
-    ctx.fillStyle = '#3a4a3a'; ctx.beginPath(); ctx.arc(CAMP_X, cy, 12, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#5a7a5a'; ctx.lineWidth = 2;
-    for (let k=0;k<3;k++){
-      const a = k/3*Math.PI*2 - Math.PI/2;
-      ctx.beginPath();
-      ctx.moveTo(CAMP_X+Math.cos(a)*7,  cy+Math.sin(a)*7);
-      ctx.lineTo(CAMP_X+Math.cos(a)*17, cy+Math.sin(a)*17);
-      ctx.stroke();
-    }
-  }
-
-  // centre path
-  ctx.strokeStyle = '#22304a'; ctx.lineWidth = 66; ctx.lineCap='round';
-  ctx.beginPath(); ctx.moveTo(BASE_X[0], LANE_Y); ctx.lineTo(BASE_X[1], LANE_Y); ctx.stroke();
-  ctx.strokeStyle = '#1b2740'; ctx.lineWidth = 2;
-  for (let x=200;x<WORLD_W;x+=200){
-    if (x<x0-100||x>x1+100) continue;
-    ctx.beginPath(); ctx.moveTo(x, LANE_Y-laneHalf(x)); ctx.lineTo(x, LANE_Y+laneHalf(x)); ctx.stroke();
-  }
-  // decor
-  for (const d of DECOR){
-    if (d.x<x0||d.x>x1) continue;
-    ctx.globalAlpha = .85;
-    if (d.t){ ctx.fillStyle = '#101826'; ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,7); ctx.fill();
-              ctx.fillStyle='#172233'; ctx.beginPath(); ctx.arc(d.x-d.r*.2,d.y-d.r*.2,d.r*.65,0,7); ctx.fill(); }
-    else { ctx.fillStyle='#0d1420'; ctx.beginPath(); ctx.arc(d.x,d.y,d.r*.8,0,7); ctx.fill(); }
-    ctx.globalAlpha = 1;
-  }
-  // fountains
-  for (let tm=0;tm<2;tm++){
-    const bx=BASE_X[tm];
-    if (bx<x0-400||bx>x1+400) continue;
-    ctx.save();
-    ctx.globalAlpha=.16; ctx.fillStyle=TEAM_COL[tm];
-    ctx.beginPath(); ctx.arc(bx,LANE_Y,330,0,7); ctx.fill();
-    ctx.globalAlpha=.5; ctx.strokeStyle=TEAM_COL[tm]; ctx.lineWidth=3;
-    ctx.beginPath(); ctx.arc(bx,LANE_Y,330,0,7); ctx.stroke();
-    ctx.restore();
-    ctx.fillStyle=TEAM_COL_DK[tm];
-    ctx.beginPath(); ctx.arc(bx,LANE_Y,52,0,7); ctx.fill();
-    ctx.strokeStyle=TEAM_COL[tm]; ctx.lineWidth=4; ctx.stroke();
-    ctx.fillStyle=TEAM_COL[tm]; ctx.globalAlpha=.6+.25*Math.sin(G.time*3);
-    ctx.beginPath(); ctx.arc(bx,LANE_Y,26,0,7); ctx.fill(); ctx.globalAlpha=1;
-  }
+/* mix two #rrggbb colors; t=0 gives a, t=1 gives b */
+export function mixCol(a, b, t){
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const r = Math.round(((pa>>16)&255) + (((pb>>16)&255) - ((pa>>16)&255))*t);
+  const g = Math.round(((pa>>8)&255)  + (((pb>>8)&255)  - ((pa>>8)&255))*t);
+  const bl= Math.round((pa&255)       + ((pb&255)       - (pa&255))*t);
+  return '#'+((1<<24)|(r<<16)|(g<<8)|bl).toString(16).slice(1);
 }
 
 /* ------------- the pre-game hideout — cozy set dressing --------------- */
@@ -795,15 +733,70 @@ export function drawEntity(e, v, own){
   // neutrals (team 2) wear jungle gold; converted jungle creeps keep team colors
   const col = TEAM_COL[e.tm] || '#d8b45a', dk = TEAM_COL_DK[e.tm] || '#4a3d1d';
   ctx.save();
-  if (e.ty===2){ // tower
-    ctx.fillStyle='#00000055'; ctx.beginPath(); ctx.ellipse(e.x,e.y+16,e.r*1.1,e.r*.45,0,0,7); ctx.fill();
-    ctx.fillStyle=dk; ctx.strokeStyle=col; ctx.lineWidth=4;
+  if (e.ty===2){ // tower — a round stone keep with a war-crystal burning at its heart
+    ctx.fillStyle='#00000066'; ctx.beginPath(); ctx.ellipse(e.x+6,e.y+18,e.r*1.25,e.r*.5,0,0,7); ctx.fill();
+    // footing
+    ctx.fillStyle='#1a212b'; ctx.strokeStyle='#0d1218'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(e.x,e.y,e.r+9,0,7); ctx.fill(); ctx.stroke();
+    // wall, lit from the upper-left
+    const wall = ctx.createRadialGradient(e.x-e.r*.35, e.y-e.r*.35, e.r*.2, e.x, e.y, e.r*1.25);
+    wall.addColorStop(0, '#4d5a6e'); wall.addColorStop(.6, '#333e4e'); wall.addColorStop(1, '#232c39');
+    ctx.fillStyle=wall; ctx.strokeStyle=col; ctx.lineWidth=3.5;
+    ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,7); ctx.fill(); ctx.stroke();
+    // masonry courses
+    ctx.strokeStyle='#161d27'; ctx.lineWidth=1.5; ctx.globalAlpha=.8;
+    for (const rr2 of [e.r*.62, e.r*.84]){
+      ctx.beginPath(); ctx.arc(e.x,e.y,rr2,0,7); ctx.stroke();
+    }
+    for (let k=0;k<12;k++){
+      const a = k/12*Math.PI*2 + .26;
+      ctx.beginPath();
+      ctx.moveTo(e.x+Math.cos(a)*e.r*.62, e.y+Math.sin(a)*e.r*.62);
+      ctx.lineTo(e.x+Math.cos(a)*e.r*.84, e.y+Math.sin(a)*e.r*.84);
+      ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+    // crenellated parapet
+    for (let k=0;k<8;k++){
+      const a = k/8*Math.PI*2 + Math.PI/8;
+      ctx.save();
+      ctx.translate(e.x+Math.cos(a)*(e.r-3), e.y+Math.sin(a)*(e.r-3));
+      ctx.rotate(a);
+      ctx.fillStyle='#415063'; ctx.strokeStyle='#141a24'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.rect(-4.5,-6,9,12); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+    // inner court
+    ctx.fillStyle='#131a23';
+    ctx.beginPath(); ctx.arc(e.x,e.y,e.r*.5,0,7); ctx.fill();
+    // the war-crystal, hovering and pulsing
+    const bob = Math.sin(G.time*2.4+e.i)*2.2, gy = e.y-6+bob;
+    const pulse = .55+.3*Math.sin(G.time*2.2);
+    const gl = ctx.createRadialGradient(e.x, gy, 3, e.x, gy, 34);
+    gl.addColorStop(0, col+'88'); gl.addColorStop(1, col+'00');
+    ctx.fillStyle=gl; ctx.globalAlpha=pulse+.2;
+    ctx.beginPath(); ctx.arc(e.x, gy, 34, 0, 7); ctx.fill(); ctx.globalAlpha=1;
+    ctx.fillStyle=col; ctx.strokeStyle='#ffffff99'; ctx.lineWidth=1.5;
     ctx.beginPath();
-    for(let i=0;i<6;i++){const a=i/6*Math.PI*2-Math.PI/2; const p=[e.x+Math.cos(a)*e.r, e.y+Math.sin(a)*e.r];
-      i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);}
+    ctx.moveTo(e.x, gy-15); ctx.lineTo(e.x+9, gy); ctx.lineTo(e.x, gy+15); ctx.lineTo(e.x-9, gy);
     ctx.closePath(); ctx.fill(); ctx.stroke();
-    ctx.fillStyle=col; ctx.globalAlpha=.55+.3*Math.sin(G.time*2.2);
-    ctx.beginPath(); ctx.arc(e.x,e.y-6,15,0,7); ctx.fill(); ctx.globalAlpha=1;
+    ctx.fillStyle='#ffffff'; ctx.globalAlpha=.8;
+    ctx.beginPath(); ctx.moveTo(e.x, gy-15); ctx.lineTo(e.x+9, gy); ctx.lineTo(e.x, gy-1);
+    ctx.closePath(); ctx.fill(); ctx.globalAlpha=1;
+    // the war-banner streaming off the parapet
+    {
+      const fx0 = e.x + e.r*.72, fy0 = e.y - e.r*.72;
+      ctx.strokeStyle='#5a4526'; ctx.lineWidth=3; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(fx0, fy0+6); ctx.lineTo(fx0, fy0-26); ctx.stroke();
+      ctx.lineCap='butt';
+      const wave = Math.sin(G.time*3.2 + e.i)*4;
+      ctx.fillStyle=col; ctx.strokeStyle=dk; ctx.lineWidth=1.5;
+      ctx.beginPath();
+      ctx.moveTo(fx0, fy0-25);
+      ctx.quadraticCurveTo(fx0+16+wave, fy0-21, fx0+27, fy0-14);
+      ctx.quadraticCurveTo(fx0+15+wave, fy0-9, fx0, fy0-5);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
     // range circle
     const towerRange = e.rng || e.range || 720;
     ctx.strokeStyle = mine? '#4aa8ff22':'#ff5f5f26'; ctx.lineWidth=2;
@@ -934,14 +927,64 @@ export function drawEntity(e, v, own){
         ctx.beginPath(); ctx.moveTo(e.r*1.3,0); ctx.lineTo(e.r*.5,e.r*.35); ctx.lineTo(e.r*.5,-e.r*.35);
         ctx.closePath(); ctx.fill();
       }
-    } else {
+    } else if (e.pet){                           // summoned wisp — a spectral dart wrapped in glow
+      const halo = ctx.createRadialGradient(0,0,e.r*.2, 0,0, e.r*1.6);
+      halo.addColorStop(0, col+'44'); halo.addColorStop(1, col+'00');
+      ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(0,0,e.r*1.6,0,7); ctx.fill();
+      ctx.fillStyle = flash? '#fff' : dk;
       ctx.beginPath();
-      if (e.pet){ ctx.moveTo(e.r,0); ctx.lineTo(-e.r*.6,e.r*.9); ctx.lineTo(-e.r*.2,0); ctx.lineTo(-e.r*.6,-e.r*.9); }
-      else if (e.r<17){ ctx.moveTo(e.r,0); ctx.lineTo(-e.r*.8,e.r*.85); ctx.lineTo(-e.r*.8,-e.r*.85); }
-      else { ctx.rect(-e.r*.8,-e.r*.8,e.r*1.6,e.r*1.6); }
+      ctx.moveTo(e.r,0); ctx.lineTo(-e.r*.6,e.r*.9); ctx.lineTo(-e.r*.2,0); ctx.lineTo(-e.r*.6,-e.r*.9);
       ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#ffffffcc';
+      ctx.beginPath(); ctx.arc(e.r*.2, 0, 2.2, 0, 7); ctx.fill();
+    } else if (e.r>=19){                         // melee man-at-arms: helm, pauldrons, kite shield
+      ctx.fillStyle = flash? '#fff' : dk; ctx.lineWidth=2;
+      for (const sgn of [-1,1]){                 // pauldrons peeking past the body
+        ctx.beginPath(); ctx.arc(-e.r*.35, sgn*e.r*.6, e.r*.34, 0, 7); ctx.fill(); ctx.stroke();
+      }
+      ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(-e.r*.08, 0, e.r*.72, 0, 7); ctx.fill(); ctx.stroke();
+      // sword resting over the top shoulder
+      ctx.strokeStyle='#c9d2df'; ctx.lineWidth=2.2; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(e.r*.05, -e.r*.7); ctx.lineTo(e.r*.85, -e.r*1.0); ctx.stroke();
+      ctx.lineCap='butt';
+      // steel helm with a team crest
+      ctx.fillStyle = flash? '#fff' : '#a6b2c6'; ctx.strokeStyle='#39424f'; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.arc(-e.r*.14, 0, e.r*.42, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle=col; ctx.lineWidth=2.4;
+      ctx.beginPath(); ctx.moveTo(-e.r*.48, 0); ctx.lineTo(e.r*.1, 0); ctx.stroke();
+      // kite shield held out front
+      ctx.fillStyle = flash? '#fff' : col; ctx.strokeStyle=dk; ctx.lineWidth=2;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.r*.98, -.85, .85);
+      ctx.arc(0, 0, e.r*.68, .85, -.85, true);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle='#ffffff66'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(0, 0, e.r*.84, -.65, .65); ctx.stroke();
+    } else {                                     // ranged acolyte: hooded robe, staff, burning orb
+      ctx.beginPath();
+      ctx.moveTo(e.r*.7,0);
+      ctx.quadraticCurveTo(e.r*.2, e.r*.75, -e.r*.35, e.r*.6);
+      ctx.quadraticCurveTo(-e.r*1.05, 0, -e.r*.35, -e.r*.6);
+      ctx.quadraticCurveTo(e.r*.2, -e.r*.75, e.r*.7, 0);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = flash? '#fff' : mixCol(dk, '#000000', .35);
+      ctx.strokeStyle=col; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.arc(e.r*.15, 0, e.r*.42, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#0a0d12';
+      ctx.beginPath(); ctx.arc(e.r*.3, 0, e.r*.18, 0, 7); ctx.fill();
+      // the staff, orb tipped toward the enemy
+      ctx.strokeStyle='#7a5c36'; ctx.lineWidth=2.4; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(-e.r*.5, e.r*.55); ctx.lineTo(e.r*1.02, e.r*.3); ctx.stroke();
+      ctx.lineCap='butt';
+      ctx.fillStyle=col+'55';
+      ctx.beginPath(); ctx.arc(e.r*1.02, e.r*.3, 5.5, 0, 7); ctx.fill();
+      ctx.fillStyle=col;
+      ctx.beginPath(); ctx.arc(e.r*1.02, e.r*.3, 3, 0, 7); ctx.fill();
+      ctx.fillStyle='#ffffffcc';
+      ctx.beginPath(); ctx.arc(e.r*1.02, e.r*.3, 1.3, 0, 7); ctx.fill();
     }
-    // facing nub
+    // facing nub — kept on every creep so travel direction stays readable
     ctx.fillStyle='#ffffffcc';
     ctx.beginPath(); ctx.arc(e.r*.75, 0, 2.6, 0, 7); ctx.fill();
     ctx.restore();
@@ -1066,12 +1109,27 @@ export function drawEntity(e, v, own){
     ctx.restore();
   }
   const ultActive = e.hi==='svaar' && (e.st & 524288);
-  const heroFill = ultActive ? (flash ? '#fff2f2' : '#ff6b6b') : (flash ? '#ffffff' : H.col);
-  const heroStroke = ultActive ? '#9c2020' : H.col2;
-  ctx.fillStyle = heroFill;
-  ctx.strokeStyle = heroStroke; ctx.lineWidth=3;
+  const cBody = ultActive ? '#ff6b6b' : H.col;
+  const cDark = ultActive ? '#9c2020' : H.col2;
+  // soft magic under-glow in the hero's own color
+  const aura = ctx.createRadialGradient(0,0,e.r*.3, 0,0, e.r+16);
+  aura.addColorStop(0, cBody+'30'); aura.addColorStop(1, cBody+'00');
+  ctx.fillStyle=aura; ctx.beginPath(); ctx.arc(0,0,e.r+16,0,7); ctx.fill();
+  // the body — lit from the front, falling into the dark tone at the back
+  if (flash){ ctx.fillStyle = ultActive ? '#fff2f2' : '#ffffff'; }
+  else {
+    const bg = ctx.createRadialGradient(e.r*.35, -e.r*.25, e.r*.15, 0, 0, e.r*1.35);
+    bg.addColorStop(0, mixCol(cBody, '#ffffff', .38));
+    bg.addColorStop(.45, cBody);
+    bg.addColorStop(1, mixCol(cBody, cDark, .75));
+    ctx.fillStyle = bg;
+  }
+  ctx.strokeStyle = cDark; ctx.lineWidth=3;
   heroPath(e.hi, e.r);
   ctx.fill(); ctx.stroke();
+  // armor trim — an inner echo of the silhouette
+  ctx.strokeStyle = cDark; ctx.globalAlpha = flash ? .25 : .55; ctx.lineWidth=1.5;
+  heroPath(e.hi, e.r*.62); ctx.stroke(); ctx.globalAlpha=1;
   if (ultActive){
     ctx.save();
     ctx.globalAlpha = .55;
@@ -1277,10 +1335,29 @@ export function drawEntity(e, v, own){
 export function drawProjectiles(v){
   for (const q of v.p){
     ctx.save(); ctx.translate(q.x,q.y); ctx.rotate(q.a||0);
-    if (q.kd==='atk'){ ctx.fillStyle=TEAM_COL[q.tm];
-      ctx.beginPath(); ctx.ellipse(0,0,10,4,0,0,7); ctx.fill(); }
-    else if (q.kd==='tower'){ ctx.fillStyle='#ffd28a'; ctx.shadowColor='#ffb347'; ctx.shadowBlur=14;
-      ctx.beginPath(); ctx.arc(0,0,8,0,7); ctx.fill(); }
+    if (q.kd==='atk'){                            // an arrow in flight
+      const col = TEAM_COL[q.tm] || '#d8b45a';
+      ctx.lineCap='round';
+      ctx.strokeStyle=col+'55'; ctx.lineWidth=3;   // speed streak behind it
+      ctx.beginPath(); ctx.moveTo(-18,0); ctx.lineTo(-9,0); ctx.stroke();
+      ctx.strokeStyle='#c9b08a'; ctx.lineWidth=2;  // the shaft
+      ctx.beginPath(); ctx.moveTo(-9,0); ctx.lineTo(7,0); ctx.stroke();
+      ctx.fillStyle=col;                           // head
+      ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(5,-3.4); ctx.lineTo(5,3.4); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle=col; ctx.lineWidth=1.6;      // fletching
+      ctx.beginPath(); ctx.moveTo(-8,0); ctx.lineTo(-11.5,-3.2); ctx.moveTo(-8,0); ctx.lineTo(-11.5,3.2); ctx.stroke();
+      ctx.lineCap='butt'; }
+    else if (q.kd==='tower'){                     // a gout of crystal-fire from the keep
+      const tail = ctx.createLinearGradient(-30,0,8,0);
+      tail.addColorStop(0,'rgba(255,140,60,0)'); tail.addColorStop(1,'rgba(255,170,90,0.85)');
+      ctx.fillStyle=tail;
+      ctx.beginPath(); ctx.moveTo(-30,0); ctx.quadraticCurveTo(-8,-6.5,4,-4);
+      ctx.lineTo(4,4); ctx.quadraticCurveTo(-8,6.5,-30,0); ctx.closePath(); ctx.fill();
+      const halo = ctx.createRadialGradient(2,0,1, 2,0,14);
+      halo.addColorStop(0,'rgba(255,210,138,0.9)'); halo.addColorStop(1,'rgba(255,150,60,0)');
+      ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(2,0,14,0,7); ctx.fill();
+      ctx.fillStyle='#ffd28a'; ctx.beginPath(); ctx.arc(2,0,6,0,7); ctx.fill();
+      ctx.fillStyle='#fff6d0'; ctx.beginPath(); ctx.arc(3,0,2.8,0,7); ctx.fill(); }
     else if (q.kd==='chain'){                     // Timbersaw's grapple head, biting forward
       ctx.fillStyle='#d98862'; ctx.strokeStyle='#5a2f1a'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.moveTo(15,0); ctx.lineTo(-7,8); ctx.lineTo(-2,0); ctx.lineTo(-7,-8);
@@ -1291,8 +1368,20 @@ export function drawProjectiles(v){
       ctx.beginPath(); ctx.arc(-14,0,q.r,-1.1,1.1); ctx.stroke();
       ctx.strokeStyle='#8a5a2b'; ctx.lineWidth=3;
       ctx.beginPath(); ctx.arc(-22,0,q.r,-0.9,0.9); ctx.stroke(); }
-    else { ctx.fillStyle=q.c||'#fff'; ctx.shadowColor=q.c||'#fff'; ctx.shadowBlur=16;
-      ctx.beginPath(); ctx.ellipse(0,0,q.r*1.2,q.r*.7,0,0,7); ctx.fill(); }
+    else {                                        // ability shot — a comet with a streaming tail
+      let c2 = q.c||'#ffffff';
+      if (c2.length===4) c2 = '#'+c2[1]+c2[1]+c2[2]+c2[2]+c2[3]+c2[3];
+      const tail = ctx.createLinearGradient(-q.r*4.2,0,q.r,0);
+      tail.addColorStop(0, c2+'00'); tail.addColorStop(1, c2+'aa');
+      ctx.fillStyle=tail;
+      ctx.beginPath(); ctx.moveTo(-q.r*4.2,0); ctx.lineTo(0,-q.r*.8); ctx.lineTo(0,q.r*.8);
+      ctx.closePath(); ctx.fill();
+      const halo = ctx.createRadialGradient(0,0,q.r*.3, 0,0, q.r*2.1);
+      halo.addColorStop(0, c2+'66'); halo.addColorStop(1, c2+'00');
+      ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(0,0,q.r*2.1,0,7); ctx.fill();
+      ctx.fillStyle=c2; ctx.beginPath(); ctx.ellipse(0,0,q.r*1.15,q.r*.75,0,0,7); ctx.fill();
+      ctx.fillStyle='#ffffff'; ctx.globalAlpha=.85;
+      ctx.beginPath(); ctx.arc(q.r*.25,0,q.r*.45,0,7); ctx.fill(); ctx.globalAlpha=1; }
     ctx.restore();
   }
 }
