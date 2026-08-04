@@ -162,7 +162,9 @@ export function stepProjectiles(S,dt){
           }
           S.projs.splice(i,1); continue;
         }
-        else if (pr.pierce){
+        // pierce:true flies through everything; pierce:'creep' flies through
+        // creeps but is stopped by the first hero it hits (Jarak's axes)
+        else if (pr.pierce && !(pr.pierce==='creep' && hitE.type==='hero')){
           pr.hits.push(hitE.id);
           // Killshot — a kill FEEDS the shot; only survivors sap it
           if (pr.grow && hitE.dead){

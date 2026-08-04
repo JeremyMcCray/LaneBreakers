@@ -55,14 +55,15 @@ console.log("\n== JARAK — Fervor stacks on one target, resets on a switch ==")
   p.order = { type: "attack", tid: a.id };
   step(S, 300);                                    // ~5s of swinging one target
   const stacked = h.fervN, apsUp = h.aps;
-  ok("stacks reach the cap of 4", stacked === 4, `fervN=${stacked}`);
+  const cap = HEROES.jarak.abilities[1].stacks[3];
+  ok("stacks reach the rank-4 cap of 8", stacked === 8 && cap === 8, `fervN=${stacked} cap=${cap}`);
   ok("attack speed actually rose", apsUp > base + 0.4, `${base.toFixed(2)} -> ${apsUp.toFixed(2)}`);
   // melee grip nets +15 AS on top of the stacks (-20 base, +35 from the blade)
-  const want = (1 + (15 + 4 * HEROES.jarak.abilities[1].val[3]) / 100) / HEROES.jarak.bat;
-  ok("aps matches melee grip + 4 stacks at rank 4", Math.abs(apsUp - want) < 0.01, `got ${apsUp.toFixed(3)} want ${want.toFixed(3)}`);
+  const want = (1 + (15 + cap * HEROES.jarak.abilities[1].val[3]) / 100) / HEROES.jarak.bat;
+  ok("aps matches melee grip + 8 stacks at rank 4", Math.abs(apsUp - want) < 0.01, `got ${apsUp.toFixed(3)} want ${want.toFixed(3)}`);
   p.order = { type: "attack", tid: b.id };
   step(S, 40);
-  ok("switching target wipes the stacks", h.fervN < 4, `fervN=${h.fervN}`);
+  ok("switching target wipes the stacks", h.fervN < stacked, `fervN=${h.fervN}`);
 }
 
 console.log("\n== JARAK — Frenzied Charge channels, releases and grants stacks ==");
@@ -82,6 +83,27 @@ console.log("\n== JARAK — Frenzied Charge channels, releases and grants stacks
   castAbility(S2, p2, 2, h2.x + 300, h2.y);        // recast releases early
   ok("early release grants fewer stacks", h2.fervN >= 1 && h2.fervN < 4, `fervN=${h2.fervN}`);
   ok("the channel is over", !(h2.chanT > 0), `chanT=${(h2.chanT||0).toFixed(2)}`);
+}
+
+console.log("\n== JARAK — charge-granted stacks carry onto the next target ==");
+{
+  const S = sim("jarak", "vex");
+  const p = S.players[0], h = p.hero;
+  // build stacks on a first victim so the release has an old target to betray
+  const a = dummy(S, 1, h.x + 100, LANE_Y);
+  p.order = { type: "attack", tid: a.id };
+  step(S, 120);                                    // mid wind-up on the old target is likely here
+  castAbility(S, p, 2, h.x + 300, h.y);            // channel...
+  p.order = { type: "stop" };                      // the player lets go of the old target
+  step(S, 100);                                    // ...runs its full 1s, releases, and the charge lands
+  ok("release granted stacks and cleared the target", h.fervN >= 4 && !h.fervTid,
+     `fervN=${h.fervN} fervTid=${h.fervTid}`);
+  const carried = h.fervN;
+  const b = dummy(S, 1, h.x + 60, h.y);
+  p.order = { type: "attack", tid: b.id };
+  step(S, 60);                                     // a swing or two on the NEW target
+  ok("the new target adopted the stacks instead of wiping them",
+     h.fervTid === b.id && h.fervN >= carried, `fervN=${h.fervN} carried=${carried}`);
 }
 
 console.log("\n== JARAK — Undying Rage purges and refuses to die ==");

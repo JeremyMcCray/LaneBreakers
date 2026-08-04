@@ -688,9 +688,10 @@ export function castAbility(S,p,i,tx,ty){
     const a0 = Math.atan2(ty-e.y, tx-e.x);
     for (const off of [-0.20, 0, 0.20]){
       const a = a0 + off;
+      // each axe punches through creeps (hitting each once) and stops on a hero
       S.projs.push({id:S.nextId++, kind:'axe', team:e.team, x:e.x, y:e.y-8,
-        vx:Math.cos(a)*1250, vy:Math.sin(a)*1250, life:700/1250, dmg:V, src:e.id, r:15,
-        slow:{p:.30,t:2}, col:'#7be0a4'});
+        vx:Math.cos(a)*1250, vy:Math.sin(a)*1250, life:560/1250, dmg:V, src:e.id, r:15,
+        pierce:'creep', hits:[], slow:{p:.30,t:2}, col:'#7be0a4'});
     }
     break; }
   case 'jarak1': {
@@ -959,10 +960,13 @@ export function castAbility(S,p,i,tx,ty){
   if (A.blink && (e.x!==wasX || e.y!==wasY)) disjoint(S, e);
 }
 /* Frenzied Charge's release: called by the recast (with the fresh cursor point)
-   or by heroTimers when the channel runs its full 1.5s (aimed along his facing).
+   or by heroTimers when the channel runs its full 1s (aimed along his facing).
    Fervor stacks scale with how much of the channel was completed; the granted
    stacks carry onto the next target he attacks (fervTid is cleared, and
-   attack.ts adopts a new target without wiping when fervTid is 0). */
+   attack.ts adopts a new target without wiping when fervTid is 0). A swing
+   already wound up on the OLD target is cancelled here — if it landed after
+   the release it would adopt the carried stacks itself, and switching to the
+   real target would then wipe them. */
 export function releaseFrenzy(S, p, tx, ty){
   const e = p.hero;
   if (!e || e.dead) return;
@@ -973,6 +977,7 @@ export function releaseFrenzy(S, p, tx, ty){
   e.fervN = Math.min(e.fervMax || 4, (e.fervN||0) + gain);
   e.fervTid = 0;
   e.fervT = 4;
+  cancelWind(e);
   updateHeroStats(S, p);
   let a = Math.atan2(ty - e.y, tx - e.x);
   if (tx === e.x && ty === e.y) a = e.facing || 0;

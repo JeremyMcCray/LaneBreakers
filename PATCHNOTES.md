@@ -7,6 +7,20 @@ looks, or connects, it belongs on this list.
 
 ---
 
+## 2026-08-04 · v0.14.2
+
+### Jarak
+- **Fervor stack cap now scales with rank:** 4/5/7/8 (was 4 at every rank).
+- **Frenzied Charge's stacks reliably carry to the next target.** A swing
+  already wound up on the old target could land just after the release, claim
+  the carried stacks, and cause the first hit on the new target to wipe them.
+  The release now cancels that pending swing, so the first enemy Jarak attacks
+  after charging always inherits the granted stacks.
+- **Whirling Axes (Q) pierce creeps.** Each axe passes through creeps (hitting
+  each once) and stops on the first hero it hits, so a creep wave no longer
+  shields the enemy hero.
+- **Whirling Axes (Q) range reduced by 20%,** from 700 to 560.
+
 ## 2026-08-03 · v0.14.1
 
 ### Jarak

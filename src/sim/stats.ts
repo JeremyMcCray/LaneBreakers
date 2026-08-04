@@ -43,7 +43,7 @@ export function updateHeroStats(S,p,init){
       e.thirstMs = (A.val2 ? A.val2[p.sk[i]-1] : 0)/100;
     }
     else if (A.grants==='fervor'){
-      e.fervAs = PV; e.fervMax = 4;
+      e.fervAs = PV; e.fervMax = A.stacks ? A.stacks[p.sk[i]-1] : 4;
       // the melee grip trades the extra reach for a chance to pin what he is chewing on
       if (!e.stanceR) e.rootChance = (A.val2 ? A.val2[p.sk[i]-1] : 0)/100;
     }
