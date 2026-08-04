@@ -45,6 +45,11 @@ export function spawnFx(f){
     case 'dash': line(f.x,f.y,f.x2,f.y2,f.col,.3); part(f.x2,f.y2,f.col,10,180,.4,3); break;
     case 'blast':ring(f.x,f.y,f.r,f.col||'#fff',.42,5); part(f.x,f.y,f.col||'#fff',Math.min(24,f.r/8),f.r*1.6,.45,3.6);
                  G.shake=Math.max(G.shake, clamp(f.r/26,2,12)); break;
+    // Siege Bolt — the crack of the creep being batted down the lane
+    case 'homerun': ring(f.x,f.y,54,'#ffffff',.4,5);
+                    part(f.x,f.y,'#ffd98a',16,300,.5,3.6);
+                    line(f.x,f.y,f.x2,f.y2,'#ffffffcc',.25);
+                    G.shake=Math.max(G.shake,10); break;
     case 'cleave':{
       const a=f.a;
       for (let k=-2;k<=2;k++){

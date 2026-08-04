@@ -62,9 +62,10 @@ gruk:{
     {key:'Q', name:'Boulder Toss', cast:'point', range:760, mana:[55,60,65,70], cd:[10,9,8,7],
      scaled:'d',
      desc:'Hurl a boulder for %d damage and a 1.2s stun.', val:[110,170,230,290]},
-    {key:'W', name:'Stone Skin', cast:'self', mana:[45,45,45,45], cd:[16,14,12,10],
-     desc:'For 6s gain %d armor and regenerate %p% max HP per second.',
-     val:[6,9,12,15], val2:[2.5,3,3.5,4]},
+    {key:'W', name:'Shockwave', cast:'point', range:700, mana:[50,55,60,65], cd:[13,12,11,10],
+     scaled:'d',
+     desc:'Slam the ground and send a shockwave forward. Enemies hit take %d damage, are dragged a short step toward Gruk, and are slowed %p% for 2s.',
+     val:[70,120,170,220], val2:[10,13,15,18]},
     {key:'E', name:'Quake', cast:'self', aoe:300, aoeRank:[210,240,270,300], mana:[60,65,70,75], cd:[13,12,11,10],
      scaled:'d',
      desc:'The ground shakes for 3s: %d damage per second and 35% slow nearby. The tremor widens with each rank, up to 300.',
@@ -117,11 +118,11 @@ sable:{
      desc:'Roll a short distance and gain +%d% attack speed for 3s.', val:[50,70,90,110]},
     {key:'R', name:'Deadshot', cast:'point', range:1500, ult:true, mana:[125,150,175], cd:[50,42,34],
      scaled:'d',
-     desc:'A cross-lane shot dealing %d damage to the first thing it strikes.',
+     desc:'A cross-lane shot dealing %d damage to the first enemy HERO it strikes. Creeps never block it — the shot sails straight over them.',
      val:[340,510,680]}
   ],
   scepter:{name:'Killshot',
-    desc:'Deadshot no longer stops at the first target it hits. Each kill along its path adds 40% damage to the shot; each survivor it passes through instead reduces it by 30%.'}
+    desc:'Deadshot now hits everything in its path instead of stopping at the first hero. Each kill along its path adds 40% damage to the shot; each survivor it passes through instead reduces it by 30%.'}
 },
 vhal:{
   id:'vhal', name:'VHAL', title:'The Broodmother', col:'#b78cff', col2:'#4b2f7a',
@@ -179,17 +180,17 @@ orrin:{
   abilities:[
     {key:'Q', name:'Siege Bolt', cast:'point', range:800, mana:[50,55,60,65], cd:[7,6.3,5.6,4.9],
      scaled:'d',
-     desc:'A heavy bolt that punches through the creep line for %d damage — 80% more to towers. Allied creeps it passes over are mended for half. Enemy creeps are hurled backward, and a hero they crash into takes half again. Every creep it touches saps the bolt by 30%.',
-     val:[95,150,205,260]},
+     desc:'A heavy bolt that deals %d damage to the first enemy hero or tower it hits. Allied creeps it passes over are healed for the full amount. An enemy creep stops the bolt instead: the creep is stunned for 0.4s, then batted onward along the bolt\'s path at great speed, exploding on the first enemy hero, creep, tower or wall it meets. The explosion covers a small radius, deals three times the bolt\'s damage, and deals half of that to towers.',
+     val:[75,120,165,210]},
     {key:'W', name:'War Banner', cast:'point', range:520, aoe:300, mana:[60,65,70,75], cd:[20,18,16,14],
      desc:'Plant a banner for 10s. Allied creeps AND heroes near it gain +%d damage, +4 armor and +40 move speed.',
      val:[10,16,22,28]},
-    {key:'E', name:'Deploy Turret', cast:'point', range:460, mana:[70,75,80,85], cd:[24,20,16,12],
+    {key:'E', name:'Deploy Turret', cast:'point', range:460, mana:[105,113,120,128], cd:[12,10,8,6],
      scaled:'d',
-     desc:'Build an immobile turret that shoots enemies for %d damage, increased by his spell power. It fires at whatever Corvick is attacking when that target is in reach. Its health and armor scale with his. The turret lasts 12/16/20/24s, so at higher ranks several can stand at once.', val:[30,42,54,66]},
+     desc:'Build an immobile turret that shoots enemies for %d damage, increased by his spell power. It fires at whatever Corvick is attacking when that target is in reach. Its health and armor scale with his. The turret lasts 12/16/20/24s, so at higher ranks several can stand at once.', val:[38,54,69,84]},
     {key:'R', name:'Warmarch', cast:'self', ult:true, mana:[150,175,200], cd:[80,70,60],
-     desc:'For 15s every allied creep is healed to full and gains +%d damage, +6 armor and +60 move speed.',
-     val:[24,40,56]}
+     desc:'For 10s Corvick locks himself in place as a siege platform: he cannot move, his attack range increases by 250, he gains +%d attack damage (increased by his spell power), and his attacks splash for 60% damage in a 185 radius around the target.',
+     val:[35,60,85]}
   ],
   scepter:{name:'Legs for the Guns',
     desc:'His turrets gain legs: they walk down the lane on their own, seeking out enemies, and last 8 seconds longer.'}
@@ -394,7 +395,7 @@ zaal:{
   hp:520, hpg:76, mp:430, mpg:60, dmg:40, dmgg:4.0, arm:2, armg:.28,
   ms:315, range:550, bat:1.10, ranged:true, projSpeed:1100,
   abilities:[
-    {key:'Q', name:'Arc Lightning', cast:'point', range:620, aoe:480, mana:[40,45,50,55], cd:[5,4.5,4,3.5],
+    {key:'Q', name:'Arc Lightning', cast:'point', range:310, aoe:480, mana:[40,45,50,55], cd:[5,4.5,4,3.5],
      scaled:'d',
      desc:'A bolt that bounces from body to body, up to 5 of them, for %d damage — losing 22% of its bite with every jump.',
      val:[65,100,135,170]},
@@ -427,12 +428,12 @@ jarak:{
     {key:'W', name:'Fervor', cast:'self', grants:'fervor', mana:[20,20,20,20], cd:[3,3,3,3],
      desc:'Passive: every blow landed on the SAME target grants +%d% attack speed, stacking four times. Switch targets and it is gone. ACTIVE: change grip — throw axes at 520 range, or come back to the blade for +35% attack speed and a %p% chance to root on every swing.',
      val:[16,23,30,37], val2:[8,11,15,18]},
-    {key:'E', name:"Berserker's Rage", cast:'self', mana:[45,50,55,60], cd:[18,16,14,12],
-     desc:'For 8s gain %d armor and 20% move speed, and Fervor stacks twice as fast, up to eight.',
-     val:[5,8,11,14]},
-    {key:'R', name:'Battle Trance', cast:'self', aoe:700, ult:true, mana:[125,150,175], cd:[70,60,50],
-     desc:'For 7s you and every ally within 700 gain +%d% attack speed and 30% lifesteal.',
-     val:[70,100,130]}
+    {key:'E', name:'Frenzied Charge', cast:'point', range:420, mana:[45,50,55,60], cd:[18,16,14,12],
+     desc:'Channel for up to 1s, then charge toward the cursor. Cast again to release early. On release Jarak gains %d Fervor stacks, reduced if the channel was cut short.',
+     val:[1,2,3,4]},
+    {key:'R', name:'Undying Rage', cast:'self', ult:true, unstoppable:true, mana:[125,150,175], cd:[100,85,70],
+     desc:'Remove every debuff from Jarak (usable even while stunned) and for 4s his health cannot drop below 1. Grants +%d% attack speed and 25% move speed for the duration.',
+     val:[60,90,120]}
   ],
   scepter:{name:'Rip and Tear',
     desc:'At maximum Fervor, every attack lands TWICE: the second hit deals 50% damage.'}
@@ -446,15 +447,15 @@ stryg:{
     {key:'Q', name:'Blood Rite', cast:'point', range:800, aoe:280, mana:[60,70,80,90], cd:[13,12,11,10],
      desc:'Sanctify the ground. After 1.2s it erupts for %d damage and silences enemy heroes for 3s.',
      val:[95,155,215,275]},
-    {key:'W', name:'Bloodrage', cast:'self', mana:[30,35,40,45], cd:[12,11,10,9],
-     desc:'For 8s everything you deal hits %d% harder — and everything you take hits 20% harder.',
-     val:[25,35,45,55]},
+    {key:'W', name:'Blood Frenzy', cast:'self', mana:[0,0,0,0], cd:[14,13,12,11],
+     desc:'Sacrifice 25% of your current health to gain +%d% attack speed for 6s. The cost is paid in blood, not mana, and cannot kill him.',
+     val:[80,100,120,140]},
     {key:'E', name:'Thirst', passive:true, grants:'thirst', mana:[0,0,0,0], cd:[0,0,0,0],
      desc:'Passive: every creep you last hit or deny restores %d health plus 2% of his maximum health. A hero kill restores five times as much. He also gains up to +%p% move speed, scaling on how little health the most wounded enemy hero has left.',
      val:[30,45,60,75], val2:[10,15,20,25]},
     {key:'R', name:'Rupture', cast:'point', range:750, ult:true, mana:[125,150,175], cd:[65,55,45],
-     desc:'The enemy hero nearest the cursor bleeds for 6s, taking %d pure damage for every 80 units they move. Standing still costs nothing.',
-     val:[12,18,24]}
+     desc:'The enemy hero nearest the cursor bleeds for 6s, taking %d pure damage for every 40 units they move. Standing still costs nothing.',
+     val:[16,24,32]}
   ],
   scepter:{name:'Open Wounds',
     desc:'Every attack Stryg lands on a Ruptured target now deals damage as if they had moved 50 units, even if they held still.'}
@@ -521,9 +522,8 @@ timber:{
      desc:'The saws spin out around him: %d damage and a 25% slow for 2s to everything within 275.',
      val:[90,145,200,255]},
     {key:'W', name:'Timber Chain', cast:'point', range:650, blink:true, mana:[60,65,70,75], cd:[11,10,9,8],
-     scaled:'d',
-     desc:'Throw a chain. It bites the first enemy it reaches — or the end of its flight if it reaches nobody — and reels him along the line, sawing everything he passes for %d damage.',
-     val:[80,130,180,230]},
+     desc:'Throw a chain to the target point and reel yourself to it. The chain passes through creeps and heroes without touching them and deals no damage.',
+     val:[0,0,0,0]},
     {key:'E', name:'Reactive Armor', passive:true, grants:'reactive', mana:[0,0,0,0], cd:[0,0,0,0],
      desc:'Passive: every enemy ATTACK that lands on him grants +%d armor and +1 HP regen per stack for 12s, up to 8 stacks.',
      val:[0.5,0.8,1.1,1.4]},

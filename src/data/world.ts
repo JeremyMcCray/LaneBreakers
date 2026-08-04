@@ -74,7 +74,7 @@ export let KILLS_TO_WIN_2V2 = 4;
 export let KILLS_TO_WIN_3V3 = 6;
 export let MATCH_LIMIT = 900;         // 15 min hard cap — decided on kills, then net worth
 export let SUDDEN_DEATH = 120;        // warning window before the cap
-export let MAX_LEVEL = 12;
+export let MAX_LEVEL = 15;    // 15 skill points = every ability at full rank (4+4+4+3)
 export let BUY_DELAY = 5;             // courier delivery seconds
 export let SELL_FULL = 10;            // seconds an item can be sold back at full price
 export let START_GOLD = 420;
@@ -82,7 +82,7 @@ export let GOLD_PER_SEC = 2.2;
 export let CAMP_FIRST = 120;          // first jungle camp spawn (s)
 export let CAMP_RESPAWN = 90;         // respawn check cadence — only refills an EMPTY camp
 
-export const XP_TABLE = [0,0,180,420,700,1040,1450,1930,2490,3120,3830,4630,5520];
+export const XP_TABLE = [0,0,180,400,650,940,1280,1680,2150,2700,3340,4080,4930,5900,7000,8250];
 export const ULT_REQ  = [6,9,12];
 
 export const TEAM_COL = ['#4aa8ff', '#ff5f5f'];
@@ -162,7 +162,7 @@ export const WORLD_TUNABLES = [
   {k:'WAVE_INTERVAL',   label:'Seconds between waves',min:3,   max:90,   step:1,   live:true},
   {k:'FIRST_WAVE',      label:'First wave at',        min:0,   max:60,   step:1,   live:false},
   {k:'XP_RADIUS',       label:'XP share radius',      min:100, max:3400, step:25,  live:true},
-  {k:'MAX_LEVEL',       label:'Max hero level',       min:1,   max:12,   step:1,   live:true},
+  {k:'MAX_LEVEL',       label:'Max hero level',       min:1,   max:15,   step:1,   live:true},
   {k:'KILLS_TO_WIN',    label:'Kills to win (1v1)',   min:1,   max:30,   step:1,   live:false},
   {k:'KILLS_TO_WIN_2V2',label:'Kills to win (2v2)',   min:1,   max:30,   step:1,   live:false},
   {k:'KILLS_TO_WIN_3V3',label:'Kills to win (3v3)',   min:1,   max:30,   step:1,   live:false},

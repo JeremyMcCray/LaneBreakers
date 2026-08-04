@@ -21,7 +21,8 @@ export function updateHeroStats(S,p,init){
   e.ls    = it.ls + (e.lsT>0 ? e.lsP : 0);
   e.sls   = it.sls;                             // Soulweave — abilities feed the caster
   e.thorns= it.thorns; e.cdr = it.cdr; e.hpr = it.hpr; e.mpr = it.mpr;
-  e.crit = it.crit; e.chill = it.chill; e.amp = it.amp;
+  e.crit = it.crit; e.chill = it.chill; e.amp = it.amp; e.bolt = it.bolt;
+  e.scrit = it.scrit; e.mburn = it.mburn;
   e.block = it.block; e.hcut = it.hcut; e.hcutM = it.hcutM; e.shredOn = it.shred;
   e.cleave = H.ranged ? 0 : it.cleave;          // cleave only applies to melee heroes
   // Passive abilities are applied here as stat bonuses. This checks `grants` rather
@@ -58,9 +59,8 @@ export function updateHeroStats(S,p,init){
   if (e.stanceR){ e.ranged = true; e.range = 520; e.cleave = 0; }
   // he traded 20 attack speed away; only the blade grip pays 35 of it back
   if (H.id==='jarak') asB += (e.stanceR ? 0 : 35) - 20;
-  // Fervor: stacks earned on one target, doubled while Berserker's Rage is up
+  // Fervor: stacks earned on one target (or granted at once by Frenzied Charge)
   if (e.fervMax>0){
-    if (e.bzT>0){ e.fervMax = 8; e.fervStep = 2; }
     e.fervN = Math.min(e.fervN||0, e.fervMax);
     asB += e.fervN * e.fervAs;
   } else { e.fervN = 0; e.fervTid = 0; }
@@ -87,7 +87,17 @@ export function updateHeroStats(S,p,init){
   }
   // Corvick's standing turrets track his spell power and armor, so items he buys
   // after deploying them still reach the guns already on the field
+  e.splash = 0;
   if (H.id==='orrin'){
+    // Warmarch siege mode: anchored in place, trading mobility for reach and
+    // power. The bonus damage scales with his spell power, like his turrets.
+    if (e.wmT>0){
+      const lv = p.sk[3];
+      e.dmg += lv>0 ? Math.round(H.abilities[3].val[lv-1] * (1 + (e.amp||0))) : 0;
+      e.range += 250;
+      e.ms = 0;
+      e.splash = 0.6;
+    }
     for (const o of S.ents){
       if (o.dead || !o.turret || o.owner!==e.id) continue;
       o.bdmg = turretDmg(e, o.tv||0);

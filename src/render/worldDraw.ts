@@ -349,6 +349,17 @@ export function drawZones(v){
     else if (z.kd==='omni'){ ctx.restore(); continue; }   // the slashes speak for themselves
     else if (z.kd==='yank'){ ctx.restore(); continue; }   // the suitcase does its own talking
     else if (z.kd==='arc'){ ctx.restore(); continue; }    // the chain fx is the whole spell
+    else if (z.kd==='bat'){                               // Siege Bolt's batted creep
+      // during the wind-up, show the line the creep is about to fly down;
+      // the blinking creep itself is drawn by drawEntity
+      if (z.mt>0){
+        ctx.strokeStyle='#ff6b6b88'; ctx.lineWidth=3; ctx.setLineDash([10,8]);
+        ctx.lineDashOffset=-G.time*80;
+        ctx.beginPath(); ctx.moveTo(z.x,z.y); ctx.lineTo(z.tx,z.ty); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.restore(); continue;
+    }
     else if (z.kd==='charge'){                            // a hero being carried down a line
       ctx.strokeStyle=(z.c||'#8fb8ff')+'88'; ctx.lineWidth=3; ctx.setLineDash([12,9]);
       ctx.lineDashOffset = -G.time*90;
@@ -938,6 +949,10 @@ export function drawEntity(e, v, own){
     if (e.st&512){ ctx.fillStyle='#b78cff44'; ctx.beginPath(); ctx.arc(e.x,e.y,e.r+5,0,7); ctx.fill(); }
     if (e.st&128){ ctx.strokeStyle='#c9f06a'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.arc(e.x,e.y,e.r+9,0,7); ctx.stroke(); }
+    if (e.st&536870912){                        // Siege Bolt — batted: rapid red/white blink
+      ctx.fillStyle = (Math.floor(G.time*16)%2) ? '#ff5f5fcc' : '#ffffffdd';
+      ctx.beginPath(); ctx.arc(e.x,e.y,e.r+2,0,7); ctx.fill();
+    }
     bannerAura(e);
     if (e.br){                                  // Symbiosis — the brood carries Vhal's mark
       ctx.strokeStyle='#b78cff'; ctx.lineWidth=2;
@@ -1025,18 +1040,14 @@ export function drawEntity(e, v, own){
     }
     ctx.restore();
   }
-  if (e.hi==='gruk' && (e.st & 262144)){
+  if (e.hi==='jarak' && (e.st & 262144)){           // Undying Rage — he cannot drop below 1 HP
     ctx.save();
-    ctx.globalAlpha = 0.75;
-    ctx.strokeStyle = '#8eff9a'; ctx.lineWidth = 2.6;
+    ctx.globalAlpha = 0.55 + 0.35*Math.sin(G.time*10);
+    ctx.strokeStyle = '#ffd76a'; ctx.lineWidth = 4;
     ctx.beginPath(); ctx.arc(0,0,e.r+13,0,7); ctx.stroke();
-    ctx.strokeStyle = '#b9ffbe'; ctx.lineWidth = 1.4;
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = '#fff3cf'; ctx.lineWidth = 1.6;
     ctx.beginPath(); ctx.arc(0,0,e.r+19,0,7); ctx.stroke();
-    for (let i=0;i<5;i++){
-      const a = G.time*4 + i*1.2;
-      const sx = Math.cos(a)*(e.r+8), sy = Math.sin(a)*(e.r+8);
-      ctx.beginPath(); ctx.arc(sx,sy,2.2,0,7); ctx.fillStyle = i%2 ? '#8eff9a' : '#f7fff5'; ctx.fill();
-    }
     ctx.restore();
   }
   if (e.hi==='gruk' && (e.st & 8)){
@@ -1118,6 +1129,20 @@ export function drawEntity(e, v, own){
     }
     ctx.globalAlpha=1;
   }
+  if (e.st&134217728){                             // Warmarch — anchored siege platform
+    ctx.strokeStyle='#e0c477'; ctx.lineWidth=4;
+    for (let k=0;k<4;k++){                         // four anchor struts braced into the ground
+      const a = k/4*Math.PI*2 + Math.PI/4;
+      ctx.beginPath();
+      ctx.moveTo(e.x+Math.cos(a)*(e.r+2), e.y+Math.sin(a)*(e.r+2));
+      ctx.lineTo(e.x+Math.cos(a)*(e.r+16), e.y+Math.sin(a)*(e.r+16));
+      ctx.stroke();
+    }
+    ctx.globalAlpha=.35+.15*Math.sin(G.time*4);
+    ctx.strokeStyle='#ffd98a'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(e.x,e.y,e.r+20,0,7); ctx.stroke();
+    ctx.globalAlpha=1;
+  }
   if (e.st&1048576){                               // Bladefury — a ring of moving steel
     ctx.strokeStyle='#ffd9e8'; ctx.lineWidth=3.5;
     for (let k=0;k<4;k++){
@@ -1169,6 +1194,16 @@ export function drawEntity(e, v, own){
     ctx.beginPath(); ctx.arc(e.x, e.y-e.r-24, 9, 0, 7); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(e.x-6.5, e.y-e.r-30.5); ctx.lineTo(e.x+6.5, e.y-e.r-17.5); ctx.stroke();
   }
+  if (e.hi==='jarak' && (e.st&268435456)){         // Frenzied Charge — wind-up progress ring
+    const k = clamp(e.ch||0, 0, 1);
+    ctx.strokeStyle='#12301f'; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r+20, 0, 7); ctx.stroke();
+    ctx.strokeStyle = k>=1 ? '#dfffe9' : '#7be0a4'; ctx.lineWidth=5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r+20, -Math.PI/2, -Math.PI/2 + k*Math.PI*2); ctx.stroke();
+    ctx.lineCap='butt';
+    ctx.fillStyle='#7be0a4'; ctx.font='800 10px Segoe UI'; ctx.textAlign='center';
+    ctx.fillText('CHARGING', e.x, e.y-e.r-52);
+  }
   hpBar(e, 86, 11, 30);
   if (!mine && G.execMark && e.h/e.mh < .35){
     const r2 = e.r + 26 + Math.sin(G.time*9)*2;
@@ -1209,6 +1244,26 @@ export function drawEntity(e, v, own){
       ctx.fillRect(x+k*pw+1, y, pw-2, 4);
     }
   }
+  // Jarak's grip — a badge beside the bars showing which stance he is holding
+  if (e.hi==='jarak'){
+    const rangedStance = !!(e.st&1073741824);
+    const bx=e.x+54, by=e.y-e.r-24;
+    ctx.fillStyle='#000000cc';
+    ctx.beginPath(); ctx.arc(bx,by,9,0,7); ctx.fill();
+    ctx.strokeStyle='#7be0a4'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(bx,by,9,0,7); ctx.stroke();
+    ctx.strokeStyle='#dfffe9'; ctx.lineWidth=2; ctx.lineCap='round';
+    if (rangedStance){
+      // thrown axe: an arrow flying right
+      ctx.beginPath(); ctx.moveTo(bx-5,by); ctx.lineTo(bx+4.5,by); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx+1,by-3.5); ctx.lineTo(bx+4.5,by); ctx.lineTo(bx+1,by+3.5); ctx.stroke();
+    } else {
+      // the blade: a diagonal edge with a short crossguard
+      ctx.beginPath(); ctx.moveTo(bx-4,by+4); ctx.lineTo(bx+4.5,by-4.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx-3.6,by+0.4); ctx.lineTo(bx-0.4,by+3.6); ctx.stroke();
+    }
+    ctx.lineCap='butt';
+  }
   ctx.fillStyle = mine? '#dfe7f5':'#ffc9c9';
   ctx.font = '700 13px Segoe UI, sans-serif'; ctx.textAlign='center';
   ctx.lineWidth=3; ctx.strokeStyle='#000a';
@@ -1230,6 +1285,12 @@ export function drawProjectiles(v){
       ctx.fillStyle='#d98862'; ctx.strokeStyle='#5a2f1a'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.moveTo(15,0); ctx.lineTo(-7,8); ctx.lineTo(-2,0); ctx.lineTo(-7,-8);
       ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    else if (q.kd==='shock'){                     // Gruk's shockwave — a rolling ridge of stone
+      ctx.strokeStyle='#d8a66a'; ctx.lineWidth=7; ctx.lineCap='round';
+      ctx.shadowColor='#d8a66a'; ctx.shadowBlur=12;
+      ctx.beginPath(); ctx.arc(-14,0,q.r,-1.1,1.1); ctx.stroke();
+      ctx.strokeStyle='#8a5a2b'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(-22,0,q.r,-0.9,0.9); ctx.stroke(); }
     else { ctx.fillStyle=q.c||'#fff'; ctx.shadowColor=q.c||'#fff'; ctx.shadowBlur=16;
       ctx.beginPath(); ctx.ellipse(0,0,q.r*1.2,q.r*.7,0,0,7); ctx.fill(); }
     ctx.restore();

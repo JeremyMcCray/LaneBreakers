@@ -140,14 +140,19 @@ console.log("\n== SABLE â€” Killshot: kills feed the shot ==");
   const V = HEROES.sable.abilities[3].val[2];
   ok("the shot pierced two kills and grew", hp0 - wall.hp > V * 1.5,
      `took ${Math.round(hp0 - wall.hp)}, base ${V}`);
+  // without the scepter the shot sails over creeps but stops on the first hero
   const S2 = sim("sable", "vex", true);
-  const p2 = S2.players[0]; S2.players[1].hero.x = 3200;
+  const p2 = S2.players[0];
+  const vex = S2.players[1].hero;
+  vex.x = p2.hero.x + 600; vex.y = LANE_Y;
   const first = dummy(S2, 1, p2.hero.x + 300, LANE_Y, 1);
-  const behind = dummy(S2, 1, p2.hero.x + 500, LANE_Y);
-  const b0 = behind.hp;
+  const past = dummy(S2, 1, p2.hero.x + 800, LANE_Y);
+  const vHp0 = vex.hp;
   castAbility(S2, p2, 3, p2.hero.x + 900, LANE_Y);
   step(S2, 40);
-  ok("without the scepter it still stops at the first body", behind.hp === b0 && first.dead, "");
+  ok("without the scepter the creep in the way is untouched", !first.dead && first.hp === first.maxHp, "");
+  ok("the shot landed on the hero behind it", vex.hp < vHp0, `took ${Math.round(vHp0 - vex.hp)}`);
+  ok("and went no further", past.hp === past.maxHp, "");
 }
 
 console.log("\n== VHAL â€” Virulent Brood: spawnlings burst on death ==");
@@ -343,9 +348,10 @@ console.log("\n== RONIN â€” Dance of Death: crits extend the ult ==");
   castAbility(S, p, 3, d.x, d.y);
   step(S, 240);
   Math.random = realRandom;
-  // the scepter's own +10% ability amp rides on every cut
-  const per = (HEROES.ronin.abilities[3].val[2] + h.dmg) * (1 + h.amp) * CREEP_RESIST;
-  const cuts = (hp0 - d.hp) / (per * 1.9);
+  // each cut is a full attack swing plus the rank value as ability damage;
+  // the scepter's +10% ability amp and creep resist apply to the ability half only
+  const per = (HEROES.ronin.abilities[3].val[2] * (1 + h.amp) * CREEP_RESIST + h.dmg) * 1.9;
+  const cuts = (hp0 - d.hp) / per;
   ok("all four bonus cuts were earned", Math.abs(cuts - 10) < 0.2, `~${cuts.toFixed(1)} crit cuts`);
   const S2 = sim("ronin", "vex", true);
   S2.players[1].hero.x = 3200;
@@ -356,7 +362,7 @@ console.log("\n== RONIN â€” Dance of Death: crits extend the ult ==");
   castAbility(S2, p2, 3, d2.x, d2.y);
   step(S2, 240);
   Math.random = realRandom;
-  const base = (HEROES.ronin.abilities[3].val[2] + p2.hero.dmg) * CREEP_RESIST;
+  const base = HEROES.ronin.abilities[3].val[2] * CREEP_RESIST + p2.hero.dmg;
   ok("without the scepter it is six plain cuts", Math.abs((h20 - d2.hp) - base * 6) < 2,
      `took ${Math.round(h20 - d2.hp)} want ${Math.round(base*6)}`);
 }

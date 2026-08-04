@@ -26,11 +26,15 @@ export function buildSnapshot(S, forTeam){
         ST_HITFLASH = 32, ST_SWING = 64, ST_MARK = 128, ST_DR = 256, ST_DOT = 512,
         ST_WIND = 1024, ST_ROOT = 2048, ST_SIL = 4096, ST_CS = 8192, ST_BD = 16384,
         ST_TOWER = 32768, ST_VEX_BLADESTORM = 65536, ST_VEX_RIPOSTE = 131072,
-        ST_GRUK_STONE_SKIN = 262144, ST_SVAAR_ULT = 524288,
+        ST_JARAK_UNDYING = 262144, ST_SVAAR_ULT = 524288,
         ST_SPIN = 1048576, ST_INVULN = 2097152, ST_BLOODRAGE = 4194304, ST_RUPTURE = 8388608,
         ST_BLIND = 16777216,
         ST_BANNER = 33554432,  // Corvick's Warbanner rally — creeps and heroes both can carry it
-        ST_BARBS = 67108864;   // Thorne's Barbed Hide — the thorn ring the attacker must read
+        ST_BARBS = 67108864,   // Thorne's Barbed Hide — the thorn ring the attacker must read
+        ST_SIEGE = 134217728,  // Corvick's Warmarch — anchored siege platform
+        ST_JARAK_CHANNEL = 268435456,  // Frenzied Charge — the wind-up the opponent gets to read
+        ST_BATTED = 536870912,  // Siege Bolt — a creep about to be (or being) batted down the lane
+        ST_JARAK_RANGED = 1073741824;  // Fervor's thrown-axe grip — which stance he is holding
   for (const o of S.ents)
     if (o.type==='tower' && !o.dead && o.tid) towerAim[o.tid] = o.id;
   for (const e of S.ents){
@@ -46,7 +50,7 @@ export function buildSnapshot(S, forTeam){
       r:e.r, fa:Math.round((e.facing||0)*100)/100, pv:pv, ih:inc, pet:e.pet?1:0,
       il:e.illu?1:0, tu:e.turret?1:0, wa:e.ward?1:0, br:e.brood?1:0, im:imm, dm:e.dummy?1:0,
       eb:e.embN||0, ng:e.neutral?1:0, jg:e.jungle||0, rn:e.raN||0,
-      st:(e.stun>0?ST_STUN:0)|(e.slowT>0?ST_SLOW:0)|(e.shieldT>0&&e.shield>0?ST_SHIELD:0)|(e.colT>0?ST_COL:0)|(e.moving?ST_MOVING:0)|((e.hitFlash>0)?ST_HITFLASH:0)|((e.swing>0)?ST_SWING:0)|((e.markT>0)?ST_MARK:0)|((e.drT>0)?ST_DR:0)|((e.dotT>0)?ST_DOT:0)|((e.windT>0)?ST_WIND:0)|((e.rootT>0)?ST_ROOT:0)|((e.silT>0)?ST_SIL:0)|((e.csT>0)?ST_CS:0)|((e.bd>0)?ST_BD:0)|(towerAim[e.id]?ST_TOWER:0)|((e.heroId==='vex'&&e.asT>0)?ST_VEX_BLADESTORM:0)|((e.heroId==='vex'&&e.shieldT>0&&e.shield>0)?ST_VEX_RIPOSTE:0)|((e.heroId==='gruk'&&e.armT>0)?ST_GRUK_STONE_SKIN:0)|((e.heroId==='svaar'&&(e.gsT>0||e.cryN>0))?ST_SVAAR_ULT:0)|((e.spinT>0)?ST_SPIN:0)|((e.invT>0)?ST_INVULN:0)|((e.brT>0)?ST_BLOODRAGE:0)|((e.rupT>0)?ST_RUPTURE:0)|((e.blindT>0)?ST_BLIND:0)|(((e.buffT>0)||(e.banT>0))?ST_BANNER:0)|((e.barbT>0)?ST_BARBS:0),
+      st:(e.stun>0?ST_STUN:0)|(e.slowT>0?ST_SLOW:0)|(e.shieldT>0&&e.shield>0?ST_SHIELD:0)|(e.colT>0?ST_COL:0)|(e.moving?ST_MOVING:0)|((e.hitFlash>0)?ST_HITFLASH:0)|((e.swing>0)?ST_SWING:0)|((e.markT>0)?ST_MARK:0)|((e.drT>0)?ST_DR:0)|((e.dotT>0)?ST_DOT:0)|((e.windT>0)?ST_WIND:0)|((e.rootT>0)?ST_ROOT:0)|((e.silT>0)?ST_SIL:0)|((e.csT>0)?ST_CS:0)|((e.bd>0)?ST_BD:0)|(towerAim[e.id]?ST_TOWER:0)|((e.heroId==='vex'&&e.asT>0)?ST_VEX_BLADESTORM:0)|((e.heroId==='vex'&&e.shieldT>0&&e.shield>0)?ST_VEX_RIPOSTE:0)|((e.heroId==='jarak'&&e.undyT>0)?ST_JARAK_UNDYING:0)|((e.heroId==='jarak'&&e.chanT>0)?ST_JARAK_CHANNEL:0)|((e.heroId==='svaar'&&(e.gsT>0||e.cryN>0))?ST_SVAAR_ULT:0)|((e.spinT>0)?ST_SPIN:0)|((e.invT>0)?ST_INVULN:0)|((e.brT>0)?ST_BLOODRAGE:0)|((e.rupT>0)?ST_RUPTURE:0)|((e.blindT>0)?ST_BLIND:0)|(((e.buffT>0)||(e.banT>0))?ST_BANNER:0)|((e.barbT>0)?ST_BARBS:0)|((e.heroId==='orrin'&&e.wmT>0)?ST_SIEGE:0)|((e.batT>0)?ST_BATTED:0)|((e.heroId==='jarak'&&e.stanceR)?ST_JARAK_RANGED:0),
       hi:e.heroId, sl:isHero?e.slot:-1,
       fv:isHero?(e.fervN||0):0, fvm:isHero?(e.fervMax||0):0,
       mp:isHero?Math.round(e.mp):0, mmp:isHero?Math.round(e.maxMp):0,
@@ -54,7 +58,9 @@ export function buildSnapshot(S, forTeam){
       wd:isHero?Math.max(0,Math.round((e.windT||0)*100)/100):0,
       aiv:isHero?Math.round((1/(e.aps||1))*100)/100:0,
       ct:isHero?(e.curTid||0):0, rng:(isHero||e.type==='tower')?e.range:0,
-      rg:isHero?Math.round(e.rage||0):0});
+      rg:isHero?Math.round(e.rage||0):0,
+      // channel progress 0..1 (Frenzied Charge) — drives the wind-up ring
+      ch:(isHero&&e.chanT>0&&e.chanMax>0)?Math.round((1-e.chanT/e.chanMax)*100)/100:0});
   }
   // the post-game breakdown and graphs ride along on the final snapshot only —
   // they are far too big to send twenty times a second. Even then the series is

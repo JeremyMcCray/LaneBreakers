@@ -138,7 +138,7 @@ console.log("\n== WORLD CONSTANTS ARE LIVE ==");
 
   setTuning(worldKey("MAX_LEVEL"), 99);
   ok("MAX_LEVEL is clamped so it can never index past XP_TABLE",
-     getWorldTunable("MAX_LEVEL") === 12, "asked 99, got " + getWorldTunable("MAX_LEVEL"));
+     getWorldTunable("MAX_LEVEL") === 15, "asked 99, got " + getWorldTunable("MAX_LEVEL"));
   resetAll();
 }
 

@@ -59,7 +59,7 @@ export function nearbyHeroes(S, t, x, y, r){
 export function mkEnt(S,o){
   o.id = S.nextId++;
   o.stun = o.stun||0; o.slowT = 0; o.slowP = 0;
-  if (o.type==='creep'){                       // remember base stats — banners/Warmarch buff on top
+  if (o.type==='creep'){                       // remember base stats — War Banner buffs on top
     o.bdmg = o.dmg; o.barm = o.armor; o.bms = o.ms;
     o.buffT = 0; o.buffDmg = 0; o.buffArm = 0; o.buffMs = 0;
   }

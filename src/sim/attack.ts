@@ -4,6 +4,7 @@ import {
 } from '../data/world';
 import { HEROES } from '../data/heroes';
 import { addEmber, applyDot, applyRoot, applySlow, damage } from './combat';
+import { itemBolt } from './zones';
 import { ent, fx } from './create';
 
 export function moveToward(S,e,tx,ty,dt){
@@ -41,11 +42,22 @@ export function releaseAttack(S,e){
   if (!tgt || tgt.dead || e.dead){ e.atkCd = Math.min(e.atkCd, .1); return; }
   const reach = e.range + tgt.r + e.r*0.4 + 45;      // small leeway if they stepped away
   if (dist(e.x,e.y,tgt.x,tgt.y) > reach){ e.atkCd = Math.min(e.atkCd, .1); return; }
+  strike(S, e, tgt);
+}
+/* One swing resolved right now: damage, crit roll and every on-hit rider.
+   releaseAttack lands here after the wind-up; Omnislash calls it directly so
+   each cut behaves like a real attack. opt: {noCrit, tag}. Returns whether
+   the swing was a critical strike. */
+export function strike(S, e, tgt, opt){
+  opt = opt || {};
   e.facing = Math.atan2(tgt.y-e.y, tgt.x-e.x);
   e.swing = .16;
   // Fervor — consecutive blows on ONE throat wind the next swing up
   if (e.fervMax>0){
     if (e.fervTid===tgt.id) e.fervN = Math.min(e.fervMax, (e.fervN||0) + (e.fervStep||1));
+    // no target on the books (fresh, or Frenzied Charge just granted stacks):
+    // adopt this one without wiping what he already carries
+    else if (!e.fervTid) e.fervTid = tgt.id;
     else { e.fervTid = tgt.id; e.fervN = 0; }
     e.fervT = 4;                             // stacks survive a short break in the chase
   }
@@ -54,10 +66,14 @@ export function releaseAttack(S,e){
   if (e.type==='creep' && tgt.type==='creep') amt *= 0.7;   // creeps whittle each other slowly
   if (e.quell>0 && tgt.type==='creep' && tgt.team!==e.team) amt += e.quell;  // Quelling Blade — never on a deny
   if (e.siege>0 && tgt.type==='tower') amt *= e.siege;      // Barrow Ram — born to break gates
-  if (e.crit>0 && Math.random() < e.crit){ amt *= 1.9; crit = true; }
+  if (!opt.noCrit && e.crit>0 && Math.random() < e.crit){ amt *= 1.9; crit = true; }
   // Wildfire — Ash's swings sometimes carry fire. Rolled here so a ranged shot
   // decides at release and delivers the embers when it actually lands.
   const embAtk = (e.embAtk>0 && tgt.team!==e.team && Math.random() < e.embAtk) ? 2 : 0;
+  // Lightning Strike (the item) — rolled at release like a crit; a ranged shot
+  // delivers the bolt when it lands. Never on a deny, a tower, or a ward.
+  const bolt = (e.bolt>0 && tgt.team!==e.team && (tgt.type==='hero'||tgt.type==='creep')
+                && Math.random() < e.bolt) ? Math.round(e.dmg*0.3) : 0;
   // Battle Cry — this is the one swing that carries God's Strength; spend it
   if (e.cryN>0 && tgt.team!==e.team){ e.cryN--; if (e.cryN<=0) e.cryT = 0; }
   if (e.ranged){
@@ -65,15 +81,18 @@ export function releaseAttack(S,e){
     S.projs.push({id:S.nextId++, kind:'atk', team:e.team, x:e.x, y:e.y-10,
       tid:tgt.id, dmg:amt, src:e.id, speed:sp, r:7,
       ps: e.type==='hero' ? e.slot : (e.oslot!==undefined ? e.oslot : -1),
-      rend:e.rendT>0, chill:e.chill>0, ven:e.venom||0, crit:crit, atkEmb:embAtk,
+      rend:e.rendT>0, chill:e.chill>0, ven:e.venom||0, crit:crit, atkEmb:embAtk, bolt:bolt,
+      spl:e.splash||0,                       // Warmarch — the shell bursts on impact
       // Rip and Tear rides the shot out — resolved when it lands
       twin: (e.aghs && e.heroId==='jarak' && e.fervMax>0 && e.fervN>=e.fervMax) ? .5 : 0});
   } else {
     fx(S,{t:'slash', x:e.x, y:e.y, a:e.facing, team:e.team, rng:e.range});
-    S.tag = 'atk';
+    const prevTag = S.tag;
+    S.tag = opt.tag || 'atk';
     if (embAtk) addEmber(S, tgt, embAtk, e);     // fire first, so a killing blow still passes it on
     damage(S, e, tgt, amt, {attack:true, melee:true, crit:crit});
-    S.tag = null;
+    S.tag = prevTag;
+    if (bolt) itemBolt(S, e, tgt.x, tgt.y, bolt);
     if (e.cleave>0 && tgt.team!==e.team)                   // melee only, and never on a deny
       cleaveHit(S, e, tgt, amt, e.cleave,
         e.aghs && e.heroId==='svaar' && e.gsT>0);          // Worldbreaker
@@ -88,9 +107,9 @@ export function releaseAttack(S,e){
     if (e.aghs && e.type==='hero' && tgt.team!==e.team && !tgt.dead){
       // Rip and Tear — at maximum Fervor every attack lands twice
       if (e.heroId==='jarak' && e.fervMax>0 && e.fervN>=e.fervMax){
-        S.tag = 'atk';
+        S.tag = opt.tag || 'atk';
         damage(S, e, tgt, amt*0.5, {attack:true, melee:true});
-        S.tag = null;
+        S.tag = prevTag;
       }
       // Bad Blood — at FULL RAGE every attack opens a serrated wound
       if (e.heroId==='shiv' && e.rageOn && e.rage>=100){
@@ -100,11 +119,12 @@ export function releaseAttack(S,e){
       }
       // Open Wounds — every blow on a Ruptured target counts as 50 units run
       if (e.heroId==='stryg' && tgt.rupT>0){
-        damage(S, ent(S,tgt.rupSrc)||e, tgt, 50/80*(tgt.rupV||0), {pure:true, tag:'a3'});
+        damage(S, ent(S,tgt.rupSrc)||e, tgt, 50/40*(tgt.rupV||0), {pure:true, tag:'a3'});
         fx(S,{t:'bleed', x:tgt.x, y:tgt.y});
       }
     }
   }
+  return crit;
 }
 /* The next thing an auto-attacking hero should swing at: closest first,
    creeps ahead of heroes, never buildings, and nothing at all beyond AUTO_ACQ. */
@@ -125,22 +145,27 @@ export function autoNext(S, e){
 }
 /* A cleaving swing splashes into everything in a cone past the target.
    It never touches buildings and never feeds lifesteal a second time.
-   `wb` is Svaar's Worldbreaker: the cone opens into a full circle and slows. */
+   `wb` falsy is the melee cone; 'full' is a plain full-circle splash
+   (Warmarch's shells); true is Svaar's Worldbreaker, which also slows.
+   The cone is measured from the swinging hero; only the 'full' shell
+   splash stays centered on the impact point. */
 export function cleaveHit(S, src, tgt, raw, pct, wb){
+  const full = wb==='full';
+  const cx = full ? tgt.x : src.x, cy = full ? tgt.y : src.y;
   const swing = Math.atan2(tgt.y-src.y, tgt.x-src.x);
   const arc = wb ? Math.PI : CLEAVE_ARC;
   let hit = 0;
   for (const o of S.ents){
     if (o.dead || o===tgt || o.team===src.team || o.type==='tower') continue;
-    if (dist(tgt.x,tgt.y,o.x,o.y) > CLEAVE_R + o.r) continue;
+    if (dist(cx,cy,o.x,o.y) > CLEAVE_R + o.r) continue;
     const a = Math.atan2(o.y-src.y, o.x-src.x);
     let da = Math.abs(((a - swing + Math.PI*3) % (Math.PI*2)) - Math.PI);
     if (da > arc) continue;
     damage(S, src, o, raw*pct, {cleave:true, tag:'cleave'});
-    if (wb && !o.dead) applySlow(o, .20, 1);
+    if (wb===true && !o.dead) applySlow(o, .20, 1);
     hit++;
   }
-  if (hit) fx(S,{t:'cleave', x:tgt.x, y:tgt.y, a:swing, team:src.team});
+  if (hit) fx(S,{t:'cleave', x:cx, y:cy, a:swing, team:src.team});
   return hit;
 }
 /* per-hit damage a hero would deal right now — used for the last-hit preview */

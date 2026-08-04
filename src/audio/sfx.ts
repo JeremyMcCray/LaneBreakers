@@ -117,6 +117,13 @@ const BANK = {
   dash:     (t,v,pan,pit)=>{ noise(t,{d:.2, v:.2*v, lp:520, lp2:2400*pit, pan});
                              tone(t,{f:260*pit, f2:540, d:.16, v:.08*v, pan}); },
   windup:   (t,v,pan,pit)=>{ tone(t,{f:180*pit, f2:330, type:'sawtooth', d:.3, v:.06*v, pan}); },
+  // Siege Bolt's launch: a bat cracking a home run, built from square waves so
+  // it sits in the same retro register as the rest of the bank — a sharp knock,
+  // then a little rising "sailing away" chirp
+  homerun:  (t,v,pan,pit)=>{ noise(t,{d:.05, v:.45*v, hp:1500, pan});
+                             tone(t,{f:240*pit, f2:70, type:'square', d:.07, v:.26*v, pan});
+                             tone(t+.05,{f:490*pit, f2:1660, type:'square', d:.32, v:.14*v, pan});
+                             tone(t+.05,{f:980*pit, f2:3320, type:'triangle', d:.26, v:.06*v, pan}); },
 
   // deaths / kills
   die:      (t,v,pan,pit)=>{ tone(t,{f:150*pit, f2:55, type:'triangle', d:.18, v:.32*v, pan});
@@ -246,7 +253,8 @@ const BANK = {
 const GAP = { dmg:.07, hit:.06, slash:.07, cleave:.09, die:.05, gold:.11, deny:.09,
               towerfire:.1, chain:.06, static:.12, emberjump:.09,
               thirst:.14, cast:.05, dash:.07, windup:.25, bleed:.22,
-              jbolt:.15, jheal:.35, jcharge:.2, crit:.1, lacerate:.16, plate:.4 };
+              jbolt:.15, jheal:.35, jcharge:.2, crit:.1, lacerate:.16, plate:.4,
+              homerun:.15 };
 
 export function playSfx(name, opt){
   if (cfg.mute || cfg.vol <= 0) return;
@@ -283,6 +291,7 @@ export function fxSound(f){
     case 'dash':     sfxAt('dash', f.x, f.y); break;
     case 'echodash': sfxAt('dash', f.x, f.y, {vol:1.2}); break;
     case 'windup':   sfxAt('windup', f.x, f.y); break;
+    case 'homerun':  sfxAt('homerun', f.x, f.y, {vol:1.2}); break;
     case 'die':      sfxAt(f.big ? 'diebig' : 'die', f.x, f.y); break;
     case 'kill':     playSfx(f.team === G.myTeam ? 'kill' : 'slain'); break;
     case 'exec':     sfxAt('exec', f.x, f.y); break;

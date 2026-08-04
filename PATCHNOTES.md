@@ -7,6 +7,192 @@ looks, or connects, it belongs on this list.
 
 ---
 
+## 2026-08-03 · v0.14.1
+
+### Jarak
+- **Stance badge.** Jarak now wears a small badge beside his bars showing which
+  Fervor grip he is holding: a blade for melee, a flying axe for the 520-range
+  thrown grip. Visible to both teams.
+- **Frenzied Charge channels faster.** Full channel time cut from 1.5s to 1s.
+- **Frenzied Charge wind-up indicator.** While he channels, a progress ring
+  fills around him and a CHARGING label shows, so both sides can read how many
+  stacks the release will grant.
+
+### Cleave
+- **Cleave now splashes from the hero, not from the attacked target.** The cone
+  (Battle Cleaver, Jarak's cleave, Svaar's Worldbreaker) is measured from the
+  swinging hero, so it can no longer reach targets far past the creep that was
+  hit. Warmarch's shell splash still centers on the impact point.
+
+### Stryg
+- **Rupture (R) damage halved.** Per-40-units bleed reduced from 32/48/64 back
+  to 16/24/32. The Open Wounds scepter proc scales down accordingly.
+
+### Zaal
+- **Arc Lightning (Q) cast range halved,** from 620 to 310. The bounce radius
+  is unchanged.
+
+## 2026-08-03 · v0.14.0
+
+### Three new magic items — ability damage now scales into the late game
+Attack builds scale multiplicatively (damage × attack speed × crit), while
+magic builds only added flat percentages on fixed ability values. These three
+items give casters the same kind of compounding curve.
+
+- **Occult Prism (1300 g, Ember Shard × 2 + 700 recipe).** +7% ability damage.
+  SPELL CRIT: your damaging abilities have a 25% chance to deal 180% damage.
+  The crit is rolled after ability-damage amplification, so it multiplies with
+  every other magic item. It never triggers on towers.
+- **Soulfire Brand (1150 g, Ember Shard + Vitality Band + 600 recipe).** +10%
+  ability damage, +140 HP. Your abilities burn the target for extra damage
+  equal to 4% of its max HP, at most once per second per target. The burn is
+  added before armor and other reductions, and it does not affect towers.
+- **Archmagus Crown (2150 g, Sorcerer's Orb + Ember Shard + 300 recipe).**
+  +380 mana, +5 mana regen, -24% cooldowns, +32% ability damage. The caster
+  capstone, priced just under the Ascendant Scepter.
+
+### Bots
+- Caster bots (Ash, Krell, Zaal, Vosk, Drex, Geist, Orrin, Timber) updated
+  their shopping lists to include the new magic items.
+
+## 2026-08-03 · v0.13.1
+
+### General
+- **Right-clicking a friendly creep now walks you to it.** Previously the order
+  was cancelled unless the creep was already below half health and in reach.
+  Now your hero walks into attack range and waits there, swinging only once
+  the creep drops below half health and becomes denyable. The tower
+  aggro-drop on clicking a friendly creep is unchanged.
+- **Respawn times scale up more slowly.** Death timer is now 5 + 0.9 seconds
+  per level, down from 5 + 1.2 per level (at level 15: 18.5s, down from 23s).
+
+### Ronin
+- **Omnislash cuts are now real attacks.** Each cut performs a full attack
+  swing — on-hit effects, item procs, cleave, and lifesteal all apply — with
+  the rank value (60/85/110) added on top as ability damage. Without the
+  scepter the cuts still cannot critically strike.
+
+### Stryg
+- **Blood Frenzy (W) buffed.** Attack speed bonus raised by 30% at every rank,
+  from 50/70/90/110% to 80/100/120/140%.
+- **Rupture (R) buffed.** The bleed now charges damage per 40 units moved
+  instead of per 80, and the per-tick damage is doubled (16/24/32 →
+  32/48/64). The Open Wounds scepter proc scales up accordingly.
+
+## 2026-08-03 · v0.13.0
+
+### New item: Lightning Strike
+- **Lightning Strike (1100 g, Gauntlet + Talon + 660 recipe).** +9 damage and
+  +16% attack speed. Your attacks have a 30% chance to call a lightning strike
+  that starts on the attacked target and bounces between up to 4 enemies,
+  dealing 30% of your attack damage to each. It does not proc on denies,
+  towers, or wards. Bots: Vex now builds it as her last item in place of
+  Bramble Plate.
+
+### Corvick
+- **Deploy Turret (E) nerfed.** Turret damage reduced by 15%, from 45/63/81/99
+  to 38/54/69/84. Mana cost increased by 50%, from 70/75/80/85 to
+  105/113/120/128. Cooldown, duration, range, and turret durability are
+  unchanged.
+
+## 2026-08-03 · v0.12.0
+
+### Corvick
+- **Siege Bolt (Q) reworked.** The bolt now deals 75/120/165/210 damage to the
+  first enemy hero or tower it hits (the old 80% tower bonus is gone). Allied
+  creeps it passes over are healed for the full bolt damage instead of half.
+  An enemy creep now stops the bolt: the creep is stunned for 0.4 seconds,
+  blinking red and white, then batted onward along the bolt's flight line at
+  high speed. It explodes on the first enemy hero, creep, tower or wall it
+  meets, dealing three times the bolt's damage in a small radius (half of
+  that to towers) and dying in the blast, with the last hit credited to
+  Corvick. Both the bolt and the explosion scale with spell power. Mana,
+  cooldown, and range are unchanged.
+
+## 2026-08-03 · v0.11.1
+
+### Timber
+- **Timber Chain no longer interacts with creeps or heroes.** The chain flies
+  to the target point, passing through every unit without biting or damaging
+  anything, and reels Timber to where it lands. It is now a pure mobility
+  tool; mana, cooldown, and range are unchanged.
+
+### Corvick
+- **Siege Bolt (Q) damage increased 15%**: 95/150/205/260 → 109/173/236/299.
+- **Deploy Turret (E) damage increased 50%**: 30/42/54/66 → 45/63/81/99.
+- **Deploy Turret (E) cooldown halved**: 24/20/16/12s → 12/10/8/6s. The
+  cooldown is now well under the turret's 12/16/20/24s lifetime at every rank,
+  so several turrets can stand at once from rank 1.
+- **Warmarch (R) bonus attack damage now scales with spell power**, the same
+  way his turrets do.
+
+## 2026-08-03 · v0.11.0
+
+Ability reworks for three fighters, and a sharper Rupture.
+
+### Gruk
+- **Stone Skin is gone. The new W is Shockwave.** Gruk slams the ground and
+  sends a wave 700 units forward. Enemies it rolls over take 70/120/170/220
+  damage, are dragged 80 units toward Gruk, and are slowed 10/13/15/18% for
+  2 seconds. Costs 50/55/60/65 mana, cooldown 13/12/11/10s.
+
+### Jarak
+- **Berserker's Rage is gone. The new E is Frenzied Charge.** Jarak channels
+  in place for up to 1.5 seconds, then charges 380 units toward the cursor.
+  Casting again releases the channel early. On release he gains 1/2/3/4
+  Fervor stacks, reduced proportionally if the channel was cut short, and the
+  stacks carry onto the next target he attacks. A stun breaks the channel with
+  nothing to show for it. Mana and cooldown are unchanged from the old E.
+- Fervor's stack cap is now 4 at all ranks; the old rank-8 cap tied to
+  Berserker's Rage is gone with it.
+- **Battle Trance is gone. The new R is Undying Rage.** Removes every debuff
+  from Jarak — it can be cast even while stunned or silenced — and for
+  4 seconds his health cannot drop below 1. Grants 60/90/120% attack speed and
+  25% move speed for the duration. Costs 125/150/175 mana, cooldown 100/85/70s.
+
+### Stryg
+- **Bloodrage is gone. The new W is Blood Frenzy.** Stryg sacrifices 25% of
+  his current health for 50/70/90/110% attack speed for 6 seconds. The cost is
+  paid in blood: no mana, and it can never kill him. Cooldown 14/13/12/11s.
+- **Rupture deals more damage**: 12/18/24 → 16/24/32 pure damage per 80 units
+  the victim moves.
+
+## 2026-08-03 · v0.10.1
+
+### Corvick
+- **War Banner (W) no longer emits a pulsing ring and rumble sound.** That
+  pulse is the visual language of slow effects and made the banner read as
+  hostile ground. The planted flag, the dashed gold circle and the gold glow
+  on rallied units are unchanged.
+
+## 2026-08-03 · v0.10.0
+
+The level cap now covers a full build, and two heroes get ultimate reworks.
+
+### Leveling
+- **The level cap is now 15** (up from 12). Fifteen skill points is exactly
+  enough to fully rank every ability: three basics at rank 4 plus the ultimate
+  at rank 3. Ultimate ranks still unlock at levels 6, 9 and 12.
+- **Middle levels arrive slightly faster.** The XP needed for levels 3 through
+  12 was reduced by roughly 8–12% (level 12 now lands at 4930 XP instead of
+  5520). Levels 13–15 continue the curve past the old cap.
+
+### Sable
+- **Sidestep (E) is now a roll, not an instant blink.** Sable travels to the
+  target point at high speed and cannot act while rolling; a stun stops her
+  where she is. The attack-speed buff still applies on cast.
+- **Deadshot (R) is no longer blocked by creeps.** The shot passes over creeps
+  without touching them and hits the first enemy hero in its path. With the
+  Ascendant Scepter it still pierces and damages everything it passes, growing
+  on kills and weakening through survivors.
+
+### Corvick
+- **Warmarch (R) reworked.** It no longer heals and buffs the creep wave.
+  Corvick now anchors himself in place as a siege platform for 10 seconds: he
+  cannot move, his attack range increases by 250, he gains +35/60/85 attack
+  damage, and his attacks splash for 60% damage in a 185 radius around the
+  target. Mana cost and cooldown are unchanged.
+
 ## 2026-08-03 · v0.9.0
 
 A six-hero balance and readability pass, and a roster change. Several instant

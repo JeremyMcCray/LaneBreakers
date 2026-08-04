@@ -36,6 +36,8 @@ export const ITEMS = {
            d:'+40 damage, +16% attack speed, 25% chance to crit for 190%'},
   cleaver:{name:'Battle Cleaver',  cat:'attack', from:['blade','gaunt'],   recipe:520,
            d:'+32 damage. MELEE: attacks splash 22% damage in a short arc. Ranged heroes get only the damage'},
+  bolt:   {name:'Lightning Strike', cat:'attack', from:['gaunt','talon'],  recipe:660,
+           d:'+9 damage, +16% attack speed. Your attacks have a 30% chance to call a lightning strike that bounces between up to 4 enemies, dealing 30% of your attack damage to each'},
 
   /* ---------- defense ---------- */
   stout:  {name:'Stout Shield',  cat:'defense', from:['buckler','hide'], recipe:100,
@@ -60,6 +62,12 @@ export const ITEMS = {
            d:'+10% ability damage, +3 armor. Your ABILITIES cut enemy healing and regen by 65% for 6s'},
   weave:  {name:'Soulweave',      cat:'magic', from:['ember','band'],    recipe:520,
            d:'+10% ability damage, +140 HP. SPELL LIFESTEAL: your abilities heal you for 18% of the damage they deal to enemies (one third as much from creeps)'},
+  prism:  {name:'Occult Prism',   cat:'magic', from:['ember','ember'],   recipe:700,
+           d:'+7% ability damage. SPELL CRIT: your damaging abilities have a 25% chance to deal 180% damage'},
+  brand:  {name:'Soulfire Brand', cat:'magic', from:['ember','band'],    recipe:600,
+           d:'+10% ability damage, +140 HP. Your abilities burn the target for extra damage equal to 4% of its max HP, at most once per second per target. Does not affect towers'},
+  crown:  {name:'Archmagus Crown', cat:'magic', from:['orb','ember'],    recipe:300,
+           d:'+380 mana, +5 mana regen, -24% cooldowns, +32% ability damage'},
   scepter:{name:'Ascendant Scepter', cat:'magic', from:['band','crystal','ember'], recipe:1400,
            d:'+220 HP, +220 mana, +2 mana regen, +16 damage, +10% ability damage. '+
              'UNIQUE: unlocks your hero’s SCEPTER upgrade — a different power for every hero. '+
@@ -98,7 +106,8 @@ export const ITEM_SLOTS = 6;
 
 export function itemStats(items){
   const s = {ms:0, dmg:0, hp:0, hpr:0, mp:0, mpr:0, cdr:0, arm:0, thorns:0, ls:0, sls:0, as:0,
-             crit:0, chill:0, amp:0, quell:0, block:0, hcut:0, hcutM:0, shred:0, cleave:0};
+             crit:0, chill:0, amp:0, quell:0, block:0, hcut:0, hcutM:0, shred:0, cleave:0, bolt:0,
+             scrit:0, mburn:0};
   for (const it of items){
     switch(it.id){
       /* components */
@@ -121,6 +130,7 @@ export function itemStats(items){
       case 'sunder':  s.dmg+=42; s.shred=1; break;
       case 'cleaver': s.dmg+=32; s.cleave=Math.max(s.cleave,.22); break;
       case 'reaver':  s.dmg+=40; s.as+=16; s.crit+=.25; break;
+      case 'bolt':    s.dmg+=9; s.as+=16; s.bolt=Math.max(s.bolt,.30); break;
       /* defense */
       case 'stout':   s.block+=24; s.arm+=3; break;
       case 'vit':     s.hp+=300; s.hpr+=6; break;
@@ -133,6 +143,9 @@ export function itemStats(items){
       case 'orb':     s.mp+=300; s.mpr+=4; s.cdr+=.18; s.amp+=.22; break;
       case 'wither':  s.amp+=.10; s.arm+=3; s.hcutM=1; break;
       case 'weave':   s.amp+=.10; s.hp+=140; s.sls+=.18; break;
+      case 'prism':   s.amp+=.07; s.scrit=Math.max(s.scrit,.25); break;
+      case 'brand':   s.amp+=.10; s.hp+=140; s.mburn=Math.max(s.mburn,.04); break;
+      case 'crown':   s.mp+=380; s.mpr+=5; s.cdr+=.24; s.amp+=.32; break;
       case 'scepter': s.hp+=220; s.mp+=220; s.mpr+=2; s.dmg+=16; s.amp+=.10; break;
       /* utility */
       case 'boots':   s.ms+=65; break;

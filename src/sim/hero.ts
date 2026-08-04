@@ -3,6 +3,7 @@ import {
   BASE_X, LANE_Y, dist, heal, nearCamp
 } from '../data/world';
 import { attackWith, autoNext, cancelWind, moveToward, releaseAttack } from './attack';
+import { releaseFrenzy } from './abilities';
 import { clearEmber, damage, kill, tickDot, tickEmber, tickRupture } from './combat';
 import { ent, fx, heroHomeY } from './create';
 import { updateHeroStats } from './stats';
@@ -15,12 +16,12 @@ export function heroThink(S,p,dt){
       e.dead=false; e.x=BASE_X[p.team]; e.y=heroHomeY(S,p);
       e.stun=0; e.slowT=0; e.shieldT=0; e.colT=0; e.bonusHp=0; e.bonusDmg=0; e.windT=0; e.wTid=0;
       e.rootT=0; e.silT=0; e.barbT=0; e.defer=0; e.rage=0;
-      e.spinT=0; e.invT=0; e.csT=0; e.brT=0; e.vulT=0; e.bzT=0;
+      e.spinT=0; e.invT=0; e.csT=0; e.brT=0; e.vulT=0; e.undyT=0; e.chanT=0;
       e.rupT=0; e.rupV=0; e.rupBank=0; e.rupLx=undefined; e.rupLy=undefined;
       e.fervN=0; e.fervTid=0; e.fervT=0; e.hiveT=0; e.stanceR=false;
       e.fbN=0; e.fbT=0; e.fbCd=0; e.raN=0; e.raT=0;
       e.blindT=0; e.btT=0; e.btId=0; e.drainT=0; e.drainId=0;
-      e.parryT=0; e.parryV=0; e.cryT=0; e.cryN=0;
+      e.parryT=0; e.parryV=0; e.cryT=0; e.cryN=0; e.wmT=0;
       clearEmber(e);
       updateHeroStats(S,p);
       e.hp=e.maxHp; e.mp=e.maxMp;
@@ -30,7 +31,8 @@ export function heroThink(S,p,dt){
     return;
   }
   e.moving = false;
-  if (e.stun>0 || e.castLock>0) return;
+  // channeling Frenzied Charge roots him in place; orders wait until it releases
+  if (e.stun>0 || e.castLock>0 || e.chanT>0) return;
   const o = p.order;
   if (o.type==='move' || o.type==='stop') e.curTid = 0;
   if (e.windT>0){
@@ -46,7 +48,6 @@ export function heroThink(S,p,dt){
       o.tid = nxt.id; tg = nxt;
     }
     const denyTarget = tg && tg.team===e.team && tg.type==='creep';
-    const denyLegal = !!(denyTarget && tg.hp/tg.maxHp < .5 && dist(e.x,e.y,tg.x,tg.y) <= e.range + tg.r + e.r*0.4 + 45);
     if (denyTarget && e.towerAgroDropCd<=0){
       for (const tw of S.ents){
         if (tw.type!=='tower' || tw.team===e.team || tw.dead) continue;
@@ -55,13 +56,11 @@ export function heroThink(S,p,dt){
       }
       e.towerAgroDropCd = 3.0;
     }
-    if (denyTarget && !denyLegal){
-      p.order={type:'stop'}; e.curTid=0; return;
-    }
     e.curTid = tg.id;
     const reach = e.range + tg.r + e.r*0.4;
-    if (dist(e.x,e.y,tg.x,tg.y) <= reach) attackWith(S,e,tg,dt);
-    else moveToward(S,e,tg.x,tg.y,dt);
+    if (dist(e.x,e.y,tg.x,tg.y) > reach) moveToward(S,e,tg.x,tg.y,dt);
+    // an allied creep above half health cannot be denied yet — stand in range and wait
+    else if (!denyTarget || tg.hp/tg.maxHp < .5) attackWith(S,e,tg,dt);
   }
   else if (o.type==='amove' || o.type==='hold'){
     const acqR = o.type==='hold' ? (e.range+e.r) : 640;
@@ -100,9 +99,9 @@ export function heroTimers(S,p,dt){
   ['stun','slowT','shieldT','asT','lsT','msT','armT','regT','salveT','draughtT',
    'castLock','hitFlash','swing','drT','markT','rendT','hcT','shredT',
    'rootT','silT','barbT','bleedT','gsT','csT','banT',
-   'spinT','invT','brT','vulT','bzT','fervT','wardFxT','hiveT',
+   'spinT','invT','brT','vulT','undyT','fervT','wardFxT','hiveT',
    'undyCd','fbT','fbCd','doorCd','shovedT','raT','blindT','btT','drainT',
-   'parryT','cryT'].forEach(dec);
+   'parryT','cryT','wmT','mbT'].forEach(dec);
   if (e.parryT<=0) e.parryV = 0;                 // Lightning Rod grounded out
   if (e.cryT<=0) e.cryN = 0;                     // the charged swing went unused
   if (e.fbT<=0) e.fbN = 0;                       // Frostbite thaws if Ilva lets up
@@ -126,6 +125,18 @@ export function heroTimers(S,p,dt){
       }
     }
   }
+  // Frenzied Charge — the channel runs down; a stun breaks it with nothing to
+  // show, running its course releases the charge along his facing
+  if (e.chanT>0 && !e.dead){
+    if (e.stun>0) e.chanT = 0;
+    else {
+      e.chanT -= dt;
+      if (e.chanT<=0){
+        e.chanT = 0;
+        releaseFrenzy(S, p, e.x + Math.cos(e.facing||0)*100, e.y + Math.sin(e.facing||0)*100);
+      }
+    }
+  }
   if (!(e.fervT>0)){ e.fervN=0; e.fervTid=0; }   // stacks fall off once he stops swinging
   if (e.colT>0){ e.colT-=dt; if (e.colT<=0){ e.bonusHp=0; e.bonusDmg=0; } }
   if (e.towerAgroDropCd>0) e.towerAgroDropCd = Math.max(0, e.towerAgroDropCd-dt);
@@ -137,7 +148,10 @@ export function heroTimers(S,p,dt){
     e.defer -= take;
     e.hp -= take;
     if (e.defer < 0.5) e.defer = 0;
-    if (e.hp<=0) kill(S, ent(S,e.deferSrc), e);
+    if (e.hp<=0){
+      if (e.undyT>0) e.hp = 1;                   // Undying Rage holds the account open too
+      else kill(S, ent(S,e.deferSrc), e);
+    }
   }
   // rage drains once the fighting stops
   if (e.rageOn){

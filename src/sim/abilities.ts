@@ -16,7 +16,7 @@ import {
 import { HEROES } from '../data/heroes';
 import { ent, fx, mkEnt, nearbyHeroes, playerOf, spawnBrood, spawnPet, turretDmg } from './create';
 import { damage, kill, addEmber, applyDot, applySlow, applyRoot, applySilence, applyStun,
-         clearEmber, disjoint, warded } from './combat';
+         clearEmber, disjoint, purge, warded } from './combat';
 import { addZone, aoe, knockback, nearestFoe } from './zones';
 import { updateHeroStats } from './stats';
 import { cancelWind } from './attack';
@@ -50,13 +50,22 @@ export function bloodtrailRecast(S,p,i){
   const mk = ent(S, e.btId);
   return !!(mk && !mk.dead);
 }
+/* Jarak mid-channel: pressing E again is the free release — no mana, no
+   cooldown check. The cooldown was already paid when the channel began. */
+export function frenzyRelease(S,p,i){
+  if (i!==2 || p.heroId!=='jarak') return false;
+  const e = p.hero;
+  return !!(e && e.chanT>0);
+}
 /* the free-recast gates that skip mana and cooldown */
 function freeCast(S,p,i){
-  return chakramRecall(S,p,i) || bloodtrailRecast(S,p,i) || novaToggle(S,p,i);
+  return chakramRecall(S,p,i) || bloodtrailRecast(S,p,i) || novaToggle(S,p,i) || frenzyRelease(S,p,i);
 }
 export function canCast(S,p,i){
   const e=p.hero, A=HEROES[p.heroId].abilities[i];
-  if (!e || e.dead || e.stun>0 || S.over) return false;
+  if (!e || e.dead || S.over) return false;
+  // an `unstoppable` ability (Jarak's Undying Rage) casts through stun and silence
+  if (e.stun>0 && !A.unstoppable) return false;
   if (p.sk[i]<=0) return false;
   if (A.passive) return false;                  // nothing to cast — it is always on
   // dev sandbox "free cast": lifts cooldowns and mana only — stun, silence and
@@ -68,7 +77,7 @@ export function canCast(S,p,i){
     else if (p.cds[i]>0) return false;
     if (e.mp < A.mana[p.sk[i]-1]) return false;
   }
-  if (e.silT>0) return false;                   // silenced
+  if (e.silT>0 && !A.unstoppable) return false; // silenced
   if (A.blink && e.rootT>0) return false;       // rooted feet cannot blink
   return true;
 }
@@ -168,9 +177,13 @@ export function castAbility(S,p,i,tx,ty){
       vx:Math.cos(a)*1000, vy:Math.sin(a)*1000, life:760/1000, dmg:V, src:e.id, r:26,
       stun:1.2, col:'#d8a66a'});
     break; }
-  case 'gruk1':
-    e.armT=6; e.armB=V; e.regT=6; e.regP=A.val2[l-1]/100;
-    fx(S,{t:'buff', x:e.x, y:e.y, col:'#ffcf8f'}); break;
+  case 'gruk1': {
+    const a = Math.atan2(ty-e.y, tx-e.x);
+    S.projs.push({id:S.nextId++, kind:'shock', team:e.team, x:e.x, y:e.y-8,
+      vx:Math.cos(a)*950, vy:Math.sin(a)*950, life:700/950, dmg:V, src:e.id, r:38,
+      pierce:true, hits:[], drag:80, slow:{p:A.val2[l-1]/100, t:2}, col:'#d8a66a'});
+    fx(S,{t:'quake', x:e.x, y:e.y, r:110});
+    break; }
   case 'gruk2':
     addZone(S,{kind:'quake', team:e.team, follow:e.id, x:e.x, y:e.y, r:A.aoeRank[l-1], t:3,
       dps:V, slow:.35, src:e.id, tickT:0});
@@ -224,10 +237,12 @@ export function castAbility(S,p,i,tx,ty){
     if (tg){ tg.markT=6; tg.markP=V/100; fx(S,{t:'mark', x:tg.x, y:tg.y}); }
     break; }
   case 'sable2': {
-    const ox=e.x, oy=e.y;
-    e.x=tx; e.y=ty; clampToLane(e);
+    // a roll, not a blink: a fast damage-free charge carries her to the spot
+    const B = {x:tx, y:ty}; clampToLane(B);
     e.asT=3; e.asP=V;
-    fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:'#c9f06a'});
+    fx(S,{t:'dash', x:e.x, y:e.y, x2:B.x, y2:B.y, col:'#c9f06a'});
+    addZone(S,{kind:'charge', team:e.team, x:e.x, y:e.y, tx:B.x, ty:B.y,
+      r:0, sp:1100, t: dist(e.x,e.y,B.x,B.y)/1100 + 0.2, dmg:0, slot:p.slot, hits:[]});
     break; }
   case 'sable3': {
     const a = Math.atan2(ty-e.y, tx-e.x);
@@ -236,6 +251,7 @@ export function castAbility(S,p,i,tx,ty){
       vx:Math.cos(a)*2600, vy:Math.sin(a)*2600, life:1500/2600, dmg:V, src:e.id, r:22,
       col:'#eaffb0'};
     if (e.aghs){ shot.pierce=true; shot.fall=.30; shot.grow=1; shot.hits=[]; }
+    else shot.heroOnly=true;   // the base shot sails over creeps and stops on the first hero
     S.projs.push(shot);
     fx(S,{t:'dash', x:e.x, y:e.y, x2:tx, y2:ty, col:'#eaffb0'});
     break; }
@@ -305,21 +321,22 @@ export function castAbility(S,p,i,tx,ty){
     const a = Math.atan2(ty-e.y, tx-e.x);
     S.projs.push({id:S.nextId++, kind:'siege', team:e.team, x:e.x, y:e.y-8,
       vx:Math.cos(a)*1250, vy:Math.sin(a)*1250, life:800/1250, dmg:V, src:e.id, r:20,
-      siege:true, twr:1.8, col:'#e0c477',
-      // the bolt sails over his own creeps (mending them) and punches through
-      // the enemy wave, hurling each creep backward — see stepProjectiles
-      heals:Math.round(V/2), healed:[], ram:{d:170, dmg:Math.round(V/2)}, hits:[],
-      fall:.30});   // every creep it touches saps the bolt, like Sable's Piercing Shot
+      siege:true, col:'#e0c477',
+      // the bolt sails over his own creeps, healing each one it passes; the
+      // first enemy lane creep stops it and is batted down the flight line to
+      // explode on whatever it meets — see stepProjectiles and the 'bat' zone
+      heals:Math.round(V*(1+(e.amp||0))), healed:[],
+      bat:{mult:3, twr:0.5}});
     break; }
   case 'orrin1':
     addZone(S,{kind:'banner', team:e.team, x:tx, y:ty, r:A.aoe, t:10,
-      bd:V, ba:4, bm:40, src:e.id, tickT:0});
+      bd:V, ba:4, bm:40, src:e.id});
     fx(S,{t:'buff', x:tx, y:ty, col:'#e0c477'});
     break;
   case 'orrin2': {
     const thp = 320 + Math.round(e.maxHp*0.25);          // the turret is built from Corvick's stats
-    // Longer at higher ranks, and the cooldown drops faster than the duration
-    // does, so a maxed Corvick can keep two guns standing at once.
+    // Longer at higher ranks, and the cooldown is well under the duration at
+    // every rank, so Corvick can keep several guns standing at once.
     const life = [12,16,20,24][l-1] + (e.aghs?8:0);      // Legs for the Guns adds 8s
     const t2 = spawnPet(S, e.team, tx, ty, life, {static:!e.aghs, ranged:true, r:15,
       hp:thp, maxHp:thp, dmg:turretDmg(e, V), armor:2 + Math.round(e.armor*0.5),
@@ -327,13 +344,10 @@ export function castAbility(S,p,i,tx,ty){
     fx(S,{t:'blast', x:t2.x, y:t2.y, r:90, col:'#e0c477'});
     break; }
   case 'orrin3': {
-    let n=0;
-    for (const o of S.ents){
-      if (o.dead || o.team!==e.team || o.type!=='creep') continue;
-      o.hp = o.maxHp;
-      o.buffT = 15; o.buffDmg = V; o.buffArm = 6; o.buffMs = 60;
-      n++;
-    }
+    // siege platform mode: rooted in place with bonus range/damage and splashing
+    // attacks — the numbers are applied every tick in updateHeroStats
+    e.wmT = 10;
+    updateHeroStats(S,p);
     fx(S,{t:'blast', x:e.x, y:e.y, r:260, col:'#ffd98a'});
     fx(S,{t:'buff', x:e.x, y:e.y, col:'#e0c477'});
     break; }
@@ -688,20 +702,20 @@ export function castAbility(S,p,i,tx,ty){
     fx(S,{t:'blast', x:e.x, y:e.y, r: e.stanceR ? 120 : 90, col: e.stanceR ? '#bff3d4' : '#7be0a4'});
     break; }
   case 'jarak2':
-    e.armT=8; e.armB=V; e.msT=8; e.msP=.20; e.bzT=8;
+    // Frenzied Charge — the first press starts the channel; a second press, or the
+    // channel running its full 1s, releases the charge (releaseFrenzy below)
+    if (e.chanT>0){ releaseFrenzy(S, p, tx, ty); break; }
+    e.chanT = 1.0; e.chanMax = 1.0;
     fx(S,{t:'buff', x:e.x, y:e.y, col:'#7be0a4'});
-    fx(S,{t:'blast', x:e.x, y:e.y, r:150, col:'#7be0a4'});
     break;
-  case 'jarak3': {
-    for (const q of S.players){
-      if (q.team!==e.team || !q.hero || q.hero.dead) continue;
-      if (dist(q.hero.x, q.hero.y, e.x, e.y) > A.aoe) continue;
-      q.hero.asT = 7; q.hero.asP = Math.max(q.hero.asP||0, V);
-      q.hero.lsT = 7; q.hero.lsP = Math.max(q.hero.lsP||0, .30);
-      fx(S,{t:'buff', x:q.hero.x, y:q.hero.y, col:'#7be0a4'});
-    }
-    fx(S,{t:'blast', x:e.x, y:e.y, r:A.aoe, col:'#7be0a4'});
-    break; }
+  case 'jarak3':
+    purge(S, e);
+    e.undyT = 4;
+    e.asT = 4; e.asP = Math.max(e.asP||0, V);
+    e.msT = 4; e.msP = Math.max(e.msP||0, .25);
+    fx(S,{t:'buff', x:e.x, y:e.y, col:'#ffd76a'});
+    fx(S,{t:'blast', x:e.x, y:e.y, r:150, col:'#ffd76a'});
+    break;
   /* ---- STRYG ---- */
   case 'stryg0':
     addZone(S,{kind:'strike', team:e.team, x:tx, y:ty, r:A.aoe, t:1.2, mt:1.2,
@@ -709,8 +723,11 @@ export function castAbility(S,p,i,tx,ty){
     fx(S,{t:'telegraph', x:tx, y:ty, r:A.aoe, life:1.2, col:'#ff5f7a'});
     break;
   case 'stryg1':
-    e.brT=8; e.brP=V/100; e.vulT=8; e.vulP=.20;
+    // Blood Frenzy — the cost is a quarter of his CURRENT health and cannot kill him
+    e.hp = Math.max(1, e.hp - e.hp*0.25);
+    e.asT = 6; e.asP = Math.max(e.asP||0, V);
     fx(S,{t:'buff', x:e.x, y:e.y, col:'#ff5f7a'});
+    fx(S,{t:'bleed', x:e.x, y:e.y});
     break;
   case 'stryg2': break;                        // Thirst is passive
   case 'stryg3': {
@@ -833,12 +850,14 @@ export function castAbility(S,p,i,tx,ty){
     aoe(S, e.team, e.x, e.y, A.aoe, V, e, o=> applySlow(o,.25,2));
     break;
   case 'timber1': {
-    // the chain is thrown, not blinked: it anchors on the first thing it reaches
-    // (or where it runs out) and the reel drags him there — see reelIn
+    // the chain is thrown, not blinked: it flies to the target point, ignoring
+    // every unit on the way (ghost), anchors there, and the reel drags him to
+    // it — see reelIn. It deals no damage to anything.
     const a = Math.atan2(ty-e.y, tx-e.x);
+    const fd = Math.max(80, dist(e.x,e.y,tx,ty));
     S.projs.push({id:S.nextId++, kind:'chain', team:e.team, x:e.x, y:e.y-8,
-      vx:Math.cos(a)*1400, vy:Math.sin(a)*1400, life:A.range/1400, dmg:0, src:e.id, r:16,
-      reel:p.slot, reelDmg:V, col:'#d98862'});
+      vx:Math.cos(a)*1400, vy:Math.sin(a)*1400, life:fd/1400, dmg:0, src:e.id, r:16,
+      ghost:true, reel:p.slot, col:'#d98862'});
     break; }
   case 'timber2': break;                        // Reactive Armor is passive
   case 'timber3': {
@@ -938,6 +957,31 @@ export function castAbility(S,p,i,tx,ty){
   }
   S.tag = null;
   if (A.blink && (e.x!==wasX || e.y!==wasY)) disjoint(S, e);
+}
+/* Frenzied Charge's release: called by the recast (with the fresh cursor point)
+   or by heroTimers when the channel runs its full 1.5s (aimed along his facing).
+   Fervor stacks scale with how much of the channel was completed; the granted
+   stacks carry onto the next target he attacks (fervTid is cleared, and
+   attack.ts adopts a new target without wiping when fervTid is 0). */
+export function releaseFrenzy(S, p, tx, ty){
+  const e = p.hero;
+  if (!e || e.dead) return;
+  const A = HEROES.jarak.abilities[2], l = Math.max(1, p.sk[2]);
+  const frac = clamp((e.chanMax - e.chanT) / (e.chanMax || 1.0), 0, 1);
+  e.chanT = 0;
+  const gain = Math.max(1, Math.round(A.val[l-1] * frac));
+  e.fervN = Math.min(e.fervMax || 4, (e.fervN||0) + gain);
+  e.fervTid = 0;
+  e.fervT = 4;
+  updateHeroStats(S, p);
+  let a = Math.atan2(ty - e.y, tx - e.x);
+  if (tx === e.x && ty === e.y) a = e.facing || 0;
+  const D = 380;
+  const bx = e.x + Math.cos(a)*D, by = e.y + Math.sin(a)*D;
+  fx(S,{t:'dash', x:e.x, y:e.y, x2:bx, y2:by, col:'#7be0a4'});
+  fx(S,{t:'buff', x:e.x, y:e.y, col:'#7be0a4'});
+  addZone(S,{kind:'charge', team:e.team, x:e.x, y:e.y, tx:bx, ty:by,
+    r:90, sp:1300, t:D/1300 + 0.2, dmg:0, slot:p.slot, hits:[], col:'#7be0a4'});
 }
 /* A bolt that BOUNCES from body to body, one jump every `iv` seconds, losing
    power on the way. The first jump reaches out from the cast point; every one

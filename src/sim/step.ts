@@ -60,6 +60,7 @@ export function simStep(S,dt){
     if (e.slowT>0){ e.slowT-=dt; if (e.slowT<=0) e.slowP=0; }
     if (e.markT>0) e.markT-=dt;
     if (e.hcT>0) e.hcT-=dt;
+    if (e.mbT>0) e.mbT-=dt;
     if (e.rootT>0) e.rootT-=dt;
     if (e.shredT>0) e.shredT-=dt;
     if (e.hasteT>0){ e.hasteT-=dt; if (e.hasteT<=0){ if (e.baseAps) e.aps = e.baseAps; e.ls = 0; } }
@@ -68,6 +69,8 @@ export function simStep(S,dt){
     if (e.fbCd>0) e.fbCd-=dt;
     if (e.doorCd>0) e.doorCd-=dt;
     if (e.shovedT>0) e.shovedT-=dt;
+    if (e.batT>0) e.batT-=dt;      // Siege Bolt's batted creep stops blinking
+
     if (e.hitFlash>0) e.hitFlash-=dt;
     if (e.swing>0) e.swing-=dt;
     if (e.type!=='tower' && e.atkCd>0) e.atkCd = Math.max(0, e.atkCd - dt);

@@ -5,7 +5,9 @@ import { G } from '../app/state';
 
 /* One ability, written out at every rank so you can read a hero cold. */
 export function abilityCard(A){
-  const ranks = A.val.map((v,i)=>'<span class="rk">'+(i+1)+'</span> '+v +
+  // an ability with no rank numbers at all (e.g. Timber Chain) skips the row
+  const ranks = A.val.every(v=>!v) ? '' :
+                A.val.map((v,i)=>'<span class="rk">'+(i+1)+'</span> '+v +
                   (A.val2 ? ' / '+A.val2[i] : '')).join('  ');
   const meta = A.passive ? 'passive'
     : (A.charges ? A.charges+' charges · ' : '') +
@@ -19,7 +21,7 @@ export function abilityCard(A){
       '<div class="abmeta">'+meta+'</div>'+
       '<div class="abdesc">'+A.desc.replace('%d','<b>'+A.val[0]+'</b>')
                                    .replace('%p', A.val2?'<b>'+A.val2[0]+'</b>':'')+'</div>'+
-      '<div class="abranks">'+ranks+'</div>'+
+      (ranks ? '<div class="abranks">'+ranks+'</div>' : '')+
     '</div></div>';
 }
 export function heroSheet(id){

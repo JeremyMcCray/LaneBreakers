@@ -8,28 +8,28 @@ import { canCast, castAbility, buyItem, useItem, nearestFoe, foesOf } from '../s
 /* Every build saves for the Ascendant Scepter once its core is online — the
    per-hero upgrade is close to a seventh ability, so the bots want it too. */
 export const BOT_BUILD = {
-  vex:  ['boots','blade','quick','fang','scepter','plate'],
+  vex:  ['boots','blade','quick','fang','scepter','bolt'],
   ilva: ['boots','arc','blade','vit','scepter','fang'],
   gruk: ['boots','vit','blade','plate','scepter','quick'],
   brann:['boots','vit','blade','scepter','plate','quick'],
   sable:['boots','blade','quick','fang','scepter','arc'],
   vhal: ['boots','blade','arc','sunder','scepter','orb'],   // Symbiosis turns her damage into the brood's
-  ash:  ['boots','arc','orb','scepter','vit','wither'],     // pure ability damage now — embers do the work
-  orrin:['boots','arc','blade','orb','scepter','quick'],
+  ash:  ['boots','arc','orb','scepter','crown','wither'],   // pure ability damage now — embers do the work
+  orrin:['boots','arc','blade','orb','scepter','prism'],
   nix:  ['boots','blade','quick','fang','scepter','reaver'],
   thorne:['boots','vit','blade','plate','scepter','quick'],
-  krell:['boots','arc','orb','scepter','blade','quick'],
+  krell:['boots','arc','orb','scepter','crown','prism'],
   shiv: ['boots','quell','blade','quick','scepter','vit'],
   svaar:['boots','vit','blade','cleaver','scepter','quick'],
-  geist:['boots','arc','weave','orb','scepter','vit'],   // Soulweave doubles down on her drain
-  drex: ['boots','arc','orb','scepter','vit','quick'],
+  geist:['boots','arc','weave','orb','scepter','brand'], // Soulweave doubles down on her drain
+  drex: ['boots','arc','orb','scepter','prism','vit'],
   ronin:['boots','blade','quick','fang','scepter','reaver'],
-  zaal: ['boots','arc','orb','scepter','vit','quick'],
+  zaal: ['boots','arc','orb','scepter','crown','vit'],
   jarak:['boots','blade','quick','fang','scepter','plate'],
   stryg:['boots','quell','blade','quick','scepter','fang'],
-  vosk: ['boots','arc','orb','scepter','vit','quick'],
+  vosk: ['boots','arc','orb','scepter','crown','vit'],
   dorn: ['boots','vit','blade','plate','scepter','quick'],
-  timber:['boots','vit','arc','plate','scepter','orb'],
+  timber:['boots','vit','arc','plate','scepter','crown'],
   drift: ['boots','blade','quick','fang','scepter','reaver']
 };
 export const BOT_SKILL_DEFAULT = [0,1,2,0,0,3,0,1,1,3,1,2];
@@ -102,12 +102,18 @@ export function botThink(S,p,dt){
     const wantRanged = foeD > 460;
     if (!!e.stanceR !== wantRanged) castAbility(S,p,1,e.x,e.y);
   }
+  // Undying Rage doubles as a panic button — pop it when he is about to die
+  if (p.heroId==='jarak' && hpPct<.30 && canCast(S,p,3)) castAbility(S,p,3,e.x,e.y);
 
   // abilities
   const aggressive = foe && !foe.dead && foeD < 700 && (hpPct>.62 || foeHp<.35);
   if (aggressive && Math.random()<.35){
     for (let i=3;i>=0;i--){
       if (p.heroId==='jarak' && i===1) continue;   // handled above, it is a stance not a nuke
+      // mid-channel, pressing E again would release the charge at once — let it run
+      if (p.heroId==='jarak' && i===2 && e.chanT>0) continue;
+      // Blood Frenzy is paid in health — don't drink from a bar that is already low
+      if (p.heroId==='stryg' && i===1 && hpPct<.5) continue;
       // a deployed Chakram is already working — don't recall it out of reflex
       if (p.heroId==='timber' && i===3 &&
           S.zones.some(z=>(z.kind==='chakout'||z.kind==='chakram'||z.kind==='chakret') && z.slot===p.slot)) continue;

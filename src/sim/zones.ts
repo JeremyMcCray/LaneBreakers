@@ -1,12 +1,22 @@
 // @ts-nocheck
 import {
-  clamp, clampToLane, dist, heal, now
+  clamp, clampToLane, dist, heal, now, walkable
 } from '../data/world';
 import { sliceAndDice, spawnIllusion } from './abilities';
-import { addEmber, applyDot, applyRoot, applySilence, applySlow, applyStun, damage, disjoint } from './combat';
+import { strike } from './attack';
+import { addEmber, applyDot, applyRoot, applySilence, applySlow, applyStun, damage, disjoint, kill } from './combat';
 import { ent, fx, spawnBrood } from './create';
 
 export function addZone(S,o){ o.id=S.nextId++; S.zones.push(o); return o; }
+/* Lightning Strike (the item): a bolt that starts on the attacked target and
+   bounces between up to 4 nearby enemies, dealing a flat amount to each. It
+   rides the same 'arc' zone stepper as Arc Lightning. */
+export function itemBolt(S, src, x, y, dmg){
+  return addZone(S,{kind:'arc', team:src.team, x:src.x, y:src.y-8, tx:x, ty:y,
+    r:0, jr:340, n:4, dmg:dmg, fall:0, iv:.13, tickT:0, first:1,
+    seen:[], src:src.id, col:'#ffe27a', slowP:0, slowSec:0,
+    tag:'i:bolt', t:5*.13});
+}
 /* An explosion or a great door hurls whatever it catches away from a point.
    Marks the target as freshly shoved — Dorn's scepter doors read that mark. */
 export function knockback(o, fx0, fy0, d){
@@ -63,8 +73,8 @@ export function stepZones(S,dt){
           o.banDmg = z.bd; o.banArm = z.ba; o.banMs = z.bm;
         }
       }
-      z.tickT -= dt;
-      if (z.tickT<=0){ z.tickT=.6; fx(S,{t:'quake', x:z.x, y:z.y, r:z.r, col:'#e0c477'}); }
+      // No periodic pulse fx here: the quake ring + sound reads as a slow, and
+      // the banner already has its own drawn flag/circle plus the rally glow.
     } else if (z.kind==='echo'){
       if (z.t<=0){
         const q = S.players[z.slot];
@@ -93,6 +103,53 @@ export function stepZones(S,dt){
         }
         if (z.t<=0){ h.castLock = 0; disjoint(S, h); }
         else h.castLock = Math.max(h.castLock||0, 0.06);
+      }
+    } else if (z.kind==='bat'){
+      // Siege Bolt's batted creep. Wind-up first: the creep is pinned in place
+      // blinking for 0.4s. Then it is launched down the bolt's flight line at
+      // 1500/s and explodes on the first enemy hero, creep or tower it meets —
+      // or the wall — for z.dmg in a small radius (z.twr of that to towers).
+      // The creep dies in its own blast; the kill credits Corvick.
+      const c = ent(S, z.tid);
+      if (!c || c.dead) z.t = 0;
+      else {
+        c.stun = Math.max(c.stun||0, .1);          // it cannot move or shoot
+        c.batT = Math.max(c.batT||0, .1);          // and it blinks red/white
+        z.x = c.x; z.y = c.y;
+        if (z.wind > 0){
+          z.wind -= dt; z.mt = z.wind;
+          if (z.wind <= 0)
+            fx(S,{t:'homerun', x:c.x, y:c.y, x2:c.x+z.ux*110, y2:c.y+z.uy*110});
+        } else {
+          c.shovedT = 0.5;
+          let remain = 1500*dt, boomed = false;
+          // advance in short steps so a wall or a body can't be flown through
+          while (remain > 0 && !boomed){
+            const d2 = Math.min(14, remain); remain -= d2;
+            const nx = c.x + z.ux*d2, ny = c.y + z.uy*d2;
+            if (!walkable(nx, ny, 4)) boomed = true;
+            else {
+              c.x = nx; c.y = ny;
+              for (const o of S.ents){
+                if (o.dead || o===c || o.team===z.team) continue;
+                if (dist(o.x,o.y,c.x,c.y) < o.r + c.r){ boomed = true; break; }
+              }
+            }
+          }
+          z.x = c.x; z.y = c.y;
+          if (boomed){
+            const src = ent(S, z.src);
+            const R = Math.round(c.r*2.2);
+            fx(S,{t:'blast', x:c.x, y:c.y, r:R+22, col:'#ffcf8f'});
+            for (const o of S.ents){
+              if (o.dead || o===c || o.team===z.team) continue;
+              if (dist(o.x,o.y,c.x,c.y) > R + o.r) continue;
+              damage(S, src, o, z.dmg * (o.type==='tower' ? z.twr : 1), {ability:true});
+            }
+            kill(S, src, c);
+            z.t = 0;
+          }
+        }
       }
     } else if (z.kind==='arc'){
       // A bolt bouncing from body to body one jump at a time — Arc Lightning and
@@ -201,13 +258,13 @@ export function stepZones(S,dt){
             clampToLane(h);
             h.facing = Math.atan2(tg.y-h.y, tg.x-h.x);
             fx(S,{t:'dash', x:z.px, y:z.py, x2:h.x, y2:h.y, col:'#ffd9e8'});
-            fx(S,{t:'slash', x:h.x, y:h.y, a:h.facing, team:h.team, rng:h.range});
             z.px = h.x; z.py = h.y;
-            // every cut is the flat rank value on top of a full right click.
+            // every cut is a real attack swing (on-hit effects included) with
+            // the flat rank value added on top as ability damage.
             // Dance of Death: scepter cuts can land Blade Dance crits, and every
             // crit buys one more cut — the dance runs as long as the blade is hot
-            const crit = z.canCrit && h.crit>0 && Math.random() < h.crit;
-            damage(S, h, tg, (z.dmg + (h.dmg||0)) * (crit?1.9:1), {ability:true, crit:crit});
+            const crit = strike(S, h, tg, {noCrit: !z.canCrit, tag: z.tag});
+            if (!tg.dead) damage(S, h, tg, z.dmg * (crit?1.9:1), {ability:true, crit:crit, tag:z.tag});
             z.n--;
             if (crit && z.ex>0){
               z.ex--; z.n++;

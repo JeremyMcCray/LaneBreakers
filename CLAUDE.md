@@ -97,7 +97,8 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
 - 23 heroes (`HERO_IDS`), 4 abilities each (R = ult, ranks 3, others 4).
   Mara was retired (like Liora before her); `persistence.ts` renders old
   records as "MARA (retired)".
-  Ult unlock levels `ULT_REQ = [6,9,12]`, `MAX_LEVEL = 12`.
+  Ult unlock levels `ULT_REQ = [6,9,12]`, `MAX_LEVEL = 15` (15 points = every
+  ability at full rank).
 - Win: **2 points in 1v1, 4 in 2v2, 6 in 3v3** (hero kill = 1); the tower falling ends the
   match outright. 15-min cap (`MATCH_LIMIT`), then kills → net worth → last hits.
 - Economy: `START_GOLD 420`, passive 2.2 g/s, courier delay 5 s, 6 item slots,

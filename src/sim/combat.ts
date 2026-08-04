@@ -66,6 +66,18 @@ export function damage(S, src, tgt, amount, opt){
   }
   let dmg = amount;
   if (opt.ability && src && src.amp>0) dmg *= (1 + src.amp);
+  let crit = !!opt.crit;
+  // Occult Prism — abilities can land critical hits; the roll applies after amp
+  if (opt.ability && src && src.scrit>0 && tgt.type!=='tower' && Math.random()<src.scrit){
+    dmg *= 1.8; crit = true;
+  }
+  // Soulfire Brand — abilities burn a slice of the target's max health. At most
+  // once per second per target, so damage-over-time ticks cannot machine-gun it.
+  if (opt.ability && src && src.mburn>0 && tgt.type!=='tower' &&
+      src.team!==tgt.team && !(tgt.mbT>0)){
+    dmg += (tgt.maxHp||0)*src.mburn;
+    tgt.mbT = 1;
+  }
   if (src && src.brT>0) dmg *= (1 + src.brP);               // Bloodrage — everything hits harder
   // Lacerate — the Drifter tears harder into what is already bleeding from Bloodtrail
   if (src && src.lacer>0 && tgt.dotT>0 && tgt.dotSrc===src.id){
@@ -128,6 +140,11 @@ export function damage(S, src, tgt, amount, opt){
     }
   }
   if (dmg<=0) return 0;
+  // Undying Rage — the health bar can be emptied to a sliver but never to zero
+  if (tgt.undyT>0 && dmg >= tgt.hp){
+    dmg = Math.max(0, tgt.hp - 1);
+    if (dmg<=0) return 0;
+  }
   // book-keeping for the post-game screen — a summon's work counts for its owner
   {
     const tag = damageTag(S, src, opt);
@@ -159,8 +176,8 @@ export function damage(S, src, tgt, amount, opt){
   }
   if (!opt.silent)
     fx(S,{t:'dmg', x:tgt.x, y:tgt.y+2, r:tgt.r, v:Math.round(dmg),
-          c: src && src.type==='hero' ? 1 : 0, ab: !!opt.ability, cr: !!opt.crit});
-  if (opt.crit) fx(S,{t:'crit', x:tgt.x, y:tgt.y-4});
+          c: src && src.type==='hero' ? 1 : 0, ab: !!opt.ability, cr: crit});
+  if (crit) fx(S,{t:'crit', x:tgt.x, y:tgt.y-4});
   // thorns
   if (opt.melee && tgt.thorns>0 && src && !src.dead)
     damage(S, tgt, src, dmg*tgt.thorns, {pure:true, silent:true, tag:'thorns'});
@@ -336,7 +353,7 @@ export function kill(S, src, tgt){
     const p = playerOf(S, tgt);
     if (!p) return;
     p.deaths++;
-    p.respawn = 5 + p.lvl*1.2;
+    p.respawn = 5 + p.lvl*0.9;
     // dying costs time, never gold — a gold tax only digs the losing player deeper
     if (src){
       const kt = src.team!==undefined ? src.team : 1-p.team;
@@ -439,7 +456,7 @@ export function tickDot(S, e, dt){
   }
   if (e.dotT<=0){ e.dotDps=0; e.dotTick=0; }
 }
-/* Rupture: Damage is charged per 80 units
+/* Rupture: Damage is charged per 40 units
    travelled and banked so the floating numbers do not turn into a stream. */
 export function tickRupture(S, e, dt){
   if (!(e.rupT>0)) return;
@@ -449,7 +466,7 @@ export function tickRupture(S, e, dt){
   const moved = dist(e.x, e.y, lx, ly);
   e.rupLx = e.x; e.rupLy = e.y;
   if (moved > 1 && !e.dead){
-    const amt = moved/80 * (e.rupV||0);
+    const amt = moved/40 * (e.rupV||0);
     damage(S, ent(S,e.rupSrc), e, amt, {pure:true, silent:true, tag:'a3'});
     e.rupBank = (e.rupBank||0) + amt;
     if (e.rupBank >= 18){
@@ -459,6 +476,21 @@ export function tickRupture(S, e, dt){
     }
   }
   if (e.rupT<=0){ e.rupT=0; e.rupV=0; e.rupBank=0; e.rupLx=undefined; e.rupLy=undefined; }
+}
+/* Undying Rage: strip every hostile effect off the hero at once. Buffs and
+   self-imposed mechanics (Shiv's deferred damage, Timbersaw's plates) stay. */
+export function purge(S, e){
+  e.stun=0; e.slowT=0; e.slowP=0; e.rootT=0; e.silT=0;
+  e.dotT=0; e.dotDps=0; e.dotTick=0;
+  e.markT=0; e.hcT=0; e.shredT=0; e.blindT=0; e.vulT=0;
+  e.fbN=0; e.fbT=0;
+  e.rupT=0; e.rupV=0; e.rupBank=0; e.rupLx=undefined; e.rupLy=undefined;
+  clearEmber(e);
+  // snap an enemy Life Drain tether latched onto this hero
+  for (const q of S.players){
+    const h = q.hero;
+    if (h && h!==e && h.drainT>0 && h.drainId===e.id) h.drainT = 0;
+  }
 }
 export function applySlow(e, pct, t){
   if (e.colT>0) return;                     // Colossus = slow immune
