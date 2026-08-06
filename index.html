@@ -88,7 +88,8 @@ Right-click is always just move — or a single attack, if you click directly on
     <div class="sub" id="endSub"></div>
     <div id="endStats"></div>
     <div class="row" style="justify-content:center">
-      <button class="pri" id="btnContinue" onclick="returnToLobby()">Continue</button>
+      <button class="pri" id="btnRematch" onclick="rematch()">Rematch</button>
+      <button id="btnContinue" onclick="returnToLobby()">Continue</button>
       <button id="btnHistory" onclick="returnToLobby();showScreen('scrStats')">History</button>
       <button id="btnLeave" onclick="location.reload()">Leave</button>
     </div>
@@ -115,7 +116,7 @@ Right-click is always just move — or a single attack, if you click directly on
                style="width:110px;accent-color:var(--acc);align-self:center">
       </div>
       <h2>Choose your hero
-        <button onclick="randomHero()" style="float:right;padding:5px 14px;font-size:12px;margin-top:-8px">Random Hero</button>
+        <button id="btnRandom" onclick="randomHero()" style="float:right;padding:5px 14px;font-size:12px;margin-top:-8px">Random Hero</button>
       </h2>
       <div class="heroes" id="heroList"></div>
       <h2>Match</h2>

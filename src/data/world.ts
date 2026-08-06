@@ -78,6 +78,7 @@ export let MAX_LEVEL = 15;    // 15 skill points = every ability at full rank (4
 export let BUY_DELAY = 5;             // courier delivery seconds
 export let SELL_FULL = 10;            // seconds an item can be sold back at full price
 export let START_GOLD = 420;
+export let QUELL_DMG  = 40;           // bonus damage every hero deals to enemy creeps
 export let GOLD_PER_SEC = 2.2;
 export let CAMP_FIRST = 120;          // first jungle camp spawn (s)
 export let CAMP_RESPAWN = 90;         // respawn check cadence — only refills an EMPTY camp
@@ -159,6 +160,7 @@ export function armorMult(a){
 export const WORLD_TUNABLES = [
   {k:'GOLD_PER_SEC',    label:'Passive gold / sec',   min:0,   max:20,   step:.1,  live:true},
   {k:'START_GOLD',      label:'Starting gold',        min:0,   max:6000, step:10,  live:false},
+  {k:'QUELL_DMG',       label:'Bonus creep damage',   min:0,   max:400,  step:5,   live:true},
   {k:'WAVE_INTERVAL',   label:'Seconds between waves',min:3,   max:90,   step:1,   live:true},
   {k:'FIRST_WAVE',      label:'First wave at',        min:0,   max:60,   step:1,   live:false},
   {k:'XP_RADIUS',       label:'XP share radius',      min:100, max:3400, step:25,  live:true},
@@ -186,7 +188,7 @@ const WORLD_READ = {
   KILLS_TO_WIN_2V2:()=>KILLS_TO_WIN_2V2, KILLS_TO_WIN_3V3:()=>KILLS_TO_WIN_3V3,
   MATCH_LIMIT:()=>MATCH_LIMIT, SUDDEN_DEATH:()=>SUDDEN_DEATH,
   MAX_LEVEL:()=>MAX_LEVEL, BUY_DELAY:()=>BUY_DELAY, SELL_FULL:()=>SELL_FULL,
-  START_GOLD:()=>START_GOLD, GOLD_PER_SEC:()=>GOLD_PER_SEC,
+  START_GOLD:()=>START_GOLD, GOLD_PER_SEC:()=>GOLD_PER_SEC, QUELL_DMG:()=>QUELL_DMG,
   CAMP_FIRST:()=>CAMP_FIRST, CAMP_RESPAWN:()=>CAMP_RESPAWN
 };
 const WORLD_WRITE = {
@@ -198,7 +200,7 @@ const WORLD_WRITE = {
   // MAX_LEVEL indexes XP_TABLE — never let it point past the end
   MAX_LEVEL:v=>MAX_LEVEL=clamp(Math.round(v), 1, XP_TABLE.length-1),
   BUY_DELAY:v=>BUY_DELAY=v, SELL_FULL:v=>SELL_FULL=v,
-  START_GOLD:v=>START_GOLD=v, GOLD_PER_SEC:v=>GOLD_PER_SEC=v,
+  START_GOLD:v=>START_GOLD=v, GOLD_PER_SEC:v=>GOLD_PER_SEC=v, QUELL_DMG:v=>QUELL_DMG=v,
   CAMP_FIRST:v=>CAMP_FIRST=v, CAMP_RESPAWN:v=>CAMP_RESPAWN=v
 };
 export function getWorldTunable(k){ const f = WORLD_READ[k]; return f ? f() : undefined; }

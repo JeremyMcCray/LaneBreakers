@@ -19,7 +19,7 @@ export function heroThink(S,p,dt){
       e.spinT=0; e.invT=0; e.csT=0; e.brT=0; e.vulT=0; e.undyT=0; e.chanT=0;
       e.rupT=0; e.rupV=0; e.rupBank=0; e.rupLx=undefined; e.rupLy=undefined;
       e.fervN=0; e.fervTid=0; e.fervT=0; e.hiveT=0; e.stanceR=false;
-      e.fbN=0; e.fbT=0; e.fbCd=0; e.raN=0; e.raT=0;
+      e.raN=0; e.raT=0;
       e.blindT=0; e.btT=0; e.btId=0; e.drainT=0; e.drainId=0;
       e.parryT=0; e.parryV=0; e.cryT=0; e.cryN=0; e.wmT=0;
       clearEmber(e);
@@ -100,11 +100,10 @@ export function heroTimers(S,p,dt){
    'castLock','hitFlash','swing','drT','markT','rendT','hcT','shredT',
    'rootT','silT','barbT','bleedT','gsT','csT','banT',
    'spinT','invT','brT','vulT','undyT','fervT','wardFxT','hiveT',
-   'undyCd','fbT','fbCd','doorCd','shovedT','raT','blindT','btT','drainT',
+   'undyCd','doorCd','shovedT','raT','blindT','btT','drainT',
    'parryT','cryT','wmT','mbT'].forEach(dec);
   if (e.parryT<=0) e.parryV = 0;                 // Lightning Rod grounded out
   if (e.cryT<=0) e.cryN = 0;                     // the charged swing went unused
-  if (e.fbT<=0) e.fbN = 0;                       // Frostbite thaws if Ilva lets up
   if (e.raT<=0) e.raN = 0;                       // Reactive Armor plates fall off together
   tickDot(S,e,dt);
   tickEmber(S,e,dt);
@@ -172,11 +171,11 @@ export function heroTimers(S,p,dt){
   if (e.salveT>0) hpr += 50;
   let mpr = 1.1 + 0.16*p.lvl + (e.mpr||0);
   if (e.draughtT>0) mpr += 43;
-  // fountain
+  // fountain — your own base restores health and mana. The enemy fountain no
+  // longer burns anything that stands in it; the tower's backdoor shield is what
+  // protects a base now.
   const dBase = dist(e.x,e.y,BASE_X[p.team],LANE_Y);
   if (dBase < 330){ hpr += e.maxHp*0.10; mpr += e.maxMp*0.09; }
-  const dFoe = dist(e.x,e.y,BASE_X[1-p.team],LANE_Y);
-  if (dFoe < 380) damage(S, null, e, 260*dt, {pure:true, silent:true, tag:'fountain'});
   heal(S, e, hpr*dt);
   e.mp = Math.min(e.maxMp, e.mp + mpr*dt);
 }

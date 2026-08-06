@@ -33,7 +33,7 @@ const ok = (name, cond, detail) => { if (!cond) fails++; console.log((cond ? "  
 
 function play(a, b, mode) {
   const picks = mode === "2v2"
-    ? [{ h: a, tm: 0 }, { h: b, tm: 1 }, { h: "gruk", tm: 0 }, { h: "krell", tm: 1 }]
+    ? [{ h: a, tm: 0 }, { h: b, tm: 1 }, { h: "gruk", tm: 0 }, { h: "zaal", tm: 1 }]
     : [{ h: a, tm: 0 }, { h: b, tm: 1 }];
   const S = newSim(picks, mode || "1v1");
   S.noFx = true;
@@ -72,7 +72,7 @@ console.log("\n== payload — the final snapshot carries the detail, mid-game on
   ok("cumulative totals never go backwards",
      fin.ps.every(p => p.sr.every((r, i, a) => !i || (r[1] >= a[i - 1][1] && r[4] >= a[i - 1][4] && r[6] >= a[i - 1][6]))), "");
 
-  const S2 = newSim([{ h: "vex", tm: 0 }, { h: "ilva", tm: 1 }], "1v1");
+  const S2 = newSim([{ h: "vex", tm: 0 }, { h: "sable", tm: 1 }], "1v1");
   S2.noFx = true;
   for (let i = 0; i < 60 * 90; i++) { for (const p of S2.players) botThink(S2, p, TICK); simStep(S2, TICK); }
   const mid = buildSnapshot(S2, 0);

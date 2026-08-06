@@ -1,6 +1,6 @@
 // @ts-nocheck
 import {
-  MAX_LEVEL, XP_TABLE
+  MAX_LEVEL, QUELL_DMG, XP_TABLE
 } from '../data/world';
 import { HEROES } from '../data/heroes';
 import { ITEMS, itemStats } from '../data/items';
@@ -74,8 +74,6 @@ export function updateHeroStats(S,p,init){
     e.deferPct = p.sk[1]>0 ? H.abilities[1].val[p.sk[1]-1]/100 : 0;
     e.bleedHeal = e.aghs ? .35 : 0;             // Bad Blood — his bleeds feed him
   }
-  // Deep Freeze: Ilva's ability damage stacks Frostbite (resolved in combat.ts)
-  e.frostTouch = (H.id==='ilva' && e.aghs);
   // Ash's EMBERS: six-deep stacks and the jump off a corpse are innate. Wildfire
   // only decides how hard each ember burns and how often his swings light one.
   if (H.id==='ash'){
@@ -85,8 +83,8 @@ export function updateHeroStats(S,p,init){
     e.embCap    = 6 + (e.aghs ? 2 : 0);               // From the Ashes — eight deep
     e.embSpread = true;
   }
-  // Corvick's standing turrets track his spell power and armor, so items he buys
-  // after deploying them still reach the guns already on the field
+  // Corvick's standing turrets track his spell power, so items he buys after
+  // deploying them still reach the guns already on the field
   e.splash = 0;
   if (H.id==='orrin'){
     // Warmarch siege mode: anchored in place, trading mobility for reach and
@@ -102,7 +100,6 @@ export function updateHeroStats(S,p,init){
       if (o.dead || !o.turret || o.owner!==e.id) continue;
       o.bdmg = turretDmg(e, o.tv||0);
       o.dmg  = o.bdmg + (o.buffT>0 ? (o.buffDmg||0) : 0);
-      o.armor = 2 + Math.round(e.armor*0.5);
     }
   }
   // Symbiosis: the brood is rebuilt from Vhal every tick, so her items reach it
@@ -141,7 +138,8 @@ export function updateHeroStats(S,p,init){
     const t = Math.max(0, Math.min(1, (0.85 - worst)/0.60));
     if (t>0) e.ms += H.ms * e.thirstMs * t;
   }
-  e.quell = it.quell * (H.ranged ? 0.5 : 1);
+  // every hero cuts creeps harder — the old Quelling Blade, built in for free
+  e.quell = QUELL_DMG;
   if (e.slowT>0) e.ms *= (1 - e.slowP);
   if (init){ e.prevMaxHp = e.maxHp; e.prevMaxMp = e.maxMp; return; }
   if (e.maxHp > e.prevMaxHp) e.hp += (e.maxHp - e.prevMaxHp);

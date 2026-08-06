@@ -147,19 +147,19 @@ console.log("\n== OVERRIDE BOOK-KEEPING ==");
   resetAll();
   ok("a clean slate has no overrides", tunedCount() === 0);
   setTuning(abKey("vex", 0, "val", 0), 999);
-  setTuning(heroKey("ilva", "hp"), 700);
+  setTuning(heroKey("sable", "hp"), 700);
   ok("two changes, two overrides", tunedCount() === 2);
   ok("setting a value back to shipped drops the override",
      (setTuning(abKey("vex", 0, "val", 0), baseValue(abKey("vex", 0, "val", 0))),
       tunedCount() === 1));
   const json = exportJson();
-  ok("the diff names what changed", diffLines()[0].what.includes("ILVA"),
+  ok("the diff names what changed", diffLines()[0].what.includes("SABLE"),
      diffLines()[0].what);
   resetAll();
-  ok("reset all clears everything", tunedCount() === 0 && liveValue(heroKey("ilva", "hp")) === 540);
+  ok("reset all clears everything", tunedCount() === 0 && liveValue(heroKey("sable", "hp")) === 530);
   ok("and a round trip through JSON restores it", importJson(json) === 1 &&
-     liveValue(heroKey("ilva", "hp")) === 700);
-  resetHero("ilva");
+     liveValue(heroKey("sable", "hp")) === 700);
+  resetHero("sable");
   ok("resetHero only touches that hero", tunedCount() === 0);
 }
 

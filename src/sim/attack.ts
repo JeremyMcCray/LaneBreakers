@@ -171,6 +171,7 @@ export function cleaveHit(S, src, tgt, raw, pct, wb){
 /* per-hit damage a hero would deal right now — used for the last-hit preview */
 export function previewHit(e, tgt){
   if (tgt.ward) return 1;                        // a ward takes one point per right click
+  if (tgt.hitKill) return 1;                     // so does a turret, per hero attack
   const bonus = e.rendT>0 ? e.rendV : 0;
   let raw = e.dmg + bonus + (e.quell>0 && tgt.type==='creep' && tgt.team!==e.team ? e.quell : 0);
   if (e.brT>0)     raw *= (1 + e.brP);           // Bloodrage
@@ -189,8 +190,9 @@ export function incomingDps(S,c){
     if (o.dead || o.team===c.team || o.type==='hero') continue;
     if (o.tid===c.id || o.wTid===c.id){
       const aps = o.aps || (1/o.bat);
-      let hit = (o.dmg||0)*armorMult(effArmor(c));
-      if (o.type==='creep') hit *= 0.7;
+      // a turret counts hits, not damage — see the hitKill branch in damage()
+      let hit = c.hitKill ? (o.type==='creep' ? 0.5 : 1) : (o.dmg||0)*armorMult(effArmor(c));
+      if (!c.hitKill && o.type==='creep') hit *= 0.7;
       dps += hit*aps;
     }
   }
@@ -205,19 +207,23 @@ export function imminentHits(S,c){
     if (pr.tid!==c.id) continue;
     if (pr.kind!=='atk' && pr.kind!=='tower') continue;
     const d = dist(pr.x, pr.y, c.x, c.y);
-    out.push([Math.round(pr.dmg*am), Math.round(Math.min(2, d/(pr.speed||900))*100)]);
+    const src = ent(S, pr.src);
+    // a turret counts hits, not damage — see the hitKill branch in damage()
+    const hit = c.hitKill ? (src && src.type==='creep' ? 0.5 : 1) : Math.round(pr.dmg*am);
+    out.push([hit, Math.round(Math.min(2, d/(pr.speed||900))*100)]);
   }
   for (const o of S.ents){
     if (o.dead || o.team===c.team || o.wTid!==c.id || !(o.windT>0)) continue;
     let hit = (o.dmg||0) + (o.rendT>0 ? o.rendV : 0);
     if (o.type==='creep' && c.type==='creep') hit *= 0.7;
     if (o.quell>0 && c.type==='creep') hit += o.quell;
+    hit = c.hitKill ? (o.type==='creep' ? 0.5 : 1) : Math.round(hit*am);
     let eta = o.windT;
     if (o.ranged){
       const sp = o.type==='hero' ? (HEROES[o.heroId].projSpeed||900) : 850;
       eta += dist(o.x,o.y,c.x,c.y)/sp;
     }
-    out.push([Math.round(hit*am), Math.round(Math.min(2,eta)*100)]);
+    out.push([hit, Math.round(Math.min(2,eta)*100)]);
   }
   out.sort((a,b)=>a[1]-b[1]);
   return out.slice(0,6);

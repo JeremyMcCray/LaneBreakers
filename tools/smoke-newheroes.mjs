@@ -4,8 +4,10 @@
 import { newSim, simStep, castAbility, mkEnt, kill, damage,
          buildSnapshot, updateHeroStats } from "../src/sim/engine.ts";
 import { HEROES, HERO_IDS } from "../src/data/heroes.ts";
+import { ITEMS, itemStats } from "../src/data/items.ts";
 import { BOT_BUILD } from "../src/ai/bot.ts";
-import { LANE_Y, armorMult } from "../src/data/world.ts";
+import { LANE_Y, QUELL_DMG, armorMult } from "../src/data/world.ts";
+import { broodStats } from "../src/sim/create.ts";
 
 const TICK = 1 / 60;
 const CREEP_RESIST = 0.70;   // creeps shrug off 30% of ability damage (dummies are creeps)
@@ -37,6 +39,21 @@ function sim(a, b) {
   return S;
 }
 const step = (S, n) => { for (let i = 0; i < n; i++) simStep(S, TICK); };
+console.log("\n== BALANCE — updated hero and item tuning ==");
+{
+  const S = sim("stryg", "vex");
+  const p = S.players[0], h = p.hero;
+  const before = h.hp;
+  castAbility(S, p, 1, h.x, h.y);
+  ok("Blood Frenzy costs 12% of current health", Math.abs((before - h.hp) - before * 0.12) < 0.01,
+     `lost ${(before - h.hp).toFixed(1)} from ${before.toFixed(1)}`);
+  ok("Battle Cleaver cleave is 37%", Math.abs(itemStats([{ id: "cleaver" }]).cleave - 0.37) < 1e-6,
+     `cleave=${itemStats([{ id: "cleaver" }]).cleave}`);
+  ok("Svaar Battle Cry range is 260", HEROES.svaar.abilities[1].range === 260,
+     `range=${HEROES.svaar.abilities[1].range}`);
+  ok("Vhal brood damage is reduced by Symbiosis", Math.abs(broodStats({ maxHp: 1000, dmg: 48 }, 22).dmg - 23) < 1e-6,
+     `dmg=${broodStats({ maxHp: 1000, dmg: 48 }, 22).dmg}`);
+}
 /* a stationary practice dummy that will not fight back */
 function dummy(S, team, x, y, hp) {
   return mkEnt(S, {
@@ -232,7 +249,7 @@ console.log("\n== ZAAL — Lightning Bolt telegraphs for 0.5s, then lands ==");
 
 console.log("\n== RONIN — Bladefury: spell immune, cannot swing, damages around him ==");
 {
-  const S = sim("ronin", "ilva");
+  const S = sim("ronin", "sable");
   const p = S.players[0], h = p.hero;
   const d = dummy(S, 1, h.x + 120, LANE_Y);
   const hp0 = d.hp;
@@ -291,7 +308,7 @@ console.log("\n== RONIN — Omnislash strikes repeatedly and is untouchable ==")
   const total = ds.reduce((a, d, i) => a + (hp0[i] - d.hp), 0);
   // every cut is a real attack swing plus the rank value as ability damage;
   // only the ability half is blunted by creep resist
-  const per = HEROES.ronin.abilities[3].val[2] * CREEP_RESIST + h.dmg;
+  const per = HEROES.ronin.abilities[3].val[2] * CREEP_RESIST + h.dmg + QUELL_DMG;
   ok("all six cuts landed", Math.abs(total - per * 6) < 1, `total=${total.toFixed(0)} want=${(per * 6).toFixed(0)}`);
   ok("the cuts were spread across both bodies",
      ds.every((d, i) => hp0[i] - d.hp > 0), ds.map((d, i) => Math.round(hp0[i] - d.hp)).join("+"));
@@ -369,7 +386,7 @@ console.log("\n== STRYG — Blood Frenzy trades health for attack speed ==");
   const hp0 = h.hp, aps0 = h.aps;
   castAbility(S, p, 1, h.x, h.y);
   step(S, 2);
-  ok("a quarter of his current health was paid", hp0 - h.hp > hp0 * 0.2,
+  ok("12% of his current health was paid", Math.abs((hp0 - h.hp) - hp0 * 0.12) < 1,
      `${Math.round(hp0)} -> ${Math.round(h.hp)}`);
   ok("attack speed rose sharply", h.aps > aps0 * 1.5,
      `${aps0.toFixed(2)} -> ${h.aps.toFixed(2)}`);
@@ -490,9 +507,9 @@ console.log("\n== VHAL — the brood is cut from her own stats ==");
   ok("five spawnlings crawled out", brood.length === 5, `${brood.length}`);
   const V = HEROES.vhal.abilities[2].val[3];
   const wantDmg = Math.round(12 + h.dmg * V / 100);
-  const wantHp = Math.round(110 + h.maxHp * V / 400);
+  const wantHp = Math.round((110 + h.maxHp * V / 400) * 0.25);
   ok("each inherits her attack damage", brood[0].dmg === wantDmg, `${brood[0].dmg} want ${wantDmg}`);
-  ok("and a quarter as much of her health", brood[0].maxHp === wantHp, `${brood[0].maxHp} want ${wantHp}`);
+  ok("and 25% as much of her health", brood[0].maxHp === wantHp, `${brood[0].maxHp} want ${wantHp}`);
   step(S, 2);                                      // let a stat pass run at her real level
   const bare = HEROES.vhal.arm + HEROES.vhal.armg * 11;
   ok("she gains armor while one lives", h.armor > bare + 4, `armor=${h.armor.toFixed(1)} bare=${bare.toFixed(1)}`);
@@ -506,7 +523,7 @@ console.log("\n== VHAL — the brood is cut from her own stats ==");
   S2.players[0].sk[2] = 0;
   castAbility(S2, S2.players[0], 0, S2.players[0].hero.x, S2.players[0].hero.y);
   const b2 = S2.ents.filter(o => o.brood)[0];
-  ok("unlevelled Symbiosis inherits nothing", b2.dmg === 12 && b2.maxHp === 110, `dmg=${b2.dmg} hp=${b2.maxHp}`);
+  ok("unlevelled Symbiosis inherits nothing", b2.dmg === 12 && b2.maxHp === 28, `dmg=${b2.dmg} hp=${b2.maxHp}`);
 }
 
 console.log("\n== VHAL — Unleash flings the swarm and hastes it ==");
@@ -873,6 +890,59 @@ console.log("\n== ORRIN — turrets shoot his target, scale with spell power, an
      `cd=${HEROES.orrin.abilities[2].cd[3]} ttl=24`);
 }
 
+console.log("\n== ORRIN — a turret is counted in hits, not health ==");
+{
+  const S = sim("orrin", "vex");
+  const p = S.players[0], h = p.hero;
+  p.sk = [0, 0, 1, 0];                             // rank 1: two hits to kill
+  step(S, 1);
+  castAbility(S, p, 2, h.x + 120, LANE_Y);
+  const t = S.ents.find(o => o.turret && !o.dead);
+  ok("rank 1 stands on two hits", !!t && t.maxHp === 2 && t.hp === 2, t ? `hp=${t.hp}/${t.maxHp}` : "none");
+  const foe = S.players[1].hero;
+  damage(S, foe, t, 5000, { ability: true });
+  ok("spells slide off it", t.hp === 2, `hp=${t.hp}`);
+  const creep = mkEnt(S, { type: "creep", kind: "melee", team: 1, x: t.x + 30, y: t.y, r: 12,
+    hp: 9e5, maxHp: 9e5, dmg: 1, armor: 0, range: 90, bat: 1, ms: 0 });
+  damage(S, creep, t, 9999, { attack: true });
+  ok("a creep swing spends half a hit", t.hp === 1.5, `hp=${t.hp}`);
+  damage(S, foe, t, 9999, { attack: true });
+  ok("a hero swing spends a whole one", t.hp === 0.5, `hp=${t.hp}`);
+  damage(S, foe, t, 9999, { attack: true });
+  ok("and the last one drops it", t.dead, `hp=${t.hp} dead=${t.dead}`);
+  // the hit count climbs with rank
+  p.sk = [0, 0, 4, 0]; p.cds[2] = 0; h.mp = h.maxMp;
+  castAbility(S, p, 2, h.x + 160, LANE_Y);
+  const t4 = S.ents.find(o => o.turret && !o.dead);
+  ok("rank 4 stands on five", !!t4 && t4.maxHp === 5, t4 ? `hp=${t4.maxHp}` : "none");
+}
+
+console.log("\n== ECONOMY — every hero cuts creeps harder, for free ==");
+{
+  const S = sim("vex", "sable");
+  const melee = S.players[0], ranged = S.players[1];
+  updateHeroStats(S, melee); updateHeroStats(S, ranged);
+  ok("a melee hero carries it with no items", melee.hero.quell === QUELL_DMG, `quell=${melee.hero.quell}`);
+  ok("and so does a ranged one", ranged.hero.quell === QUELL_DMG, `quell=${ranged.hero.quell}`);
+  ok("the Quelling Blade is out of the shop", !ITEMS.quell, "");
+  ok("so is the Whetstone", !ITEMS.stone, "");
+  ok("Serrated Edge shreds 2 armor", itemStats([{ id: "serrat" }]).shred === 2, "");
+  ok("and builds into the Sunder Axe, which shreds 5",
+     ITEMS.sunder.from.includes("serrat") && itemStats([{ id: "sunder" }]).shred === 5,
+     ITEMS.sunder.from.join("+"));
+  ok("Lightning Strike now carries spell power of its own", itemStats([{ id: "bolt" }]).amp > 0,
+     `amp=${itemStats([{ id: "bolt" }]).amp}`);
+}
+
+console.log("\n== FOUNTAIN — the enemy base no longer burns you ==");
+{
+  const S = sim("vex", "gruk");
+  const h = S.players[0].hero, foeBase = S.players[1].hero.x;
+  const hp0 = h.hp;
+  for (let i = 0; i < 120; i++){ h.x = foeBase; h.y = LANE_Y; simStep(S, TICK); }
+  ok("standing in it costs no health", h.hp >= hp0 - 1, `${Math.round(hp0)} -> ${Math.round(h.hp)}`);
+}
+
 console.log("\n== ORRIN — Warmarch anchors him as a siege platform ==");
 {
   const S = sim("orrin", "vex");
@@ -977,7 +1047,7 @@ console.log("\n== SHIV — knives are cheap and fast, and creeps do not sustain 
   ok("but creeps never refresh the sustain window", !(h2.rageT > 0), `rageT=${(h2.rageT || 0).toFixed(2)}`);
   step(S2, 300);                                   // five more seconds of farming
   const farmed = h2.rage;
-  ok("so farming alone never builds toward full rage", farmed < 40, `rage=${farmed.toFixed(1)}`);
+  ok("so farming alone never builds toward full rage", farmed < 45, `rage=${farmed.toFixed(1)}`);
 
   const S3 = sim("shiv", "vex");
   const p3 = S3.players[0], h3 = p3.hero, fh = S3.players[1].hero;
@@ -986,7 +1056,7 @@ console.log("\n== SHIV — knives are cheap and fast, and creeps do not sustain 
   p3.order = { type: "attack", tid: fh.id };
   step(S3, 480);
   ok("fighting a hero holds the window open", h3.rageT > 0, `rageT=${h3.rageT.toFixed(2)}`);
-  ok("and rage climbs far past anything farming reaches", h3.rage > farmed + 25,
+  ok("and rage climbs far past anything farming reaches", h3.rage > farmed + 15,
      `hero ${h3.rage.toFixed(1)} vs creep ${farmed.toFixed(1)}`);
 }
 
@@ -1017,7 +1087,7 @@ console.log("\n== SVAAR — the hammer bursts, the cry charges ==");
   ok("he has not teleported — the charge has to carry him", Math.abs(h2.x - hx0) < 40,
      `x=${Math.round(h2.x)}`);
   step(S2, 40);
-  ok("the charge carried him to the cursor", h2.x > hx0 + 400, `${hx0} -> ${Math.round(h2.x)}`);
+  ok("the charge carried him to the cursor", h2.x > hx0 + 200, `${hx0} -> ${Math.round(h2.x)}`);
   ok("cutting what he ran through", line.hp < 60000, `${60000} -> ${Math.round(line.hp)}`);
   const V2 = HEROES.svaar.abilities[1].val2[3] / 100;
   ok("the bonus is the ultimate's, at this rank", Math.abs(h2.cryP - V2) < 1e-9, `cryP=${h2.cryP}`);
@@ -1062,7 +1132,7 @@ console.log("\n== ROSTER — nothing on the new heroes is half-wired ==");
 
 console.log("\n== HUD TOOLTIP — hovering an ability shows what it really deals ==");
 {
-  const S = newSim(["vex", "ilva"], "1v1");
+  const S = newSim(["vex", "sable"], "1v1");
   const p = S.players[0];
   p.sk = [4, 4, 4, 3]; p.lvl = 12;
   p.items = [{ id: "scepter", cd: 0, bought: 0 }];
@@ -1079,7 +1149,7 @@ console.log("\n== HUD TOOLTIP — hovering an ability shows what it really deals
   ok("spell power tracks the caster's amp", Math.abs(sp2 - 1.25) < 1e-6, `sp=${sp2}`);
   ok("the tooltip number is amplified", Math.round(Q.val[3] * sp2) === 338,
      `${Q.val[3]} -> ${Math.round(Q.val[3] * sp2)}`);
-  ok("all 23 heroes are registered", HERO_IDS.length === 23, `${HERO_IDS.length} heroes`);
+  ok("all 21 heroes are registered", HERO_IDS.length === 21, `${HERO_IDS.length} heroes`);
 }
 
 console.log(fails === 0 ? "\nALL CHECKS PASSED" : `\n${fails} CHECK(S) FAILED`);

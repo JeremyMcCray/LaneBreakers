@@ -553,7 +553,6 @@ export function previewFor(e, own){
 export function heroPath(hi, r){
   ctx.beginPath();
   if (hi==='vex'){ ctx.moveTo(r*1.15,0); ctx.lineTo(-r*.55,r*.9); ctx.lineTo(-r*.15,0); ctx.lineTo(-r*.55,-r*.9); }
-  else if (hi==='ilva'){ ctx.moveTo(r,0); ctx.lineTo(0,r*.85); ctx.lineTo(-r*.9,0); ctx.lineTo(0,-r*.85); }
   else if (hi==='brann'){ ctx.moveTo(r*1.05,0); ctx.lineTo(r*.2,r*.95); ctx.lineTo(-r*.85,r*.5);
                           ctx.lineTo(-r*.85,-r*.5); ctx.lineTo(r*.2,-r*.95); }
   else if (hi==='sable'){ ctx.moveTo(r*1.25,0); ctx.lineTo(-r*.3,r*.6); ctx.lineTo(-r*.9,0); ctx.lineTo(-r*.3,-r*.6); }
@@ -569,8 +568,6 @@ export function heroPath(hi, r){
                              const rr2 = i%2 ? r*0.62 : r*1.12;
                              const q=[Math.cos(a)*rr2, Math.sin(a)*rr2];
                              i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);} }
-  else if (hi==='krell'){ ctx.moveTo(r*1.15,0); ctx.lineTo(r*.15,r*.6); ctx.lineTo(-r*.95,r*.45);
-                          ctx.lineTo(-r*.55,0); ctx.lineTo(-r*.95,-r*.45); ctx.lineTo(r*.15,-r*.6); }
   else if (hi==='nix'){ ctx.moveTo(r*1.2,0); ctx.lineTo(0,r*.7); ctx.lineTo(-r*.5,r*.35);
                         ctx.lineTo(-r*1.0,0); ctx.lineTo(-r*.5,-r*.35); ctx.lineTo(0,-r*.7); }
   else if (hi==='vhal'){ for(let i=0;i<3;i++){const a=i/3*Math.PI*2;

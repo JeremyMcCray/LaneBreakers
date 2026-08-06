@@ -81,7 +81,7 @@ console.log("\n== flush against a camp pocket rim, firing along it ==");
 console.log("\n== walls still stop shots fired into them ==");
 {
   setCampsOpen([]);
-  const S = newSim([{ h: "ilva", tm: 0 }, { h: "vex", tm: 1 }], "1v1");
+  const S = newSim([{ h: "sable", tm: 0 }, { h: "vex", tm: 1 }], "1v1");
   S.noFx = true;
   setCampsOpen([]);
   const p = S.players[0], e = p.hero;

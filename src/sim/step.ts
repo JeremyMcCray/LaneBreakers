@@ -65,8 +65,6 @@ export function simStep(S,dt){
     if (e.shredT>0) e.shredT-=dt;
     if (e.hasteT>0){ e.hasteT-=dt; if (e.hasteT<=0){ if (e.baseAps) e.aps = e.baseAps; e.ls = 0; } }
     if (e.drT>0)   e.drT-=dt;
-    if (e.fbT>0){ e.fbT-=dt; if (e.fbT<=0) e.fbN=0; }   // Frostbite thaws
-    if (e.fbCd>0) e.fbCd-=dt;
     if (e.doorCd>0) e.doorCd-=dt;
     if (e.shovedT>0) e.shovedT-=dt;
     if (e.batT>0) e.batT-=dt;      // Siege Bolt's batted creep stops blinking

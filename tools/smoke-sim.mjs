@@ -28,7 +28,7 @@ function runSim(S, secs) {
 const S1 = newSim(
   [
     { h: "vex", tm: 0 },
-    { h: "ilva", tm: 1 },
+    { h: "sable", tm: 1 },
   ],
   "1v1",
 );

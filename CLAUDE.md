@@ -9,7 +9,7 @@ built with LLMs, and a stale brief costs more than a missing one.
 ## What this is
 
 A browser mid-lane MOBA: 1v1, 2v2 or 3v3 on a single lane, creep waves, one tower per
-side, fountain bases, item shop, 23 heroes, classic + neural bots, practice /
+side, fountain bases, item shop, 21 heroes, classic + neural bots, practice /
 online (P2P, no server) / tournament. Vite + TypeScript, Canvas 2D for the world,
 light DOM for menus/shop. No React. Most files start with `// @ts-nocheck` — match
 that; don't start a typing crusade.
@@ -95,9 +95,9 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
 
 ## Current game facts (verify here before quoting numbers)
 
-- 23 heroes (`HERO_IDS`), 4 abilities each (R = ult, ranks 3, others 4).
-  Mara was retired (like Liora before her); `persistence.ts` renders old
-  records as "MARA (retired)".
+- 21 heroes (`HERO_IDS`), 4 abilities each (R = ult, ranks 3, others 4).
+  Ilva and Krell were retired (as Mara and Liora were before them);
+  `persistence.ts` renders old records as "ILVA (retired)".
   Ult unlock levels `ULT_REQ = [6,9,12]`, `MAX_LEVEL = 15` (15 points = every
   ability at full rank).
 - Win: **2 points in 1v1, 4 in 2v2, 6 in 3v3** (hero kill = 1); the tower falling ends the
@@ -107,6 +107,12 @@ Import the sim via `src/sim` (or `src/sim/engine`, same barrel).
   bounties, tower gold AND creep/jungle bounties all pay every nearby teammate
   in full (last hits keep the `cs` credit); uncredited creep deaths pay half
   bounty to nearby (XP-range) enemy heroes only. Death costs time, never gold.
+  Every hero deals `QUELL_DMG` (40) bonus damage to enemy creeps for free —
+  applied in `strike()` via `e.quell`, which `updateHeroStats` sets from the
+  world tunable, not from items. The enemy fountain deals no damage. A unit with
+  `e.hitKill` (Corvick's turrets) has no health bar at all: `damage()` spends one
+  hit per hero/tower attack, half per creep attack, and ignores spells entirely —
+  the same shape as Ronin's `e.ward`.
   Exception: 3v3 lane-creep bounties AND creep XP are 35% lower (8-creep
   waves). Non-pet creeps take 30% less ability damage (`damage()` in
   combat.ts; pure bypasses). 3v3 lane creeps have 15% more HP, and the 3v3
