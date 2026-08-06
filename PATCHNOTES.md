@@ -7,6 +7,11 @@ looks, or connects, it belongs on this list.
 
 ---
 
+## 2026-08-06 · v0.15.1
+
+### Main menu patch notes button
+- **Added a Patch Notes button on the main screen** so the latest release notes are easy to review without leaving the menu.
+
 ## 2026-08-06 · v0.15.0
 
 ### The Quelling Blade is now built into every hero

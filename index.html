@@ -111,6 +111,7 @@ Right-click is always just move — or a single attack, if you click directly on
         <button onclick="showScreen('scrStats')">Match History</button>
         <button onclick="showScreen('scrHeroBook')">Heroes</button>
         <button onclick="showScreen('scrItems')">Items</button>
+        <button onclick="showScreen('scrPatchNotes')">Patch Notes</button>
         <button id="btnMute" title="Mute sound — M in match" onclick="sfxMuteClick()" style="min-width:44px">🔊</button>
         <input type="range" id="sfxVol" min="0" max="100" step="1" title="Sound volume"
                style="width:110px;accent-color:var(--acc);align-self:center">
@@ -156,6 +157,13 @@ Right-click is always just move — or a single attack, if you click directly on
       <div class="row"><button class="pri" onclick="showScreen('scrHero')">Back</button></div>
       <div class="note">Buying an upgrade automatically spends any components you already hold —
       you only pay the difference, and they are consumed when the courier arrives.</div>
+    </div>
+
+    <!-- patch notes -->
+    <div id="scrPatchNotes" class="hide">
+      <h2>Patch Notes</h2>
+      <div id="patchNotesBody" class="patchBody"></div>
+      <div class="row"><button class="pri" onclick="showScreen('scrHero')">Back</button></div>
     </div>
 
     <!-- tournament -->

@@ -9,13 +9,73 @@ import { lbTrainOpen } from '../ai/neural/train';
 import { renderStats } from '../app/persistence';
 import { renderItemBook, renderHeroBook } from './books';
 
+function escapeHtml(str){
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+function formatPatchNoteInline(str){
+  return escapeHtml(str)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+}
+function renderPatchNotes(){
+  const box=document.getElementById('patchNotesBody');
+  if (!box) return;
+  box.innerHTML='<div class="note">Loading patch notes…</div>';
+  fetch('/PATCHNOTES.md')
+    .then(r=>r.ok ? r.text() : Promise.reject(new Error('Unable to load patch notes')))
+    .then(text=>{
+      const lines=text.split(/\r?\n/);
+      let html='';
+      let inList=false;
+      for (const line of lines){
+        const trimmed=line.trim();
+        if (!trimmed){
+          if (inList){ html+='</ul>'; inList=false; }
+          continue;
+        }
+        if (/^#{2}\s+/.test(trimmed)){
+          if (inList){ html+='</ul>'; inList=false; }
+          html+='<h2>'+formatPatchNoteInline(trimmed.replace(/^#{2}\s+/,''))+'</h2>';
+          continue;
+        }
+        if (/^#{3}\s+/.test(trimmed)){
+          if (inList){ html+='</ul>'; inList=false; }
+          html+='<h3>'+formatPatchNoteInline(trimmed.replace(/^#{3}\s+/,''))+'</h3>';
+          continue;
+        }
+        if (/^---$/.test(trimmed)){
+          if (inList){ html+='</ul>'; inList=false; }
+          html+='<hr>';
+          continue;
+        }
+        if (/^-\s+/.test(trimmed)){
+          if (!inList){ html+='<ul>'; inList=true; }
+          html+='<li>'+formatPatchNoteInline(trimmed.replace(/^-\s+/,''))+'</li>';
+          continue;
+        }
+        if (inList){ html+='</ul>'; inList=false; }
+        html+='<p>'+formatPatchNoteInline(trimmed)+'</p>';
+      }
+      if (inList) html+='</ul>';
+      box.innerHTML=html;
+    })
+    .catch(()=>{
+      box.innerHTML='<div class="note">Patch notes are currently unavailable. Please try again later.</div>';
+    });
+}
+
 export function showScreen(id){
-  for (const s of ['scrHero','scrStats','scrHeroBook','scrItems','scrDraft','scrQuick','scrTrain'])
+  for (const s of ['scrHero','scrStats','scrHeroBook','scrItems','scrDraft','scrQuick','scrTrain','scrPatchNotes'])
     document.getElementById(s).classList.toggle('hide', s!==id);
   if (id==='scrStats') renderStats();
   if (id==='scrItems') renderItemBook();
   if (id==='scrHeroBook') renderHeroBook();
   if (id==='scrTrain') lbTrainOpen();
+  if (id==='scrPatchNotes') renderPatchNotes();
 }
 export function copyBox(id){
   const el=document.getElementById(id); el.select();
