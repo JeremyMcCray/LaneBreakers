@@ -3,9 +3,9 @@
 import { HEROES, HERO_IDS } from '../data/heroes';
 import { TEAM_COL } from '../data/world';
 import { G, SLOT_TEAM } from './state';
-import { beginMatch, teamOfSlot } from './shell';
+import { beginMatch, startPractice, teamOfSlot } from './shell';
 import { addToast } from '../render/fx';
-import { showScreen } from '../ui/menus';
+import { showScreen, randomHero, markRandomButton, buildHeroMenu } from '../ui/menus';
 import { toggleShop } from '../ui/shop';
 import { heroSheet } from '../ui/books';
 import {
@@ -214,6 +214,11 @@ export function returnToLobby(){
     return;
   }
   showScreen('scrHero');
+  // Random is a standing choice, not a one-off: if that is how you came into the
+  // last match, the lobby rolls you a fresh hero rather than leaving you sitting
+  // on whichever one the box happened to hand you.
+  buildHeroMenu();
+  if (G.randomMode) randomHero(true); else markRandomButton();
   const inLobby = Net.open && G.lobby;
   document.getElementById('rowLocal').classList.toggle('hide', inLobby);
   document.getElementById('rowLobby').classList.toggle('hide', !inLobby);
@@ -223,6 +228,22 @@ export function returnToLobby(){
     if (Net.mode==='host') broadcastLobby();
     renderLobby();
   }
+}
+/* Straight into another game from the end card, same mode and same hero — with
+   one exception: if you came in on Random you get a fresh roll for the new
+   match, because Random is the choice, not the hero it handed you. Practice
+   matches only; a lobby or a tournament series has its own way back. */
+export function canRematch(){
+  return G.mode==='local' && !(G.tour && G.tour.on);
+}
+export function rematch(){
+  if (!canRematch()) return returnToLobby();
+  document.getElementById('endcard').classList.add('hide');
+  document.getElementById('help').classList.add('hide');
+  toggleShop(false);
+  G.parts=[]; G.nums=[]; G.rings=[]; G.lines=[];
+  if (G.randomMode) randomHero(true);
+  startPractice(G.gameMode||'1v1');
 }
 export function lobbyReady(){
   if (!Net.open || !G.lobby) return;

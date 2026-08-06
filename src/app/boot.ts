@@ -5,7 +5,7 @@ import { startPractice } from './shell';
 import {
   returnToLobby, lobbyReady, quickHost, quickJoin, hostInit, hostAccept,
   joinGenerate, copyCode, startTournament, lobbySwitchTeam, lobbySetMode,
-  tourClick, tourStartGame, enterHideout, exitHideout
+  tourClick, tourStartGame, enterHideout, exitHideout, rematch
 } from './online';
 import {
   lbSetAiTier, lbAiDesc, lbBuildAiSelect
@@ -32,7 +32,7 @@ export function bindGlobals() {
     returnToLobby, lobbyReady, quickHost, quickJoin, hostInit, hostAccept,
     joinGenerate, copyBox, copyCode, lbSetAiTier, startTournament,
     lobbySwitchTeam, lobbySetMode, tourClick, tourStartGame,
-    enterHideout, exitHideout,
+    enterHideout, exitHideout, rematch,
     exportHistory, importHistory, clearHistory, showEnd,
     renderHeroBook, renderItemBook,
     lbTrainToggle, lbTrainReset, lbTrainSetRecipe, lbTrainSave,

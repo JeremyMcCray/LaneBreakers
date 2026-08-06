@@ -64,6 +64,17 @@ export function damage(S, src, tgt, amount, opt){
     if (tgt.hp<=0) kill(S, src, tgt);
     return 1;
   }
+  // Corvick's turrets are machines, not bodies: they carry a number of hits
+  // rather than a health bar. Spells slide off them, a hero or a tower spends a
+  // whole hit, and a creep spends half a one.
+  if (tgt.hitKill){
+    if (!opt.attack || !src || src.team===tgt.team) return 0;
+    const cost = src.type==='creep' ? 0.5 : 1;
+    tgt.hp -= cost; tgt.hitFlash = .16;
+    fx(S,{t:'dmg', x:tgt.x, y:tgt.y+2, r:tgt.r, v:cost, c: src.type==='hero' ? 1 : 0});
+    if (tgt.hp<=0) kill(S, src, tgt);
+    return cost;
+  }
   let dmg = amount;
   if (opt.ability && src && src.amp>0) dmg *= (1 + src.amp);
   let crit = !!opt.crit;
@@ -102,7 +113,10 @@ export function damage(S, src, tgt, amount, opt){
   if (src){
     if (opt.attack  && src.hcut) { tgt.hcT = 5; tgt.hcP = .55; }   // Reaper's Sigil
     if (opt.ability && src.hcutM){ tgt.hcT = 6; tgt.hcP = .65; }   // Withering Rod
-    if (opt.attack  && src.shredOn){ tgt.shredT = 5; tgt.shredV = 5; }
+    // Serrated Edge / Sunder Axe — a weaker shred never overwrites a stronger one
+    if (opt.attack && src.shredOn>0 && (!(tgt.shredT>0) || src.shredOn >= (tgt.shredV||0))){
+      tgt.shredT = src.shredOn>=5 ? 5 : 4; tgt.shredV = src.shredOn;
+    }
   }
   // Reactive Armor — every attack that lands on Timbersaw plates him further
   if (opt.attack && tgt.reactOn && src && src.team!==tgt.team){
@@ -161,19 +175,6 @@ export function damage(S, src, tgt, amount, opt){
   tgt.hp -= dmg;
   tgt.hitFlash = .16;
   tgt.salveT = 0;
-  // Deep Freeze — Ilva's ability damage stacks Frostbite; the fourth stack
-  // freezes the victim solid. A thawed target is immune for a few seconds.
-  if (opt.ability && !opt.fb && src && src.frostTouch && tgt.type!=='tower' &&
-      tgt.team!==src.team && !(tgt.fbCd>0) && tgt.hp>0){
-    tgt.fbN = (tgt.fbN||0) + 1; tgt.fbT = 4;
-    fx(S,{t:'disjoint', x:tgt.x, y:tgt.y});
-    if (tgt.fbN>=4){
-      tgt.fbN = 0; tgt.fbT = 0; tgt.fbCd = 3;
-      fx(S,{t:'blast', x:tgt.x, y:tgt.y, r:90, col:'#bfe9ff'});
-      applyStun(S, tgt, 1.1);
-      damage(S, src, tgt, 100 + (tgt.maxHp||0)*0.06, {ability:true, fb:1, tag:'i:scepter'});
-    }
-  }
   if (!opt.silent)
     fx(S,{t:'dmg', x:tgt.x, y:tgt.y+2, r:tgt.r, v:Math.round(dmg),
           c: src && src.type==='hero' ? 1 : 0, ab: !!opt.ability, cr: crit});
@@ -483,7 +484,6 @@ export function purge(S, e){
   e.stun=0; e.slowT=0; e.slowP=0; e.rootT=0; e.silT=0;
   e.dotT=0; e.dotDps=0; e.dotTick=0;
   e.markT=0; e.hcT=0; e.shredT=0; e.blindT=0; e.vulT=0;
-  e.fbN=0; e.fbT=0;
   e.rupT=0; e.rupV=0; e.rupBank=0; e.rupLx=undefined; e.rupLy=undefined;
   clearEmber(e);
   // snap an enemy Life Drain tether latched onto this hero

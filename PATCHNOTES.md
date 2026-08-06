@@ -7,6 +7,68 @@ looks, or connects, it belongs on this list.
 
 ---
 
+## 2026-08-06 · v0.15.1
+
+### Main menu patch notes button
+- **Added a Patch Notes button on the main screen** so the latest release notes are easy to review without leaving the menu.
+
+## 2026-08-06 · v0.15.0
+
+### The Quelling Blade is now built into every hero
+- **Every hero deals +40 bonus damage to enemy creeps**
+  Ranged heroes get the full amount, the same as melee.
+- **The Quelling Blade and the Whetstone have been removed from the shop.*
+
+### New component: Serrated Edge
+- **Serrated Edge** (300 g): +5 attack damage, and your attacks shred 2 armor for
+  4 seconds. It is the cheapest way into armor reduction.
+- **The Sunder Axe now builds from a Serrated Edge and a Ravager Blade.** Its
+  total cost, damage and 5-armor shred are unchanged, so the finished item is the
+  same — you just get part of the effect much earlier in the build.
+- A weaker shred never overwrites a stronger one, so carrying both is safe.
+
+### Lightning Strike is a magic-damage item
+- It now builds from a Gauntlet and an **Ember Shard** instead of a Talon, and
+  grants **+7% ability damage in place of +16% attack speed**.
+- Its shocks deal magic damage and are amplified by your ability damage, so the
+  item now scales its own strikes.
+
+### Corvick's turrets take hits, not damage
+- **A turret no longer has a health bar.** Like Ronin's Healing Ward, it stands
+  until it has been hit a fixed number of times: **2 / 3 / 4 / 5 by rank**. An
+  enemy hero's or tower's attack spends a whole hit and a creep's attack spends
+  half a one. Spells cannot touch a turret at all.
+- The turret's armor no longer matters, so armor items Corvick buys no longer
+  make his guns tougher. Spell power still raises their damage as before.
+
+### Fountain damage removed
+- **Standing in the enemy fountain no longer burns you.** 
+
+### The lobby remembers Random
+- **Random is a standing choice.** If you finished a match on Random, coming back
+  to the lobby rolls you a fresh hero instead of leaving you sitting on whichever
+  one the box handed you last game. The Random Hero button stays highlighted
+  while it is your choice, and picking any hero from the list turns it off.
+
+### Rematch
+- **A Rematch button on the end screen** starts the same practice match again
+  straight away: same mode, same hero, or a fresh roll if you are on Random. It
+  shares the three second cooling-off period with the other end-card buttons.
+
+### Roster
+- **Ilva and Krell have been retired**, like Mara and Liora before them. The
+  roster is now 21 heroes. Old match history involving them still reads back,
+  with their names shown as retired.
+
+## 2026-08-06 · v0.14.5
+
+### Hero balance tuning
+- **Stryg:** Blood Frenzy now costs 12% of current health instead of 25%.
+- **Vhal:** Symbiosis damage is reduced by 50%, and the broods spawned by her ultimate now have 75% less health.
+- **Vex:** Bladestorm now grants less attack speed and 20% lifesteal.
+- **Svaar:** Battle Cry range is reduced by 50%.
+- **Battle Cleaver:** Cleave now deals 37% splash damage instead of 22%.
+
 ## 2026-08-04 · v0.14.4
 
 ### Automatic web deploys

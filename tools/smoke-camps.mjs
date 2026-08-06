@@ -38,7 +38,7 @@ console.log("\n== spawn cycle: nothing before 2:00, then exactly one camp in 1v1
 
 console.log("\n== 2v2 opens both camps ==");
 {
-  const S = newSim([{h:"vex",tm:0},{h:"gruk",tm:1},{h:"ilva",tm:0},{h:"svaar",tm:1}], "2v2");
+  const S = newSim([{h:"vex",tm:0},{h:"gruk",tm:1},{h:"sable",tm:0},{h:"svaar",tm:1}], "2v2");
   S.noFx = true;
   step(S, Math.floor(125 / TICK));
   ok("both sides open", S.campSides.length === 2, JSON.stringify(S.campSides));

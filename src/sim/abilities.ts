@@ -124,7 +124,7 @@ export function castAbility(S,p,i,tx,ty){
       hits:[], col:H.col});
     break; }
   case 'vex1':
-    e.asT=5; e.asP=V; e.lsT=5; e.lsP=.25;
+    e.asT=5; e.asP=V; e.lsT=5; e.lsP=.20;
     fx(S,{t:'buff', x:e.x, y:e.y, col:'#ff9b4a'});
     fx(S,{t:'blast', x:e.x, y:e.y, r:140, col:'#ff9b4a'});
     break;
@@ -148,28 +148,6 @@ export function castAbility(S,p,i,tx,ty){
       }
     }
     break; }
-  /* ---- ILVA ---- */
-  case 'ilva0': {
-    const a = Math.atan2(ty-e.y, tx-e.x);
-    S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
-      vx:Math.cos(a)*1150, vy:Math.sin(a)*1150, life:800/1150, dmg:V, src:e.id, r:16,
-      slow:{p:.40,t:2}, col:'#9fe6ff'});
-    break; }
-  case 'ilva1':
-    fx(S,{t:'blast', x:e.x, y:e.y, r:A.aoe, col:'#a9d8ff'});
-    aoe(S, e.team, e.x, e.y, A.aoe, V, e, o=> applySlow(o,.45,2.5));
-    break;
-  case 'ilva2': {
-    const ox=e.x, oy=e.y;
-    e.x=tx; e.y=ty; clampToLane(e);
-    e.msT=2; e.msP=V/100;
-    fx(S,{t:'dash', x:ox, y:oy, x2:e.x, y2:e.y, col:'#a9d8ff'});
-    addZone(S,{kind:'frost', team:e.team, x:ox, y:oy, r:A.aoe, t:4, slow:.35});
-    break; }
-  case 'ilva3':
-    addZone(S,{kind:'azero', team:e.team, x:tx, y:ty, r:A.aoe, t:.65, dmg:V, src:e.id});
-    fx(S,{t:'telegraph', x:tx, y:ty, r:A.aoe, life:.65, col:'#7fd4ff'});
-    break;
   /* ---- GRUK ---- */
   case 'gruk0': {
     const a = Math.atan2(ty-e.y, tx-e.x);
@@ -334,12 +312,14 @@ export function castAbility(S,p,i,tx,ty){
     fx(S,{t:'buff', x:tx, y:ty, col:'#e0c477'});
     break;
   case 'orrin2': {
-    const thp = 320 + Math.round(e.maxHp*0.25);          // the turret is built from Corvick's stats
+    // A turret has no health bar — it takes a fixed number of hits to bring
+    // down, the way Ronin's Healing Ward does. See the hitKill branch in damage().
+    const hits = A.val2[l-1];
     // Longer at higher ranks, and the cooldown is well under the duration at
     // every rank, so Corvick can keep several guns standing at once.
     const life = [12,16,20,24][l-1] + (e.aghs?8:0);      // Legs for the Guns adds 8s
     const t2 = spawnPet(S, e.team, tx, ty, life, {static:!e.aghs, ranged:true, r:15,
-      hp:thp, maxHp:thp, dmg:turretDmg(e, V), armor:2 + Math.round(e.armor*0.5),
+      hp:hits, maxHp:hits, dmg:turretDmg(e, V), armor:0, hitKill:true,
       range:520, bat:1.1, ms: e.aghs?235:0, turret:true, owner:e.id, tv:V, oslot:p.slot});
     fx(S,{t:'blast', x:t2.x, y:t2.y, r:90, col:'#e0c477'});
     break; }
@@ -574,42 +554,6 @@ export function castAbility(S,p,i,tx,ty){
       dmg:0, root:2, dotDps:V/2, dotSec:2, src:e.id, col:'#7fdc6a'});
     fx(S,{t:'telegraph', x:tx, y:ty, r:A.aoe, life:.7, col:'#7fdc6a'});
     break;
-  /* ---- KRELL ---- */
-  case 'krell0': {
-    const a = Math.atan2(ty-e.y, tx-e.x);
-    S.projs.push({id:S.nextId++, kind:'bolt', team:e.team, x:e.x, y:e.y-8,
-      vx:Math.cos(a)*1250, vy:Math.sin(a)*1250, life:820/1250, dmg:V, src:e.id, r:16,
-      sil:2, col:'#6ce0e8'});
-    break; }
-  case 'krell1': {
-    let drained = 0;
-    for (const o of S.ents){
-      if (o.dead || o.team===e.team || o.type==='tower') continue;
-      if (dist(o.x,o.y,e.x,e.y) > A.aoe) continue;
-      let take;
-      if (o.maxMp>0){ take = Math.min(o.mp||0, V); o.mp = Math.max(0, (o.mp||0) - take); }
-      else take = V*0.5;                       // creeps have no mana pool to burn
-      drained += take;
-      damage(S, e, o, take, {ability:true});
-    }
-    e.mp = Math.min(e.maxMp, e.mp + drained*0.5);
-    fx(S,{t:'blast', x:e.x, y:e.y, r:A.aoe, col:'#6ce0e8'});
-    break; }
-  case 'krell2': {
-    const tg = nearestFoe(S, e.team, tx, ty, 320);
-    if (tg){
-      tg.shield=0; tg.shieldT=0; tg.shieldRef=0;
-      tg.asT=0; tg.lsT=0; tg.msT=0; tg.armT=0; tg.regT=0;
-      tg.drT=0; tg.rendT=0; tg.barbT=0; tg.hasteT=0;
-      if (tg.colT>0) tg.colT = 0.01;           // expires next tick and drops the bonus HP
-      fx(S,{t:'blast', x:tg.x, y:tg.y, r:130, col:'#6ce0e8'});
-      damage(S, e, tg, V, {ability:true});
-    }
-    break; }
-  case 'krell3':
-    fx(S,{t:'blast', x:tx, y:ty, r:A.aoe, col:'#6ce0e8'});
-    aoe(S, e.team, tx, ty, A.aoe, V, e, o=>{ applySilence(S,o,3); });
-    break;
   case 'nix3': {
     for (let n=0;n<3;n++){
       const a2 = (n/3)*Math.PI*2;
@@ -724,8 +668,8 @@ export function castAbility(S,p,i,tx,ty){
     fx(S,{t:'telegraph', x:tx, y:ty, r:A.aoe, life:1.2, col:'#ff5f7a'});
     break;
   case 'stryg1':
-    // Blood Frenzy — the cost is a quarter of his CURRENT health and cannot kill him
-    e.hp = Math.max(1, e.hp - e.hp*0.25);
+    // Blood Frenzy — the cost is 12% of his CURRENT health and cannot kill him
+    e.hp = Math.max(1, e.hp - e.hp*0.12);
     e.asT = 6; e.asP = Math.max(e.asP||0, V);
     fx(S,{t:'buff', x:e.x, y:e.y, col:'#ff5f7a'});
     fx(S,{t:'bleed', x:e.x, y:e.y});
@@ -942,20 +886,6 @@ export function castAbility(S,p,i,tx,ty){
   for (let n=zoneMark; n<S.zones.length; n++) if (!S.zones[n].tag) S.zones[n].tag = slotTag;
   // Walking Mountain — while the Colossus is up, Boulder Toss cools twice as fast
   if (H.id==='gruk' && e.aghs && i===0 && e.colT>0 && !p.devFree) p.cds[0] *= 0.5;
-  // Void Feedback — every ability cast near a scepter Krell costs the caster
-  // 40 extra mana, dealt back as damage, and winds all four of his cooldowns
-  for (const q of S.players){
-    if (q.team===p.team || q.heroId!=='krell') continue;
-    const k = q.hero;
-    if (!k || k.dead || !k.aghs || e.dead) continue;
-    if (dist(k.x, k.y, e.x, e.y) > 900) continue;
-    S.tag = 'i:scepter';
-    e.mp = Math.max(0, e.mp - 40);
-    fx(S,{t:'chain', x:e.x, y:e.y-8, x2:k.x, y2:k.y-8, col:'#6ce0e8'});
-    damage(S, k, e, 40, {ability:true});
-    for (let j=0;j<4;j++) if (q.cds[j]>0) q.cds[j] = Math.max(0, q.cds[j]-1);
-    S.tag = null;
-  }
   S.tag = null;
   if (A.blink && (e.x!==wasX || e.y!==wasY)) disjoint(S, e);
 }

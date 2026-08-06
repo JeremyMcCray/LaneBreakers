@@ -18,7 +18,7 @@ vex:{
      desc:'Dash to the cursor with blades whirling, dealing %d damage to everything along the path.',
      val:[90,150,210,270]},
     {key:'W', name:'Bladestorm', cast:'self', mana:[55,60,65,70], cd:[14,13,12,11],
-     desc:'For 5s gain +%d% attack speed and 25% lifesteal.', val:[60,85,110,135]},
+     desc:'For 5s gain +%d% attack speed and 20% lifesteal.', val:[30,45,60,75]},
     {key:'E', name:'Riposte', cast:'self', mana:[50,50,50,50], cd:[16,14,12,10],
      desc:'Shield absorbing %d damage for 3s. Reflects 60% of what it absorbs.',
      val:[110,185,260,335]},
@@ -29,29 +29,6 @@ vex:{
   ],
   scepter:{name:'Encore',
     desc:'A kill with Execute refunds its mana, resets its own cooldown, and resets Blade Rush.'}
-},
-ilva:{
-  id:'ilva', name:'ILVA', title:'The Frostcaller', col:'#a9d8ff', col2:'#3b5fa8',
-  desc:'A ranged control mage. Poke, slow, and lock the enemy down for the kill.',
-  hp:540, hpg:80, mp:390, mpg:56, dmg:42, dmgg:4.2, arm:2, armg:.3,
-  ms:318, range:570, bat:1.05, ranged:true, projSpeed:1250,
-  abilities:[
-    {key:'Q', name:'Frost Bolt', cast:'point', range:800, mana:[50,55,60,65], cd:[5,4.4,3.8,3.2],
-     scaled:'d',
-     desc:'Launch a bolt dealing %d damage and slowing 40% for 2s.', val:[100,165,230,295]},
-    {key:'W', name:'Rime Nova', cast:'self', aoe:270, mana:[70,75,80,85], cd:[12,11,10,9],
-     scaled:'d',
-     desc:'Burst of ice around you: %d damage and 45% slow for 2.5s.', val:[80,130,180,230]},
-    {key:'E', name:'Frost Step', cast:'point', range:460, aoe:175, blink:true, mana:[45,45,45,45], cd:[15,13,11,9],
-     desc:'Blink to the cursor, leaving a frozen patch that slows 35% for 4s. Grants +%d% move speed for 2s.',
-     val:[20,26,32,38]},
-    {key:'R', name:'Absolute Zero', cast:'point', range:850, aoe:300, ult:true, mana:[175,200,225], cd:[65,55,45],
-     scaled:'d',
-     desc:'After 0.65s, shatter a wide area for %d damage and a 1.4s stun.',
-     val:[320,470,620]}
-  ],
-  scepter:{name:'Deep Freeze',
-    desc:'Her ability damage leaves FROSTBITE on whatever it touches. The fourth stack freezes the victim solid — a 1.1s stun and 100 plus 6% of their max health in damage. A thawed target cannot be frostbitten again for 3s.'}
 },
 gruk:{
   id:'gruk', name:'GRUK', title:'The Stonewarden', col:'#ffcf8f', col2:'#8a5a2b',
@@ -138,7 +115,7 @@ vhal:{
      val:[60,90,120,150]},
     {key:'E', name:'Symbiosis', passive:true, grants:'symbiosis', mana:[0,0,0,0], cd:[0,0,0,0],
      desc:'Passive: every spawnling is built out of Vhal herself, inheriting %d% of her attack damage and a quarter as much of her maximum health. While one still lives she gains 5 armor and 10 health regen.',
-     val:[20,28,36,44]},
+     val:[10,14,18,22]},
     {key:'R', name:'Hive Ascendant', cast:'self', aoe:550, ult:true, mana:[150,175,200], cd:[85,75,65],
      desc:'For 16s Vhal becomes a hive: a spawnling crawls out every 2s, the brood deals +%d% damage, and every enemy creep that dies within 550 of her gets back up on her side. Eight at once, no more.',
      val:[40,70,100]}
@@ -187,7 +164,8 @@ orrin:{
      val:[10,16,22,28]},
     {key:'E', name:'Deploy Turret', cast:'point', range:460, mana:[105,113,120,128], cd:[12,10,8,6],
      scaled:'d',
-     desc:'Build an immobile turret that shoots enemies for %d damage, increased by his spell power. It fires at whatever Corvick is attacking when that target is in reach. Its health and armor scale with his. The turret lasts 12/16/20/24s, so at higher ranks several can stand at once.', val:[38,54,69,84]},
+     desc:'Build an immobile turret that shoots enemies for %d damage, increased by his spell power. It fires at whatever Corvick is attacking when that target is in reach. The turret has no health bar: spells cannot touch it, and it takes %p enemy hero attacks to bring down, with a creep attack counting as half. It lasts 12/16/20/24s, so at higher ranks several can stand at once.',
+     val:[38,54,69,84], val2:[2,3,4,5]},
     {key:'R', name:'Warmarch', cast:'self', ult:true, mana:[150,175,200], cd:[80,70,60],
      desc:'For 10s Corvick locks himself in place as a siege platform: he cannot move, his attack range increases by 250, he gains +%d attack damage (increased by his spell power), and his attacks splash for 60% damage in a 185 radius around the target.',
      val:[35,60,85]}
@@ -243,29 +221,6 @@ thorne:{
   scepter:{name:'Wild Growth',
     desc:'The garden tends itself. Overgrowth keeps spreading while it lives — up to 130 extra radius over 7 seconds — and a sprung Bramble Trap grows back once on its own, three seconds later.'}
 },
-krell:{
-  id:'krell', name:'KRELL', title:'The Voidsinger', col:'#6ce0e8', col2:'#1f6b72',
-  desc:'An anti-caster mage who silences, burns mana, and strips buffs.',
-  hp:545, hpg:80, mp:400, mpg:58, dmg:42, dmgg:4.3, arm:2, armg:.30,
-  ms:318, range:560, bat:1.05, ranged:true, projSpeed:1200,
-  abilities:[
-    {key:'Q', name:'Void Bolt', cast:'point', range:820, mana:[50,55,60,65], cd:[7,6.2,5.4,4.6],
-     scaled:'d',
-     desc:'A bolt dealing %d damage and silencing for 2s.', val:[95,155,215,275]},
-    {key:'W', name:'Mana Rift', cast:'self', aoe:360, mana:[60,70,80,90], cd:[16,15,14,13],
-     desc:'Burn up to %d mana from every enemy within 360 and deal that much damage. Krell keeps half the mana.',
-     val:[90,140,190,240]},
-    {key:'E', name:'Nullify', cast:'point', range:640, mana:[55,60,65,70], cd:[15,14,13,12],
-     scaled:'d',
-     desc:'Strip every buff from the enemy nearest the cursor and deal %d damage.',
-     val:[100,160,220,280]},
-    {key:'R', name:'Silence the Song', cast:'point', range:700, aoe:380, ult:true, mana:[150,175,200], cd:[70,60,50],
-     scaled:'d',
-     desc:'%d damage in a 380 radius and a 3s silence.', val:[290,440,590]}
-  ],
-  scepter:{name:'Void Feedback',
-    desc:'Every ability an enemy hero casts within 900 of Krell costs them 40 extra mana, dealt back to them as damage, and reduces all four of Krell’s cooldowns by one second.'}
-},
 shiv:{
   id:'shiv', name:'SHIV', title:'The Bleeder', col:'#ff6b6b', col2:'#7a1f2b',
   desc:'A knife fighter built around bleed damage: apply it, maintain it, then finish off weakened enemies.',
@@ -301,7 +256,7 @@ svaar:{
      scaled:'d',
      desc:'Hurl a warhammer that bursts where it lands: %d damage and a 1.4s stun to everything within 150.',
      val:[100,160,220,280]},
-    {key:'W', name:'Battle Cry', cast:'point', range:520, blink:true, mana:[45,50,55,60], cd:[18,16,14,12],
+    {key:'W', name:'Battle Cry', cast:'point', range:260, blink:true, mana:[45,50,55,60], cd:[18,16,14,12],
      scaled:'d',
      desc:'Roar, then charge to the cursor, cutting everything along the path for %d damage. The next attack he lands carries God’s Strength for +%p% attack damage, or nothing extra if the ultimate is already running.',
      val:[70,115,160,205], val2:[40,60,80,100]},
@@ -448,7 +403,7 @@ stryg:{
      desc:'Sanctify the ground. After 1.2s it erupts for %d damage and silences enemy heroes for 3s.',
      val:[95,155,215,275]},
     {key:'W', name:'Blood Frenzy', cast:'self', mana:[0,0,0,0], cd:[14,13,12,11],
-     desc:'Sacrifice 25% of your current health to gain +%d% attack speed for 6s. The cost is paid in blood, not mana, and cannot kill him.',
+     desc:'Sacrifice 12% of your current health to gain +%d% attack speed for 6s. The cost is paid in blood, not mana, and cannot kill him.',
      val:[80,100,120,140]},
     {key:'E', name:'Thirst', passive:true, grants:'thirst', mana:[0,0,0,0], cd:[0,0,0,0],
      desc:'Passive: every creep you last hit or deny restores %d health plus 2% of his maximum health. A hero kill restores five times as much. He also gains up to +%p% move speed, scaling on how little health the most wounded enemy hero has left.',

@@ -5,7 +5,7 @@ import { newSim, simStep, castAbility, mkEnt, damage } from "../src/sim/engine.t
 import { HEROES, HERO_IDS } from "../src/data/heroes.ts";
 import { ITEMS } from "../src/data/items.ts";
 import { BOT_BUILD } from "../src/ai/bot.ts";
-import { LANE_Y } from "../src/data/world.ts";
+import { LANE_Y, QUELL_DMG } from "../src/data/world.ts";
 
 const TICK = 1 / 60;
 const CREEP_RESIST = 0.70;   // creeps shrug off 30% of ability damage (dummies are creeps)
@@ -55,14 +55,14 @@ console.log("\n== ITEM â€” the Scepter itself is wired ==");
   const missing = HERO_IDS.filter(id => !HEROES[id].scepter || !HEROES[id].scepter.name || !HEROES[id].scepter.desc);
   ok("every hero has a named scepter upgrade", missing.length === 0,
      missing.join(",") || "all " + HERO_IDS.length);
-  const S = sim("vex", "ilva");
+  const S = sim("vex", "sable");
   ok("holding it sets the aghs flag", S.players[0].hero.aghs === true, "");
   ok("not holding it does not", !S.players[1].hero.aghs, "");
 }
 
 console.log("\n== VEX â€” Encore: an Execute kill refunds and resets ==");
 {
-  const S = sim("vex", "ilva");
+  const S = sim("vex", "sable");
   const p = S.players[0], h = p.hero;
   const d = dummy(S, 1, h.x + 150, LANE_Y, 1);
   p.cds[0] = 5;                                    // Blink Slash mid-cooldown
@@ -72,25 +72,11 @@ console.log("\n== VEX â€” Encore: an Execute kill refunds and resets ==");
   ok("Execute came straight back", p.cds[3] === 0, `cd=${p.cds[3]}`);
   ok("Blink Slash reset too", p.cds[0] === 0, `cd=${p.cds[0]}`);
   ok("the mana came back", h.mp >= mp0 - 1, `${Math.round(mp0)} -> ${Math.round(h.mp)}`);
-  const S2 = sim("vex", "ilva", true);             // no scepter â€” no encore
+  const S2 = sim("vex", "sable", true);             // no scepter â€” no encore
   const p2 = S2.players[0];
   const d2 = dummy(S2, 1, p2.hero.x + 150, LANE_Y, 1);
   castAbility(S2, p2, 3, d2.x, d2.y);
   ok("without the scepter the cooldown stays spent", p2.cds[3] > 0, `cd=${p2.cds[3].toFixed(1)}`);
-}
-
-console.log("\n== ILVA â€” Deep Freeze: the fourth touch freezes solid ==");
-{
-  const S = sim("ilva", "vex");
-  const p = S.players[0], h = p.hero;
-  const d = dummy(S, 1, h.x + 150, LANE_Y);
-  castAbility(S, p, 1, h.x, h.y);                  // Rime Nova reaches the dummy
-  ok("one ability hit is one Frostbite stack", d.fbN === 1, `fbN=${d.fbN}`);
-  for (let k = 0; k < 3; k++){ p.cds[1] = 0; h.mp = h.maxMp; castAbility(S, p, 1, h.x, h.y); }
-  ok("the fourth stack shattered", d.fbN === 0 && d.fbCd > 0, `fbN=${d.fbN} cd=${(d.fbCd||0).toFixed(1)}`);
-  ok("and froze the victim solid", d.stun > 0, `stun=${d.stun.toFixed(2)}`);
-  p.cds[1] = 0; h.mp = h.maxMp; castAbility(S, p, 1, h.x, h.y);
-  ok("a thawed target cannot restack yet", d.fbN === 0, `fbN=${d.fbN}`);
 }
 
 console.log("\n== GRUK â€” Walking Mountain: Colossus carries Quake ==");
@@ -245,22 +231,6 @@ console.log("\n== THORNE â€” Wild Growth: thickets spread, traps regrow =="
   ok("the sprung trap grew back on its own", !!regrown && regrown.arm > 1, regrown ? `arm=${regrown.arm.toFixed(1)}` : "gone");
 }
 
-console.log("\n== KRELL â€” Void Feedback: enemy casts feed his clock ==");
-{
-  const S = sim("krell", "vex");
-  const kp = S.players[0], vp = S.players[1];
-  kp.cds = [5, 5, 5, 5];
-  const vh = vp.hero;
-  const mp0 = vh.mp, hp0 = vh.hp;
-  castAbility(S, vp, 1, vh.x, vh.y);               // Vex casts Bladestorm nearby
-  const manaCost = HEROES.vex.abilities[1].mana[3];
-  ok("the cast cost 40 extra mana", vh.mp <= mp0 - manaCost - 40 + 1,
-     `mp ${Math.round(mp0)} -> ${Math.round(vh.mp)}`);
-  ok("dealt back as damage", vh.hp < hp0, `${Math.round(hp0)} -> ${Math.round(vh.hp)}`);
-  ok("and wound all of Krell's cooldowns", kp.cds.every(c => Math.abs(c - 4) < 0.1),
-     kp.cds.map(c => c.toFixed(1)).join("/"));
-}
-
 console.log("\n== SHIV â€” Bad Blood: bleeds heal him, rage attacks cut ==");
 {
   const S = sim("shiv", "vex");
@@ -350,7 +320,7 @@ console.log("\n== RONIN â€” Dance of Death: crits extend the ult ==");
   Math.random = realRandom;
   // each cut is a full attack swing plus the rank value as ability damage;
   // the scepter's +10% ability amp and creep resist apply to the ability half only
-  const per = (HEROES.ronin.abilities[3].val[2] * (1 + h.amp) * CREEP_RESIST + h.dmg) * 1.9;
+  const per = (HEROES.ronin.abilities[3].val[2] * (1 + h.amp) * CREEP_RESIST + h.dmg + QUELL_DMG) * 1.9;
   const cuts = (hp0 - d.hp) / per;
   ok("all four bonus cuts were earned", Math.abs(cuts - 10) < 0.2, `~${cuts.toFixed(1)} crit cuts`);
   const S2 = sim("ronin", "vex", true);
@@ -362,7 +332,7 @@ console.log("\n== RONIN â€” Dance of Death: crits extend the ult ==");
   castAbility(S2, p2, 3, d2.x, d2.y);
   step(S2, 240);
   Math.random = realRandom;
-  const base = HEROES.ronin.abilities[3].val[2] * CREEP_RESIST + p2.hero.dmg;
+  const base = HEROES.ronin.abilities[3].val[2] * CREEP_RESIST + p2.hero.dmg + QUELL_DMG;
   ok("without the scepter it is six plain cuts", Math.abs((h20 - d2.hp) - base * 6) < 2,
      `took ${Math.round(h20 - d2.hp)} want ${Math.round(base*6)}`);
 }
@@ -512,7 +482,7 @@ console.log("\n== ROSTER â€” every hero can rampage with the scepter and no
   let crashed = "";
   for (const id of HERO_IDS) {
     try {
-      const S = sim(id, id === "vex" ? "ilva" : "vex");
+      const S = sim(id, id === "vex" ? "sable" : "vex");
       const p = S.players[0], h = p.hero;
       p.devFree = true;
       const foe = S.players[1].hero;

@@ -14,12 +14,10 @@ export const ITEMS = {
   sandal: {name:'Sandals',       cost:250, cat:'comp', d:'+30 move speed'},
   talon:  {name:'Talon',         cost:260, cat:'comp', d:'+16% attack speed'},
   ember:  {name:'Ember Shard',   cost:300, cat:'comp', d:'+7% ability damage'},
-  stone:  {name:'Whetstone',     cost:150, cat:'comp', d:'+14 damage to creeps'},
+  serrat: {name:'Serrated Edge', cost:300, cat:'comp', d:'+5 damage. Attacks shred 2 armor for 4s'},
   buckler:{name:'Buckler',       cost:250, cat:'comp', d:'60% chance to block 10 damage from an attack'},
 
   /* ---------- attack ---------- */
-  quell:  {name:'Quelling Blade', cat:'attack', from:['stone','gaunt'],   recipe:120,
-           d:'+9 damage, +40 damage to creeps (+20 if ranged)'},
   blade:  {name:'Ravager Blade',  cat:'attack', from:['gaunt','gaunt'],   recipe:240,
            d:'+28 attack damage'},
   quick:  {name:'Quickblade',     cat:'attack', from:['talon','talon'],   recipe:480,
@@ -30,14 +28,14 @@ export const ITEMS = {
            d:'+9 damage, +130 mana. Attacks slow by 20% for 1.5s'},
   reap:   {name:"Reaper's Sigil", cat:'attack', from:['gaunt','hide'],    recipe:600,
            d:'+12 damage, +3 armor. Your ATTACKS cut enemy healing and regen by 55% for 5s'},
-  sunder: {name:'Sunder Axe',     cat:'attack', from:['blade','gaunt'],   recipe:420,
+  sunder: {name:'Sunder Axe',     cat:'attack', from:['serrat','blade'], recipe:300,
            d:'+42 damage. Attacks shred 5 armor for 5s'},
   reaver: {name:"Reaver's Edge",  cat:'attack', from:['blade','talon'],   recipe:640,
            d:'+40 damage, +16% attack speed, 25% chance to crit for 190%'},
   cleaver:{name:'Battle Cleaver',  cat:'attack', from:['blade','gaunt'],   recipe:520,
-           d:'+32 damage. MELEE: attacks splash 22% damage in a short arc. Ranged heroes get only the damage'},
-  bolt:   {name:'Lightning Strike', cat:'attack', from:['gaunt','talon'],  recipe:660,
-           d:'+9 damage, +16% attack speed. Your attacks have a 30% chance to call a lightning strike that bounces between up to 4 enemies, dealing 30% of your attack damage to each'},
+           d:'+32 damage. MELEE: attacks splash 37% damage in a short arc. Ranged heroes get only the damage'},
+  bolt:   {name:'Lightning Strike', cat:'attack', from:['gaunt','ember'],  recipe:660,
+           d:'+9 damage, +7% ability damage. Your attacks have a 30% chance to call a lightning strike that bounces between up to 4 enemies. Each shock is magic damage equal to 30% of your attack damage, and your ability damage bonus amplifies it'},
 
   /* ---------- defense ---------- */
   stout:  {name:'Stout Shield',  cat:'defense', from:['buckler','hide'], recipe:100,
@@ -106,7 +104,7 @@ export const ITEM_SLOTS = 6;
 
 export function itemStats(items){
   const s = {ms:0, dmg:0, hp:0, hpr:0, mp:0, mpr:0, cdr:0, arm:0, thorns:0, ls:0, sls:0, as:0,
-             crit:0, chill:0, amp:0, quell:0, block:0, hcut:0, hcutM:0, shred:0, cleave:0, bolt:0,
+             crit:0, chill:0, amp:0, block:0, hcut:0, hcutM:0, shred:0, cleave:0, bolt:0,
              scrit:0, mburn:0};
   for (const it of items){
     switch(it.id){
@@ -118,19 +116,18 @@ export function itemStats(items){
       case 'sandal':  s.ms+=30; break;
       case 'talon':   s.as+=16; break;
       case 'ember':   s.amp+=.07; break;
-      case 'stone':   s.quell=Math.max(s.quell,14); break;
+      case 'serrat':  s.dmg+=5; s.shred=Math.max(s.shred,2); break;
       case 'buckler': s.block+=10; break;
       /* attack */
-      case 'quell':   s.dmg+=9; s.quell=Math.max(s.quell,40); break;
       case 'blade':   s.dmg+=28; break;
       case 'quick':   s.as+=60; break;
       case 'fang':    s.dmg+=14; s.hp+=140; s.ls+=.28; break;
       case 'frostb':  s.dmg+=9; s.mp+=130; s.chill=1; break;
       case 'reap':    s.dmg+=12; s.arm+=3; s.hcut=1; break;
-      case 'sunder':  s.dmg+=42; s.shred=1; break;
-      case 'cleaver': s.dmg+=32; s.cleave=Math.max(s.cleave,.22); break;
+      case 'sunder':  s.dmg+=42; s.shred=Math.max(s.shred,5); break;
+      case 'cleaver': s.dmg+=32; s.cleave=Math.max(s.cleave,.37); break;
       case 'reaver':  s.dmg+=40; s.as+=16; s.crit+=.25; break;
-      case 'bolt':    s.dmg+=9; s.as+=16; s.bolt=Math.max(s.bolt,.30); break;
+      case 'bolt':    s.dmg+=9; s.amp+=.07; s.bolt=Math.max(s.bolt,.30); break;
       /* defense */
       case 'stout':   s.block+=24; s.arm+=3; break;
       case 'vit':     s.hp+=300; s.hpr+=6; break;

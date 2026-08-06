@@ -3,7 +3,7 @@ import { TEAM_COL, KILLS_TO_WIN } from '../data/world';
 import { HEROES } from '../data/heroes';
 import { G } from '../app/state';
 import { fmtTime } from '../render/view';
-import { tourFinish } from '../app/online';
+import { tourFinish, canRematch } from '../app/online';
 import { recordMatch } from '../app/persistence';
 import { renderMatchStats, resetMatchStats } from './matchStats';
 import { playSfx } from '../audio/sfx';
@@ -36,11 +36,16 @@ export function showEnd(winner){
     if (box) box.innerHTML = '<div class="note">The stats panel hit an error — '+
       'press F12 and send us the red text so we can fix it.</div>';
   }
+  // Rematch only makes sense for a practice match — a lobby or a tournament
+  // series has its own route back
+  const again = document.getElementById('btnRematch');
+  if (again) again.classList.toggle('hide', !canRematch());
   // a three second cooling-off period so nobody fat-fingers their way out of the lobby
   const leave = document.getElementById('btnLeave');
   const cont  = document.getElementById('btnContinue');
   if (leave){
     leave.disabled = true; cont.disabled = true;
+    if (again) again.disabled = true;
     let left = 3;
     leave.textContent = 'Leave ('+left+')';
     const tick = setInterval(()=>{
@@ -48,6 +53,7 @@ export function showEnd(winner){
       if (left>0){ leave.textContent = 'Leave ('+left+')'; return; }
       clearInterval(tick);
       leave.disabled = false; cont.disabled = false;
+      if (again) again.disabled = false;
       leave.textContent = 'Leave';
     }, 1000);
   }

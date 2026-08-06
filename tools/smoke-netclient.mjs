@@ -77,7 +77,7 @@ function clientFrame(S, mySlot){
 async function runMatch(label, endBy){
   console.log('\n== ' + label + ' ==');
   const S = newSim([
-    {h:'vex', tm:0}, {h:'ilva', tm:1}, {h:'gruk', tm:0}, {h:'sable', tm:1},
+    {h:'vex', tm:0}, {h:'sable', tm:1}, {h:'gruk', tm:0}, {h:'sable', tm:1},
   ], '2v2');
   S.fastGold = true;
   // be client slot 1 (team 1)
@@ -120,7 +120,7 @@ await runMatch('2v2 ended by tower fall', 'tower');
 console.log('\n== degraded wire: only the tiny over-message survives ==');
 {
   const S = newSim([
-    {h:'vex', tm:0}, {h:'ilva', tm:1}, {h:'gruk', tm:0}, {h:'sable', tm:1},
+    {h:'vex', tm:0}, {h:'sable', tm:1}, {h:'gruk', tm:0}, {h:'sable', tm:1},
   ], '2v2');
   S.noFx = true; S.fastGold = true;
   G.mode = 'client'; G.started = true; G.endShown = false; G.paused = false;

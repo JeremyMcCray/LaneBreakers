@@ -8,8 +8,7 @@ import { canCast, castAbility, buyItem, useItem, nearestFoe, foesOf } from '../s
 /* Every build saves for the Ascendant Scepter once its core is online — the
    per-hero upgrade is close to a seventh ability, so the bots want it too. */
 export const BOT_BUILD = {
-  vex:  ['boots','blade','quick','fang','scepter','bolt'],
-  ilva: ['boots','arc','blade','vit','scepter','fang'],
+  vex:  ['boots','blade','quick','fang','scepter','reaver'],
   gruk: ['boots','vit','blade','plate','scepter','quick'],
   brann:['boots','vit','blade','scepter','plate','quick'],
   sable:['boots','blade','quick','fang','scepter','arc'],
@@ -18,15 +17,14 @@ export const BOT_BUILD = {
   orrin:['boots','arc','blade','orb','scepter','prism'],
   nix:  ['boots','blade','quick','fang','scepter','reaver'],
   thorne:['boots','vit','blade','plate','scepter','quick'],
-  krell:['boots','arc','orb','scepter','crown','prism'],
-  shiv: ['boots','quell','blade','quick','scepter','vit'],
+  shiv: ['boots','serrat','blade','quick','scepter','vit'],
   svaar:['boots','vit','blade','cleaver','scepter','quick'],
   geist:['boots','arc','weave','orb','scepter','brand'], // Soulweave doubles down on her drain
   drex: ['boots','arc','orb','scepter','prism','vit'],
   ronin:['boots','blade','quick','fang','scepter','reaver'],
   zaal: ['boots','arc','orb','scepter','crown','vit'],
   jarak:['boots','blade','quick','fang','scepter','plate'],
-  stryg:['boots','quell','blade','quick','scepter','fang'],
+  stryg:['boots','serrat','blade','quick','scepter','fang'],
   vosk: ['boots','arc','orb','scepter','crown','vit'],
   dorn: ['boots','vit','blade','plate','scepter','quick'],
   timber:['boots','vit','arc','plate','scepter','crown'],
@@ -127,8 +125,6 @@ export function botThink(S,p,dt){
       if (A.ult && foeHp>.65 && hpPct>.5 && Math.random()<.7) continue;
       let tx=foe.x, ty=foe.y;
       if (p.heroId==='vex' && i===0){ tx=foe.x-Math.cos(foe.facing)*20; ty=foe.y; }
-      if (p.heroId==='ilva' && i===2){ tx=e.x-dir*300; ty=LANE_Y; }   // escape blink
-      if (p.heroId==='ilva' && i===2 && hpPct>.5) continue;
       castAbility(S,p,i,tx,ty);
       break;
     }
