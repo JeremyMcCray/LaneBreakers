@@ -27,7 +27,8 @@ export function recordMatch(v, winner){
   G.recorded = id;
   const rec = {
     id: id, ts: Date.now(), mode: v.md || '1v1',
-    dur: Math.round(v.t), how: v.hw || '', win: winner, me: G.mySlot,
+    dur: Math.round(v.t || 0), how: v.hw || '', win: winner, me: G.mySlot,
+    vr: (typeof v.vr === 'number' ? v.vr : (winner===G.myTeam ? 1 : -1)),
     ps: v.ps.map(q=>({sl:q.sl, tm:q.tm, nm:q.nm || ('Player '+(q.sl+1)), h:q.hid,
                       k:q.k, d:q.d, a:q.as||0, cs:q.cs, dn:q.dn, lvl:q.lvl, nw:q.nw}))
   };
@@ -60,6 +61,17 @@ export function fmtDate(ts){
   const d = new Date(ts);
   return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+
          d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+}
+export function fmtDuration(sec){
+  const total = Math.max(0, Math.round(sec||0));
+  const mins = Math.floor(total/60);
+  const secs = total%60;
+  return mins+':'+String(secs).padStart(2,'0');
+}
+export function matchVr(r, mine){
+  if (typeof r.vr === 'number') return r.vr;
+  if (!mine) return 0;
+  return mine.tm===r.win ? 1 : -1;
 }
 /* History outlives the roster — records can hold hero ids that were since
    renamed or retired (and imports can carry ids from other versions). */
@@ -112,7 +124,7 @@ export function renderStats(){
                         '<th>Record together</th><th>Win%</th></tr>'+mateRows+'</table>';
 
   html += '<h3>Recent matches</h3><table class="stab">'+
-    '<tr><th>When</th><th>Mode</th><th>Result</th><th>You</th><th>K/D/A</th><th>CS</th><th>Lineup</th></tr>'+
+    '<tr><th>When</th><th>Mode</th><th>Result</th><th>You</th><th>VR</th><th>Dur</th><th>K/D/A</th><th>CS</th><th>Lineup</th></tr>'+
     hist.slice(0,40).map(r=>{
       const mine = r.ps.find(q=>q.sl===r.me) || r.ps[0];
       const won = mine.tm===r.win;
@@ -122,6 +134,7 @@ export function renderStats(){
       return '<tr><td>'+fmtDate(r.ts)+'</td><td>'+r.mode.toUpperCase()+'</td>'+
              '<td style="color:'+(won?'var(--acc)':'var(--red)')+';font-weight:800">'+(won?'WIN':'LOSS')+'</td>'+
              '<td style="color:'+heroRef(mine.h).col+'">'+heroRef(mine.h).name+'</td>'+
+             '<td>'+matchVr(r, mine)+'</td><td>'+fmtDuration(r.dur || 0)+'</td>'+
              '<td>'+mine.k+'/'+mine.d+'/'+mine.a+'</td><td>'+mine.cs+'</td><td>'+line+'</td></tr>';
     }).join('')+'</table>';
   box.innerHTML = html;
